@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>DreamGrind Admin</title>
+<style>
+:root{font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#111827;background:#f3f4f6}*{box-sizing:border-box}body{margin:0}.wrap{max-width:1250px;margin:0 auto;padding:24px}.top{display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap}.brand{font-size:28px;font-weight:800;letter-spacing:-.03em}.muted{color:#6b7280}.actions{display:flex;gap:10px;flex-wrap:wrap}button{border:1px solid #d1d5db;background:#111827;color:#fff;border-radius:10px;padding:10px 14px;cursor:pointer}button.secondary{background:#fff;color:#111827}button.danger{background:#b91c1c;border-color:#b91c1c}.panel{background:#fff;border:1px solid #e5e7eb;border-radius:16px;padding:18px;margin-top:18px;box-shadow:0 10px 30px rgba(0,0,0,.04)}.login{max-width:420px;margin:70px auto}.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}.metric{padding:18px;border-radius:14px;background:#fff;border:1px solid #e5e7eb}.metric span{display:block;color:#6b7280;font-size:13px}.metric strong{display:block;font-size:30px;margin-top:6px}.tabs{display:flex;gap:8px;flex-wrap:wrap;margin-top:16px}.tab{background:#fff;color:#111827}.tab.active{background:#111827;color:#fff}.hidden{display:none}.table-wrap{overflow:auto}table{width:100%;border-collapse:collapse;min-width:800px}th,td{padding:11px 10px;border-bottom:1px solid #eef0f2;text-align:left;font-size:14px;vertical-align:top}input,select{width:100%;padding:10px 11px;border:1px solid #d1d5db;border-radius:10px;background:#fff}label{display:block;font-size:13px;font-weight:700;margin-bottom:6px}.form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.form-grid .full{grid-column:1/-1}.row-actions{display:flex;gap:8px;flex-wrap:wrap}.notice{padding:12px;border-radius:10px;background:#f9fafb;border:1px solid #e5e7eb}.error{color:#b91c1c;font-size:14px}.ok{color:#166534;font-size:14px}@media(max-width:900px){.grid{grid-template-columns:1fr 1fr}}@media(max-width:600px){.wrap{padding:14px}.grid,.form-grid{grid-template-columns:1fr}.form-grid .full{grid-column:auto}.brand{font-size:23px}}
+</style>
+</head>
+<body>
+<div id="loginView" class="wrap login">
+  <div class="panel">
+    <div class="brand">DreamGrind Admin</div>
+    <p class="muted">Sign in with the admin credentials configured in your server.</p>
+    <form id="loginForm" class="form-grid">
+      <div class="full"><label>Email</label><input id="adminEmail" type="email" required autocomplete="username"></div>
+      <div class="full"><label>Password</label><input id="adminPassword" type="password" required autocomplete="current-password"></div>
+      <div class="full"><button type="submit">Sign in</button></div>
+    </form>
+    <p id="loginError" class="error"></p>
+  </div>
+</div>
+
+<div id="appView" class="wrap hidden">
+  <div class="top">
+    <div><div class="brand">DreamGrind Admin</div><div id="me" class="muted"></div></div>
+    <div class="actions"><button class="secondary" onclick="location.href='/'">Store</button><button onclick="loadAll()">Refresh</button><button class="danger" onclick="logout()">Log out</button></div>
+  </div>
+
+  <div id="summary" class="grid" style="margin-top:18px"></div>
+  <div id="flash" class="notice hidden" style="margin-top:14px"></div>
+
+  <div class="tabs">
+    <button class="tab active" data-tab="orders">Orders</button>
+    <button class="tab" data-tab="products">Products</button>
+    <button class="tab" data-tab="users">Customers</button>
+    <button class="tab" data-tab="messages">Messages</button>
+  </div>
+
+  <section id="tab-orders" class="panel tab-panel">
+    <div class="top"><div><h2>Orders</h2><div class="muted">Update fulfilment status and tracking numbers.</div></div></div>
+    <div id="orders" class="table-wrap" style="margin-top:14px"></div>
+  </section>
+
+  <section id="tab-products" class="panel tab-panel hidden">
+    <div class="top"><div><h2>Products</h2><div class="muted">Create, edit and remove store products.</div></div></div>
+    <form id="productForm" class="form-grid" style="margin-top:14px">
+      <input id="productId" type="hidden">
+      <div><label>Title</label><input id="productTitle" required></div>
+      <div><label>Price (USD)</label><input id="productPrice" type="number" min="0.01" step="0.01" required></div>
+      <div><label>Category</label><input id="productCategory" placeholder="Gadgets"></div>
+      <div><label>Stock</label><input id="productStock" type="number" min="0" step="1" value="0"></div>
+      <div class="full"><label>Image URL</label><input id="productImage" type="url" placeholder="https://..."></div>
+      <div class="full row-actions"><button type="submit" id="saveProductBtn">Add product</button><button type="button" class="secondary" onclick="resetProductForm()">Clear</button></div>
+    </form>
+    <div id="products" class="table-wrap" style="margin-top:20px"></div>
+  </section>
+
+  <section id="tab-users" class="panel tab-panel hidden">
+    <h2>Customers</h2>
+    <div id="users" class="table-wrap" style="margin-top:14px"></div>
+  </section>
+
+  <section id="tab-messages" class="panel tab-panel hidden">
+    <h2>Customer messages</h2>
+    <div id="messages" class="table-wrap" style="margin-top:14px"></div>
+  </section>
+</div>
+
+<script>
+const $=id=>document.getElementById(id);
+let state={orders:[],products:[],users:[],messages:[]};
+async function api(url,opts={}){const r=await fetch(url,{credentials:'include',...opts,headers:{'Content-Type':'application/json',...(opts.headers||{})}});const d=await r.json().catch(()=>({}));if(!r.ok)throw new Error(d.error||`Request failed (${r.status})`);return d;}
+function flash(msg,ok=true){$('flash').textContent=msg;$('flash').className=`notice ${ok?'ok':'error'}`;setTimeout(()=>$('flash').classList.add('hidden'),3500)}
+async function checkAuth(){const d=await api('/api/auth/me');if(d.user?.role==='admin'){$('loginView').classList.add('hidden');$('appView').classList.remove('hidden');$('me').textContent=d.user.email;await loadAll()}else{$('loginView').classList.remove('hidden');$('appView').classList.add('hidden')}}
+async function loadAll(){try{const [s,o,p,u,m]=await Promise.all([api('/api/admin/summary'),api('/api/admin/orders'),api('/api/products'),api('/api/admin/users'),api('/api/admin/messages')]);state={orders:o.orders,products:p.products,users:u.users,messages:m.messages};$('summary').innerHTML=[['Users',s.users],['Orders',s.orders],['Revenue',`$${Number(s.revenue||0).toFixed(2)}`],['Messages',s.messages]].map(x=>`<div class="metric"><span>${x[0]}</span><strong>${x[1]}</strong></div>`).join('');renderOrders();renderProducts();renderUsers();renderMessages()}catch(e){flash(e.message,false);if(/Admin access|Authentication/.test(e.message))checkAuth()}}
+function renderOrders(){if(!state.orders.length){$('orders').innerHTML='<p class="muted">No orders yet.</p>';return}const statuses=['Processing','Shipped','In transit','Delivered','Cancelled','Refunded'];$('orders').innerHTML=`<table><thead><tr><th>Order</th><th>Customer</th><th>Total</th><th>Status</th><th>Tracking</th><th>Date</th><th>Save</th></tr></thead><tbody>${state.orders.map(o=>`<tr><td><strong>${esc(o.id)}</strong><div class="muted">${o.items?.length||0} item(s)</div></td><td>${esc(o.name)}<br><span class="muted">${esc(o.email)}</span><br><span class="muted">${esc(o.country)}</span></td><td>$${Number(o.total||0).toFixed(2)}</td><td><select id="st-${esc(o.id)}">${statuses.map(s=>`<option ${s===o.status?'selected':''}>${s}</option>`).join('')}</select></td><td><input id="tr-${esc(o.id)}" value="${esc(o.trackingNumber||'')}" placeholder="Tracking number"></td><td>${new Date(o.createdAt).toLocaleString()}</td><td><button onclick="saveOrder('${esc(o.id)}')">Save</button></td></tr>`).join('')}</tbody></table>`}
+async function saveOrder(id){try{const status=$('st-'+id).value;const tracking=$('tr-'+id).value.trim();await api('/api/admin/orders/'+encodeURIComponent(id),{method:'PATCH',body:JSON.stringify({status,trackingNumber:tracking||null})});flash('Order updated.');await loadAll()}catch(e){flash(e.message,false)}}
+function renderProducts(){if(!state.products.length){$('products').innerHTML='<p class="muted">No products.</p>';return}$('products').innerHTML=`<table><thead><tr><th>ID</th><th>Product</th><th>Price</th><th>Category</th><th>Stock</th><th>Actions</th></tr></thead><tbody>${state.products.map(p=>`<tr><td>${p.id}</td><td><strong>${esc(p.title)}</strong>${p.image?`<div class="muted">Image set</div>`:''}</td><td>$${Number(p.price||0).toFixed(2)}</td><td>${esc(p.category||'General')}</td><td>${Number.isFinite(Number(p.stock))?p.stock:'—'}</td><td class="row-actions"><button onclick="editProduct(${p.id})">Edit</button><button class="danger" onclick="deleteProduct(${p.id})">Delete</button></td></tr>`).join('')}</tbody></table>`}
+function editProduct(id){const p=state.products.find(x=>x.id===id);if(!p)return;$('productId').value=p.id;$('productTitle').value=p.title;$('productPrice').value=p.price;$('productCategory').value=p.category||'';$('productStock').value=p.stock??0;$('productImage').value=p.image||'';$('saveProductBtn').textContent='Save changes';document.querySelector('[data-tab="products"]').click();window.scrollTo({top:0,behavior:'smooth'})}
+function resetProductForm(){['productId','productTitle','productPrice','productCategory','productImage'].forEach(id=>$(id).value='');$('productStock').value=0;$('saveProductBtn').textContent='Add product'}
+$('productForm').addEventListener('submit',async e=>{e.preventDefault();try{const id=$('productId').value;const payload={title:$('productTitle').value.trim(),price:Number($('productPrice').value),category:$('productCategory').value.trim()||'General',stock:Number($('productStock').value||0),image:$('productImage').value.trim()||null};await api(id?'/api/admin/products/'+encodeURIComponent(id):'/api/admin/products',{method:id?'PATCH':'POST',body:JSON.stringify(payload)});flash(id?'Product updated.':'Product added.');resetProductForm();await loadAll()}catch(e){flash(e.message,false)}});
+async function deleteProduct(id){if(!confirm('Delete this product?'))return;try{await api('/api/admin/products/'+id,{method:'DELETE'});flash('Product deleted.');await loadAll()}catch(e){flash(e.message,false)}}
+function renderUsers(){if(!state.users.length){$('users').innerHTML='<p class="muted">No customers yet.</p>';return}$('users').innerHTML=`<table><thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Created</th></tr></thead><tbody>${state.users.map(u=>`<tr><td>${esc(u.name)}</td><td>${esc(u.email)}</td><td>${esc(u.role)}</td><td>${new Date(u.createdAt).toLocaleString()}</td></tr>`).join('')}</tbody></table>`}
+function renderMessages(){if(!state.messages.length){$('messages').innerHTML='<p class="muted">No messages.</p>';return}$('messages').innerHTML=`<table><thead><tr><th>Customer ID</th><th>From</th><th>Message</th><th>Date</th></tr></thead><tbody>${state.messages.map(m=>`<tr><td>${esc(m.userId)}</td><td>${esc(m.from)}</td><td>${esc(m.text)}</td><td>${new Date(m.createdAt).toLocaleString()}</td></tr>`).join('')}</tbody></table>`}
+function esc(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+async function logout(){await fetch('/api/auth/logout',{method:'POST',credentials:'include'});location.reload()}
+$('loginForm').addEventListener('submit',async e=>{e.preventDefault();$('loginError').textContent='';try{await api('/api/auth/login',{method:'POST',body:JSON.stringify({email:$('adminEmail').value.trim(),password:$('adminPassword').value})});await checkAuth()}catch(err){$('loginError').textContent=err.message}});
+document.querySelectorAll('.tab').forEach(btn=>btn.addEventListener('click',()=>{document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));btn.classList.add('active');document.querySelectorAll('.tab-panel').forEach(x=>x.classList.add('hidden'));$('tab-'+btn.dataset.tab).classList.remove('hidden')}));
+checkAuth();
+</script>
+</body>
+</html>
