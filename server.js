@@ -10,6 +10,7 @@ import jwt from 'jsonwebtoken';
 import { z } from 'zod';
 import { JSONFilePreset } from 'lowdb/node';
 import { createHash } from 'node:crypto';
+import { mkdir } from 'node:fs/promises';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
