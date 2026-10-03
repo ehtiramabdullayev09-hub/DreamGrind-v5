@@ -31,7 +31,7 @@ if (!ADMIN_EMAIL || !ADMIN_PASSWORD) {
   console.error('ADMIN_EMAIL and ADMIN_PASSWORD must be set in .env before starting.');
   process.exit(1);
 }
-
+await mkdir(path.join(__dirname, 'data'), { recursive: true });
 const db = await JSONFilePreset(path.join(__dirname, 'data', 'db.json'), {
   users: [],
   products: [],
