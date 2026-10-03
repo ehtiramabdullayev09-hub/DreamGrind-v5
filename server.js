@@ -433,7 +433,13 @@ app.patch('/api/admin/orders/:id', requireAdmin, async (req, res) => {
 const adminProductSchema = z.object({
   title: z.string().trim().min(2).max(160),
   price: z.number().finite().positive().max(100000),
-  image: z.string().trim().url().max(1000).nullable().optional(),
+
+  images: z.array(
+    z.string().trim().url().max(1000)
+  ).max(8).optional(),
+
+  video: z.string().trim().url().max(1000).nullable().optional(),
+
   stock: z.number().int().min(0).max(100000).optional(),
   category: z.string().trim().min(2).max(80).optional()
 });
@@ -444,7 +450,8 @@ app.post('/api/admin/products', requireAdmin, async (req, res) => {
     id: Math.max(0, ...db.data.products.map(p => p.id || 0)) + 1,
     title: parsed.data.title,
     price: Number(Number(parsed.data.price).toFixed(2)),
-    image: parsed.data.image || '',
+    images: parsed.data.images || [],
+video: parsed.data.video || null,
     stock: parsed.data.stock ?? 0,
     category: parsed.data.category || 'General',
     rating: 5,
@@ -456,7 +463,7 @@ app.post('/api/admin/products', requireAdmin, async (req, res) => {
   res.status(201).json({ product });
 });
 app.patch('/api/admin/products/:id', requireAdmin, async (req, res) => {
-  const parsed = adminProductSchema.partial().safeParse(req.body);
+  
   if (!parsed.success) return res.status(400).json({ error: 'Invalid product details.' });
   const product = db.data.products.find(p => String(p.id) === String(req.params.id));
   if (!product) return res.status(404).json({ error: 'Product not found.' });

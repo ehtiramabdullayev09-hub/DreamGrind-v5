@@ -40,7 +40,158 @@ function goTop(e) { e.preventDefault(); window.scrollTo({ top: 0, behavior: 'smo
 function toggleWishlist(id) { state.wishlist.has(id) ? state.wishlist.delete(id) : state.wishlist.add(id); saveAll(); renderProducts(); showToast(state.wishlist.has(id) ? 'Added to wishlist' : 'Removed from wishlist'); }
 function openWishlist() { const list = products.filter(p => state.wishlist.has(p.id)); $('modalRoot').innerHTML = `<div class="modal-overlay" onclick="closeModal(event)"><div class="modal"><div class="modal-head"><h2>Wishlist</h2><button class="close-btn" onclick="closeModal()">✕</button></div>${list.length ? `<div class="product-grid" style="grid-template-columns:repeat(2,1fr);padding:0">${list.map(cardHtml).join('')}</div>` : '<p class="muted">Your wishlist is empty.</p>'}</div></div>`; }
 function quickAdd(id) { const item = state.cart.find(x => x.id === id); if (item) item.qty++; else state.cart.push({ id, qty: 1, variant: null }); saveAll(); showToast('Added to cart'); openCart(); }
-function openProduct(id) { const p = products.find(x => x.id === id); if (!p) return; $('modalRoot').innerHTML = `<div class="modal-overlay" onclick="closeModal(event)"><div class="modal"><div class="modal-head"><h2>Product details</h2><button class="close-btn" onclick="closeModal()">✕</button></div><div class="product-detail"><img src="${p.image}" alt="${escapeHtml(p.title)}"><div><div class="product-category">${escapeHtml(p.category)}</div><h2>${escapeHtml(p.title)}</h2><div class="product-rating">★ ${p.rating} · ${p.reviews} reviews</div><div class="detail-price">${displayPrice(p.price)}${p.oldPrice ? ` <span class="price-old">${displayPrice(p.oldPrice)}</span>` : ''}</div><p class="detail-copy">${escapeHtml(p.description)}</p><label style="font-size:12px;font-weight:900">Choose option</label><div class="variant-row">${p.variants.map((v, i) => `<button class="variant ${i === 0 ? 'active' : ''}" onclick="selectVariant(this)">${escapeHtml(v)}</button>`).join('')}</div><div class="detail-qty"><label>Qty</label><input id="detailQty" type="number" min="1" max="20" value="1"></div><div class="detail-actions"><button class="primary-button full" onclick="addProductFromDetail(${p.id})">Add to cart</button><button class="secondary-button full" onclick="toggleWishlist(${p.id});openProduct(${p.id})">${state.wishlist.has(p.id) ? '♥ Wishlisted' : '♡ Wishlist'}</button></div></div></div></div></div>`; }
+function openProduct(id) {
+  const p = products.find(x => x.id === id);
+  if (!p) return;
+
+  const images = (p.images && p.images.length)
+    ? p.images
+    : (p.image ? [p.image] : []);
+
+  const mainImage = images[0] || '';
+
+  $('modalRoot').innerHTML = `
+    <div class="modal-overlay" onclick="closeModal(event)">
+      <div class="modal" onclick="event.stopPropagation()">
+
+        <div class="modal-head">
+          <h2>Product details</h2>
+          <button class="close-btn" onclick="closeModal()">✕</button>
+        </div>
+
+        <div class="product-detail">
+
+          <div class="product-gallery">
+
+            <div class="main-product-media">
+              ${
+                mainImage
+                  ? `<img id="mainProductImage"
+                      src="${mainImage}"
+                      alt="${escapeHtml(p.title)}">`
+                  : `<div class="muted">No product image</div>`
+              }
+            </div>
+
+            ${
+              images.length > 1
+                ? `<div class="product-thumbnails">
+                    ${images.map((img, i) => `
+                      <button
+                        type="button"
+                        class="product-thumb ${i === 0 ? 'active' : ''}"
+                        onclick="changeProductImage('${img.replace(/'/g, "\\'")}', this)">
+                        <img src="${img}" alt="${escapeHtml(p.title)} ${i + 1}">
+                      </button>
+                    `).join('')}
+                  </div>`
+                : ''
+            }
+
+            ${
+              p.video
+                ? `
+                  <div class="product-video">
+                    <video controls playsinline preload="metadata">
+                      <source src="${p.video}" type="video/mp4">
+                      Your browser does not support video playback.
+                    </video>
+                  </div>
+                `
+                : ''
+            }
+
+          </div>
+
+          <div>
+
+            <div class="product-category">
+              ${escapeHtml(p.category || 'General')}
+            </div>
+
+            <h2>${escapeHtml(p.title)}</h2>
+
+            <div class="product-rating">
+              ★ ${p.rating || 5} · ${p.reviews || 0} reviews
+            </div>
+
+            <div class="detail-price">
+              ${displayPrice(p.price)}
+              ${
+                p.oldPrice
+                  ? ` <span class="price-old">${displayPrice(p.oldPrice)}</span>`
+                  : ''
+              }
+            </div>
+
+            <p class="detail-copy">
+              ${escapeHtml(p.description || '')}
+            </p>
+
+            ${
+              p.variants && p.variants.length
+                ? `
+                  <label style="font-size:12px;font-weight:900">
+                    Choose option
+                  </label>
+
+                  <div class="variant-row">
+                    ${p.variants.map((v, i) => `
+                      <button
+                        class="variant ${i === 0 ? 'active' : ''}"
+                        onclick="selectVariant(this)">
+                        ${escapeHtml(v)}
+                      </button>
+                    `).join('')}
+                  </div>
+                `
+                : ''
+            }
+
+            <div class="detail-qty">
+              <label>Qty</label>
+              <input
+                id="detailQty"
+                type="number"
+                min="1"
+                max="20"
+                value="1">
+            </div>
+
+            <div class="detail-actions">
+              <button
+                class="primary-button full"
+                onclick="addProductFromDetail(${p.id})">
+                Add to cart
+              </button>
+
+              <button
+                class="secondary-button full"
+                onclick="toggleWishlist(${p.id});openProduct(${p.id})">
+                ${state.wishlist.has(p.id) ? '♥ Wishlisted' : '♡ Wishlist'}
+              </button>
+            </div>
+
+          </div>
+
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function changeProductImage(src, button) {
+  const main = $('mainProductImage');
+  if (!main) return;
+
+  main.src = src;
+
+  document
+    .querySelectorAll('.product-thumb')
+    .forEach(x => x.classList.remove('active'));
+
+  button.classList.add('active');
+}
 function selectVariant(button) { button.parentElement.querySelectorAll('.variant').forEach(x => x.classList.remove('active')); button.classList.add('active'); }
 function addProductFromDetail(id) { const qty = Math.max(1, Math.min(20, Number($('detailQty').value) || 1)); const variant = document.querySelector('.variant.active')?.textContent || null; const item = state.cart.find(x => x.id === id && x.variant === variant); if (item) item.qty += qty; else state.cart.push({ id, qty, variant }); saveAll(); showToast('Added to cart'); closeModal(); openCart(); }
 function cartSubtotal() { return state.cart.reduce((sum, x) => { const p = products.find(p => p.id === x.id); return sum + (p ? p.price * x.qty : 0) }, 0); }

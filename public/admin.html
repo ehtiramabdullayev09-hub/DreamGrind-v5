@@ -51,7 +51,21 @@
       <div><label>Price (USD)</label><input id="productPrice" type="number" min="0.01" step="0.01" required></div>
       <div><label>Category</label><input id="productCategory" placeholder="Gadgets"></div>
       <div><label>Stock</label><input id="productStock" type="number" min="0" step="1" value="0"></div>
-      <div class="full"><label>Image URL</label><input id="productImage" type="url" placeholder="https://..."></div>
+     <div class="full">
+  <label>Product Images</label>
+
+  <input id="productImage1" type="url" placeholder="Image URL 1 — https://">
+  <input id="productImage2" type="url" placeholder="Image URL 2 — https://" style="margin-top:8px;">
+  <input id="productImage3" type="url" placeholder="Image URL 3 — https://" style="margin-top:8px;">
+  <input id="productImage4" type="url" placeholder="Image URL 4 — https://" style="margin-top:8px;">
+  <input id="productImage5" type="url" placeholder="Image URL 5 — https://" style="margin-top:8px;">
+  <input id="productImage6" type="url" placeholder="Image URL 6 — https://" style="margin-top:8px;">
+  <input id="productImage7" type="url" placeholder="Image URL 7 — https://" style="margin-top:8px;">
+  <input id="productImage8" type="url" placeholder="Image URL 8 — https://" style="margin-top:8px;">
+
+  <label style="display:block;margin-top:14px;">Product Video</label>
+  <input id="productVideo" type="url" placeholder="Video URL — https://">
+</div>
       <div class="full row-actions"><button type="submit" id="saveProductBtn">Add product</button><button type="button" class="secondary" onclick="resetProductForm()">Clear</button></div>
     </form>
     <div id="products" class="table-wrap" style="margin-top:20px"></div>
@@ -78,9 +92,83 @@ async function loadAll(){try{const [s,o,p,u,m]=await Promise.all([api('/api/admi
 function renderOrders(){if(!state.orders.length){$('orders').innerHTML='<p class="muted">No orders yet.</p>';return}const statuses=['Processing','Shipped','In transit','Delivered','Cancelled','Refunded'];$('orders').innerHTML=`<table><thead><tr><th>Order</th><th>Customer</th><th>Total</th><th>Status</th><th>Tracking</th><th>Date</th><th>Save</th></tr></thead><tbody>${state.orders.map(o=>`<tr><td><strong>${esc(o.id)}</strong><div class="muted">${o.items?.length||0} item(s)</div></td><td>${esc(o.name)}<br><span class="muted">${esc(o.email)}</span><br><span class="muted">${esc(o.country)}</span></td><td>$${Number(o.total||0).toFixed(2)}</td><td><select id="st-${esc(o.id)}">${statuses.map(s=>`<option ${s===o.status?'selected':''}>${s}</option>`).join('')}</select></td><td><input id="tr-${esc(o.id)}" value="${esc(o.trackingNumber||'')}" placeholder="Tracking number"></td><td>${new Date(o.createdAt).toLocaleString()}</td><td><button onclick="saveOrder('${esc(o.id)}')">Save</button></td></tr>`).join('')}</tbody></table>`}
 async function saveOrder(id){try{const status=$('st-'+id).value;const tracking=$('tr-'+id).value.trim();await api('/api/admin/orders/'+encodeURIComponent(id),{method:'PATCH',body:JSON.stringify({status,trackingNumber:tracking||null})});flash('Order updated.');await loadAll()}catch(e){flash(e.message,false)}}
 function renderProducts(){if(!state.products.length){$('products').innerHTML='<p class="muted">No products.</p>';return}$('products').innerHTML=`<table><thead><tr><th>ID</th><th>Product</th><th>Price</th><th>Category</th><th>Stock</th><th>Actions</th></tr></thead><tbody>${state.products.map(p=>`<tr><td>${p.id}</td><td><strong>${esc(p.title)}</strong>${p.image?`<div class="muted">Image set</div>`:''}</td><td>$${Number(p.price||0).toFixed(2)}</td><td>${esc(p.category||'General')}</td><td>${Number.isFinite(Number(p.stock))?p.stock:'—'}</td><td class="row-actions"><button onclick="editProduct(${p.id})">Edit</button><button class="danger" onclick="deleteProduct(${p.id})">Delete</button></td></tr>`).join('')}</tbody></table>`}
-function editProduct(id){const p=state.products.find(x=>x.id===id);if(!p)return;$('productId').value=p.id;$('productTitle').value=p.title;$('productPrice').value=p.price;$('productCategory').value=p.category||'';$('productStock').value=p.stock??0;$('productImage').value=p.image||'';$('saveProductBtn').textContent='Save changes';document.querySelector('[data-tab="products"]').click();window.scrollTo({top:0,behavior:'smooth'})}
-function resetProductForm(){['productId','productTitle','productPrice','productCategory','productImage'].forEach(id=>$(id).value='');$('productStock').value=0;$('saveProductBtn').textContent='Add product'}
-$('productForm').addEventListener('submit',async e=>{e.preventDefault();try{const id=$('productId').value;const payload={title:$('productTitle').value.trim(),price:Number($('productPrice').value),category:$('productCategory').value.trim()||'General',stock:Number($('productStock').value||0),image:$('productImage').value.trim()||null};await api(id?'/api/admin/products/'+encodeURIComponent(id):'/api/admin/products',{method:id?'PATCH':'POST',body:JSON.stringify(payload)});flash(id?'Product updated.':'Product added.');resetProductForm();await loadAll()}catch(e){flash(e.message,false)}});
+function editProduct(id){
+  const p=state.products.find(x=>x.id===id);
+  if(!p)return;
+
+  $('productId').value=p.id;
+  $('productTitle').value=p.title;
+  $('productPrice').value=p.price;
+  $('productCategory').value=p.category||'';
+  $('productStock').value=p.stock??0;
+
+  const images=p.images||[];
+  for(let i=1;i<=8;i++){
+    const input=$('productImage'+i);
+    if(input) input.value=images[i-1]||'';
+  }
+
+  $('productVideo').value=p.video||'';
+  $('saveProductBtn').textContent='Save changes';
+
+  document.querySelector('[data-tab="products"]').click();
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+
+function resetProductForm(){
+  ['productId','productTitle','productPrice','productCategory'].forEach(id=>$(id).value='');
+
+  $('productStock').value=0;
+
+  for(let i=1;i<=8;i++){
+    const input=$('productImage'+i);
+    if(input) input.value='';
+  }
+
+  $('productVideo').value='';
+  $('saveProductBtn').textContent='Add product';
+}
+
+$('productForm').addEventListener('submit',async e=>{
+  e.preventDefault();
+
+  try{
+    const id=$('productId').value;
+
+    const images=[];
+
+    for(let i=1;i<=8;i++){
+      const value=$('productImage'+i).value.trim();
+      if(value) images.push(value);
+    }
+
+    const payload={
+      title:$('productTitle').value.trim(),
+      price:Number($('productPrice').value),
+      category:$('productCategory').value.trim()||'General',
+      stock:Number($('productStock').value||0),
+      images:images,
+      video:$('productVideo').value.trim()||null
+    };
+
+    await api(
+      id
+        ? '/api/admin/products/'+encodeURIComponent(id)
+        : '/api/admin/products',
+      {
+        method:id?'PATCH':'POST',
+        body:JSON.stringify(payload)
+      }
+    );
+
+    flash(id?'Product updated.':'Product added.');
+    resetProductForm();
+    await loadAll();
+
+  }catch(e){
+    flash(e.message,false);
+  }
+});
 async function deleteProduct(id){if(!confirm('Delete this product?'))return;try{await api('/api/admin/products/'+id,{method:'DELETE'});flash('Product deleted.');await loadAll()}catch(e){flash(e.message,false)}}
 function renderUsers(){if(!state.users.length){$('users').innerHTML='<p class="muted">No customers yet.</p>';return}$('users').innerHTML=`<table><thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Created</th></tr></thead><tbody>${state.users.map(u=>`<tr><td>${esc(u.name)}</td><td>${esc(u.email)}</td><td>${esc(u.role)}</td><td>${new Date(u.createdAt).toLocaleString()}</td></tr>`).join('')}</tbody></table>`}
 function renderMessages(){if(!state.messages.length){$('messages').innerHTML='<p class="muted">No messages.</p>';return}$('messages').innerHTML=`<table><thead><tr><th>Customer ID</th><th>From</th><th>Message</th><th>Date</th></tr></thead><tbody>${state.messages.map(m=>`<tr><td>${esc(m.userId)}</td><td>${esc(m.from)}</td><td>${esc(m.text)}</td><td>${new Date(m.createdAt).toLocaleString()}</td></tr>`).join('')}</tbody></table>`}
