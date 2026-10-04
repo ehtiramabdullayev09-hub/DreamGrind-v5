@@ -60,6 +60,7 @@ const loginSchema = z.object({ email: emailSchema, password: z.string().min(1).m
 const orderSchema = z.object({
   name: z.string().trim().min(2).max(80),
   email: emailSchema,
+  phone: z.string().trim().min(7).max(20),
   address: z.string().trim().min(5).max(200),
   city: z.string().trim().min(2).max(120),
   country: z.enum(['United States', 'Canada', 'United Kingdom']),
@@ -239,7 +240,7 @@ app.post('/api/newsletter', async (req, res) => {
 app.post('/api/orders', requireAuth, async (req, res) => {
   const parsed = orderSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: 'Invalid order details.' });
-  const { name, email, address, city, country, items } = parsed.data;
+  const { name, email, phone, address, city, country, items } = parsed.data;
   const productMap = new Map(db.data.products.map(p => [p.id, p]));
   const normalizedItems = items.map(item => {
     const p = productMap.get(item.id);
@@ -254,7 +255,7 @@ app.post('/api/orders', requireAuth, async (req, res) => {
     createdAt: new Date().toISOString(),
     status: 'Processing',
     trackingNumber: null,
-    name, email: email.toLowerCase(), address, city, country,
+    name, email: email.toLowerCase(), phone, address, city, country,
     items: normalizedItems,
     subtotal, shipping, total: subtotal + shipping
   };

@@ -230,7 +230,15 @@ async function startCheckout() {
                     Email
                     <input id="coEmail" type="email" required value="${escapeHtml(user.email)}">
                 </label>
-
+<label>
+  Mobile number
+  <input
+    id="coPhone"
+    type="tel"
+    required
+    placeholder="+1 555 123 4567 / +44 7700 900123"
+  >
+</label>
                 <label>
                     Address
                     <input id="coAddress" required placeholder="Street address">
@@ -286,6 +294,7 @@ async function startCheckout() {
     body: JSON.stringify({
       name: $('coName').value.trim(),
       email: $('coEmail').value.trim(),
+      phone: $('coPhone').value.trim(),
       address: $('coAddress').value.trim(),
       city: $('coCity').value.trim(),
       country: $('coCountry').value,

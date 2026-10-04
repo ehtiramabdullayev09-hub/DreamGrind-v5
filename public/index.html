@@ -27,7 +27,13 @@
       </div>
     </div>
     <div id="searchPanel" class="search-panel hidden"><div class="container search-inner"><input id="searchInput" type="search" placeholder="Search products, categories or keywords…" autocomplete="off"><button class="icon-button" onclick="toggleSearch()">✕</button></div></div>
-    <div id="mobileNav" class="mobile-nav hidden"><a href="#shop" onclick="closeMobileMenu()">Shop</a><a href="#categories" onclick="closeMobileMenu()">Categories</a><a href="#about" onclick="closeMobileMenu()">About</a><a href="#track" onclick="closeMobileMenu()">Track order</a></div>
+    <div id="mobileNav" class="mobile-nav hidden">
+  <a href="#shop" onclick="closeMobileMenu()">Shop</a>
+  <a href="#categories" onclick="closeMobileMenu()">Categories</a>
+  <a href="#about" onclick="closeMobileMenu()">About</a>
+  <a href="#track" onclick="closeMobileMenu()">Track order</a>
+  <button type="button" onclick="closeMobileMenu();openAccount()">My account</button>
+</div>
   </header>
 
   <main id="top">
