@@ -8,7 +8,7 @@ import cookieParser from 'cookie-parser';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { z } from 'zod';
-import { JSONFilePreset } from 'lowdb/node';
+import { createDatabase } from './database.js';
 import { createHash } from 'node:crypto';
 import { mkdir } from 'node:fs/promises';
 const __filename = fileURLToPath(import.meta.url);
@@ -31,14 +31,9 @@ if (!ADMIN_EMAIL || !ADMIN_PASSWORD) {
   console.error('ADMIN_EMAIL and ADMIN_PASSWORD must be set in .env before starting.');
   process.exit(1);
 }
-await mkdir(path.join(__dirname, 'data'), { recursive: true });
-const db = await JSONFilePreset(path.join(__dirname, 'data', 'db.json'), {
-  users: [],
-  products: [],
-  orders: [],
-  messages: [],
-  newsletter: []
-});
+
+const db = await createDatabase();
+
 
 const app = express();
 app.disable('x-powered-by');
@@ -161,7 +156,7 @@ function nextId(prefix, collection) {
   return `${prefix}${Date.now().toString(36).toUpperCase()}${Math.floor(Math.random() * 1000).toString().padStart(3, '0')}`;
 }
 async function ensureProducts() {
-  if (db.data.products.length) return;
+  if (process.env.DATABASE_URL) return;
   db.data.products = [
     { id: 1, title: 'Mini LED Ceiling Fan', price: 29.99 },
     { id: 2, title: 'Portable Desk Vacuum', price: 19.99 },
