@@ -136,4 +136,13 @@
     object-fit: contain;
     border-radius: 14px;
   }
+  .product-video video {
+  width: 100%;
+  max-width: 100%;
+  height: auto;
+  max-height: 280px;
+  display: block;
+  object-fit: contain;
+  border-radius: 14px;
+}
 }
