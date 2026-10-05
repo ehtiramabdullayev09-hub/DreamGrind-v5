@@ -29,7 +29,74 @@ function saveAll() { localStorage.setItem('dg_wishlist', JSON.stringify([...stat
 function updateCounts() { $('wishCount').textContent = state.wishlist.size; $('cartCount').textContent = state.cart.reduce((n, x) => n + x.qty, 0); }
 function showToast(message) { clearTimeout(toastTimer); $('toast').textContent = message; $('toast').classList.remove('hidden'); toastTimer = setTimeout(() => $('toast').classList.add('hidden'), 2200); }
 function renderProducts() { const q = ($('searchInput')?.value || '').trim().toLowerCase(); const sort = $('sortSelect')?.value || 'featured'; let list = products.filter(p => (state.category === 'All' || p.category === state.category) && (!q || `${p.title} ${p.category} ${p.description}`.toLowerCase().includes(q))); if (sort === 'rating') list.sort((a, b) => b.rating - a.rating); if (sort === 'low') list.sort((a, b) => a.price - b.price); if (sort === 'high') list.sort((a, b) => b.price - a.price); $('shopTitle').textContent = state.category === 'All' ? 'Trending products' : `${state.category} products`; $('emptyResults').classList.toggle('hidden', list.length > 0); $('productGrid').innerHTML = list.map(cardHtml).join(''); document.querySelectorAll('.chip').forEach(ch => ch.classList.toggle('active', ch.textContent === state.category)); }
-function cardHtml(p) { const wished = state.wishlist.has(p.id); return `<article class="product-card"><div class="product-image-wrap"><img src="${p.image}" alt="${escapeHtml(p.title)}" loading="lazy" onclick="openProduct(${p.id})" style="cursor:pointer">${p.badge ? `<span class="badge">${escapeHtml(p.badge)}</span>` : ''}<button class="wish-btn ${wished ? 'active' : ''}" aria-label="Toggle wishlist" onclick="toggleWishlist(${p.id})">${wished ? '♥' : '♡'}</button></div><div class="product-info"><div class="product-category">${escapeHtml(p.category || 'General')}</div><div class="product-title">${escapeHtml(p.title)}</div><div class="product-rating">★ ${p.rating ?? 5} · ${p.reviews ?? 0} reviews</div><div class="product-bottom"><div class="price">${displayPrice(p.price)}${p.oldPrice ? `<span class="price-old">${displayPrice(p.oldPrice)}</span>` : ''}</div><button class="add-mini" onclick="quickAdd(${p.id})">Add</button></div></div></article>`; }
+function cardHtml(p) {
+  const wished = state.wishlist.has(p.id);
+
+  const image =
+    (p.images && p.images.length)
+      ? p.images[0]
+      : (p.image || '');
+
+  return `
+    <article class="product-card">
+      <div class="product-image-wrap">
+        ${
+          image
+            ? `<img
+                src="${image}"
+                alt="${escapeHtml(p.title)}"
+                loading="lazy"
+                onclick="openProduct(${p.id})"
+                style="cursor:pointer"
+              >`
+            : `<div class="product-image-placeholder">No image</div>`
+        }
+
+        ${p.badge ? `<span class="badge">${escapeHtml(p.badge)}</span>` : ''}
+
+        <button
+          class="wish-btn ${wished ? 'active' : ''}"
+          aria-label="Toggle wishlist"
+          onclick="toggleWishlist(${p.id})"
+        >
+          ${wished ? '♥' : '♡'}
+        </button>
+      </div>
+
+      <div class="product-info">
+        <div class="product-category">
+          ${escapeHtml(p.category || 'General')}
+        </div>
+
+        <div class="product-title">
+          ${escapeHtml(p.title)}
+        </div>
+
+        <div class="product-rating">
+          ★ ${p.rating ?? 5} · ${p.reviews ?? 0} reviews
+        </div>
+
+        <div class="product-bottom">
+          <div class="price">
+            ${displayPrice(p.price)}
+            ${
+              p.oldPrice
+                ? `<span class="price-old">${displayPrice(p.oldPrice)}</span>`
+                : ''
+            }
+          </div>
+
+          <button
+            class="add-mini"
+            onclick="quickAdd(${p.id})"
+          >
+            Add
+          </button>
+        </div>
+      </div>
+    </article>
+  `;
+}
 function setCategory(name) { state.category = name; renderProducts(); location.hash = 'shop'; }
 function clearFilters() { state.category = 'All'; $('searchInput').value = ''; renderProducts(); }
 function toggleSearch() { $('searchPanel').classList.toggle('hidden'); if (!$('searchPanel').classList.contains('hidden')) $('searchInput').focus(); }
