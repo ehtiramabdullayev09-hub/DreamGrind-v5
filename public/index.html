@@ -11,7 +11,19 @@
 </head>
 <body>
   <div class="announcement"><div class="container announcement-inner"><span>Free shipping on selected orders</span><button class="link-btn" onclick="showPolicy('shipping')">Shipping info</button></div></div>
+<div class="locale-bar">
+  <div class="container locale-inner">
+    <span>Shipping to:</span>
 
+    <select id="countryPicker" onchange="setCountry(this.value)" aria-label="Shipping country">
+      <option value="US">🇺🇸 United States</option>
+      <option value="CA">🇨🇦 Canada</option>
+      <option value="UK">🇬🇧 United Kingdom</option>
+    </select>
+
+    <span id="currencyLabel">USD</span>
+  </div>
+</div>
   <header class="site-header">
     <div class="container header-row">
       <button class="mobile-menu-btn icon-button" aria-label="Open menu" onclick="toggleMobileMenu()">☰</button>

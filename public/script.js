@@ -23,7 +23,34 @@ let toastTimer = null;
 const $ = id => document.getElementById(id);
 function escapeHtml(value) { return String(value).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' }[c])); }
 function money(value, currency = 'USD') { return new Intl.NumberFormat('en-US', { style: 'currency', currency }).format(value); }
-function currencyConfig() { const country = localStorage.getItem('dg_country') || 'US'; return country === 'CA' ? { country: 'CA', currency: 'CAD', rate: 1.36 } : { country: 'UK', currency: 'GBP', rate: .75 }; }
+function currencyConfig() {
+  const country = localStorage.getItem('dg_country') || 'US';
+
+  const configs = {
+    US: { country: 'US', currency: 'USD', rate: 1 },
+    CA: { country: 'CA', currency: 'CAD', rate: 1.36 },
+    UK: { country: 'UK', currency: 'GBP', rate: 0.75 }
+  };
+
+  return configs[country] || configs.US;
+}
+
+function syncCountryPicker() {
+  const c = currencyConfig();
+
+  const picker = $('countryPicker');
+  if (picker) picker.value = c.country;
+
+  const label = $('currencyLabel');
+  if (label) label.textContent = c.currency;
+}
+function setCountry(country) {
+  localStorage.setItem('dg_country', country);
+  syncCountryPicker();
+  renderProducts();
+  showToast('Shipping country updated');
+
+}
 function displayPrice(value) { const c = currencyConfig(); return money(value * c.rate, c.currency); }
 function saveAll() { localStorage.setItem('dg_wishlist', JSON.stringify([...state.wishlist])); localStorage.setItem('dg_cart', JSON.stringify(state.cart)); updateCounts(); }
 function updateCounts() { $('wishCount').textContent = state.wishlist.size; $('cartCount').textContent = state.cart.reduce((n, x) => n + x.qty, 0); }
@@ -136,7 +163,7 @@ function openProduct(id) {
                   ? `<img id="mainProductImage"
                       src="${mainImage}"
                       alt="${escapeHtml(p.title)}">`
-                  : `<div class="muted">No product image</div>`
+                  : `<div class="product-image-placeholder">No product image</div>`
               }
             </div>
 
@@ -264,7 +291,6 @@ function addProductFromDetail(id) { const qty = Math.max(1, Math.min(20, Number(
 function cartSubtotal() { return state.cart.reduce((sum, x) => { const p = products.find(p => p.id === x.id); return sum + (p ? p.price * x.qty : 0) }, 0); }
 function shippingCost() { const subtotal = cartSubtotal(); return subtotal >= 50 ? 0 : 5.99; }
 function openCart() { const c = currencyConfig(); const lines = state.cart.length ? state.cart.map(x => { const p = products.find(p => p.id === x.id); return `<div class="cart-line"><img src="${p.image}" alt=""><div><strong>${escapeHtml(p.title)}</strong><div class="muted">${x.variant ? `Option: ${escapeHtml(x.variant)} · ` : ''}${displayPrice(p.price)} each</div><div class="qty-control"><button onclick="changeQty(${x.id},'${encodeURIComponent(x.variant || '')}',-1)">−</button><span>${x.qty}</span><button onclick="changeQty(${x.id},'${encodeURIComponent(x.variant || '')}',1)">+</button></div></div><strong>${displayPrice(p.price * x.qty)}</strong></div>` }).join('') : `<p class="muted">Your cart is empty.</p>`; const sub = cartSubtotal(); const ship = state.cart.length ? shippingCost() : 0; const total = sub + ship; $('modalRoot').innerHTML = `<div class="overlay" onclick="closeModal(event)"><aside class="drawer"><div class="drawer-head"><h2>Your cart</h2><button class="close-btn" onclick="closeModal()">✕</button></div>${lines}<div class="drawer-section"><label for="countrySelect">Shipping country</label><select id="countrySelect" onchange="setCountry(this.value)"><option value="US" ${c.country === 'US' ? 'selected' : ''}>United States</option><option value="CA" ${c.country === 'CA' ? 'selected' : ''}>Canada</option><option value="UK" ${c.country === 'UK' ? 'selected' : ''}>United Kingdom</option></select></div><div class="drawer-section"><input id="couponInput" placeholder="Coupon code (try SAVE10)"></div><div class="summary-row"><span>Subtotal</span><span>${displayPrice(sub)}</span></div><div class="summary-row"><span>Shipping</span><span>${ship === 0 ? 'FREE' : displayPrice(ship)}</span></div><div class="summary-row total"><span>Total</span><span>${displayPrice(total)}</span></div><button class="primary-button full" onclick="startCheckout()" ${state.cart.length ? '' : 'disabled'}>Checkout</button><div class="note-box" style="margin-top:12px">Demo checkout only. Real payment processing, tax calculation and secure order creation will be connected after the backend is built.</div></aside></div>`; }
-function setCountry(country) { localStorage.setItem('dg_country', country); openCart(); showToast('Shipping country updated'); }
 function changeQty(id, variantKey, delta) { const variant = decodeURIComponent(variantKey); const item = state.cart.find(x => x.id === id && (x.variant || '') === variant); if (!item) return; item.qty += delta; if (item.qty <= 0) state.cart = state.cart.filter(x => x !== item); saveAll(); openCart(); }
 async function startCheckout() {
     if (!state.cart.length) return;
@@ -411,5 +437,6 @@ async function startCheckout() {
     async function subscribe(e) { e.preventDefault(); const email = $('newsletterEmail').value.trim(); const r = await fetch('/api/newsletter', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email }) }); const d = await r.json(); if (!r.ok) { showToast(d.error || 'Unable to subscribe'); return; } $('newsletterEmail').value = ''; showToast('Subscribed'); }
     function closeModal(e) { if (e && e.target !== e.currentTarget) return; $('modalRoot').innerHTML = ''; }
 
+    syncCountryPicker();
     saveAll(); 
    loadProducts();
