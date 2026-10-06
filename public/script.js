@@ -47,17 +47,15 @@ function syncCountryPicker() {
 function setCountry(country) {
   localStorage.setItem('dg_country', country);
   syncCountryPicker();
+  renderProducts();
 
-  if ($('countrySelect')) {
+  if ($('modalRoot')?.querySelector('.drawer')) {
     openCart();
-  } else {
-    renderProducts();
   }
 
   showToast('Shipping country updated');
 }
 
-}
 function displayPrice(value) { const c = currencyConfig(); return money(value * c.rate, c.currency); }
 function saveAll() { localStorage.setItem('dg_wishlist', JSON.stringify([...state.wishlist])); localStorage.setItem('dg_cart', JSON.stringify(state.cart)); updateCounts(); }
 function updateCounts() { $('wishCount').textContent = state.wishlist.size; $('cartCount').textContent = state.cart.reduce((n, x) => n + x.qty, 0); }
