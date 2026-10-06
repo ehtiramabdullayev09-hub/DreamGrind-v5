@@ -83,15 +83,16 @@ function encodeEpointData(payload) {
     throw new Error('Epoint keys are not configured yet.');
   }
   const payload = {
-    public_key: EPOINT_PUBLIC_KEY,
-    amount: Number(amount).toFixed(2),
-    currency: 'AZN',
-    language: 'az',
-    order_id: String(orderId),
-    description: description || `DreamGrind order ${orderId}`,
-    success_redirect_url: `${PAYMENT_BASE_URL}/?payment=success&order_id=${encodeURIComponent(orderId)}`,
-    error_redirect_url: `${PAYMENT_BASE_URL}/?payment=error&order_id=${encodeURIComponent(orderId)}`,
-  result_url: `${PAYMENT_BASE_URL}/api/payment/callback`};
+  public_key: EPOINT_PUBLIC_KEY,
+  amount: Number(amount).toFixed(2),
+  currency: 'AZN',
+  language: 'az',
+  order_id: String(orderId),
+  description: description || `DreamGrind order ${orderId}`,
+  success_redirect_url: `${PAYMENT_BASE_URL}/?payment=success&order_id=${encodeURIComponent(orderId)}`,
+  error_redirect_url: `${PAYMENT_BASE_URL}/?payment=error&order_id=${encodeURIComponent(orderId)}`
+};
+  
 
   const data = encodeEpointData(payload);
   const signature = createEpointSignature(data);
