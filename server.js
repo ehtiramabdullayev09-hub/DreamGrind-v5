@@ -244,7 +244,7 @@ app.post('/api/orders', requireAuth, async (req, res) => {
     return { id: p.id, title: p.title, unitPrice: p.price, qty: item.qty, variant: item.variant ?? null };
   });
   const subtotal = normalizedItems.reduce((s, x) => s + x.unitPrice * x.qty, 0);
-  const shipping = subtotal >= 50 ? 0 : 5.99;
+  const shipping = 0;
   const order = {
     id: nextId('DG', db.data.orders),
     userId: req.user.id,
