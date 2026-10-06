@@ -47,8 +47,15 @@ function syncCountryPicker() {
 function setCountry(country) {
   localStorage.setItem('dg_country', country);
   syncCountryPicker();
-  renderProducts();
+
+  if ($('countrySelect')) {
+    openCart();
+  } else {
+    renderProducts();
+  }
+
   showToast('Shipping country updated');
+}
 
 }
 function displayPrice(value) { const c = currencyConfig(); return money(value * c.rate, c.currency); }
