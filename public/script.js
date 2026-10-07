@@ -453,7 +453,11 @@ async function startCheckout() {
       address: $('coAddress').value.trim(),
       city: $('coCity').value.trim(),
       country: $('coCountry').value,
-      items: state.cart
+      items: state.cart.map(item => ({
+  id: Number(item.id),
+  qty: Number(item.qty),
+  variant: item.variant ?? null
+}))
     })
   });
 
