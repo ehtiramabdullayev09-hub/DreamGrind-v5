@@ -60,7 +60,7 @@ const orderSchema = z.object({
   address: z.string().trim().min(5).max(200),
   city: z.string().trim().min(2).max(120),
   country: z.enum(['United States', 'Canada', 'United Kingdom']),
-  items: z.array(z.object({ id: z.number().int().positive(), qty: z.number().int().min(1).max(20), variant: z.string().max(80).nullable().optional() })).min(1).max(50)
+  items: z.array(z.object({ id: z.coerce.number().int().positive(), qty: z.coerce.number().int().min(1).max(20), variant: z.string().max(80).nullable().optional() })).min(1).max(50)
 });
 const messageSchema = z.object({ text: z.string().trim().min(1).max(2000) });
 function createEpointSignature(data) {
