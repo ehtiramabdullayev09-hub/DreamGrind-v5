@@ -249,7 +249,8 @@ app.post('/api/orders', requireAuth, async (req, res) => {
     id: nextId('DG', db.data.orders),
     userId: req.user.id,
     createdAt: new Date().toISOString(),
-    status: 'Processing',
+    status: 'Awaiting payment',
+    paymentStatus: 'Pending',
     trackingNumber: null,
     name, email: email.toLowerCase(), phone, address, city, country,
     items: normalizedItems,
@@ -336,19 +337,22 @@ app.post('/api/payment/callback', async (req, res) => {
     }
 
     if (decoded.status === 'success') {
-      order.status = 'Paid';
-      order.paymentStatus = 'Paid';
-      order.paymentTransaction = decoded.transaction || null;
-      order.paymentAmount = decoded.amount || null;
-      order.paymentUpdatedAt = new Date().toISOString();
-    } else {
-      order.status = 'Payment failed';
-      order.paymentStatus = decoded.status || 'failed';
-      order.paymentTransaction = decoded.transaction || null;
-      order.paymentUpdatedAt = new Date().toISOString();
-    }
+  order.status = 'Processing';
+  order.paymentStatus = 'Paid';
+  order.paymentTransaction = decoded.transaction || null;
+  order.paymentAmount = decoded.amount || null;
+  order.paymentUpdatedAt = new Date().toISOString();
+} else {
+  const orderIndex = db.data.orders.findIndex(
+    o => o.id === decoded.order_id
+  );
 
-    await db.write();
+  if (orderIndex !== -1) {
+    db.data.orders.splice(orderIndex, 1);
+  }
+}
+
+await db.write();
 
     console.log(
       'EPOINT CALLBACK:',
@@ -403,12 +407,22 @@ app.get('/api/messages/me', requireAuth, (req, res) => {
 });
 
 app.get('/api/admin/summary', requireAdmin, (_req, res) => {
-  const orders = db.data.orders;
-  const revenue = orders.reduce((s, o) => s + o.total, 0);
-  res.json({ users: db.data.users.length, orders: orders.length, revenue, messages: db.data.messages.length, newsletter: db.data.newsletter.length });
-});
+  const orders = db.data.orders.filter(order => order.paymentStatus === 'Paid');
+const revenue = orders.reduce((s, o) => s + o.total, 0);
 
-app.get('/api/admin/orders', requireAdmin, (_req, res) => res.json({ orders: db.data.orders }));
+res.json({
+  users: db.data.users.length,
+  orders: orders.length,
+  revenue,
+  messages: db.data.messages.length,
+  newsletter: db.data.newsletter?.length || 0
+});
+});
+app.get('/api/admin/orders', requireAdmin, (_req, res) =>
+  res.json({
+    orders: db.data.orders.filter(order => order.paymentStatus === 'Paid')
+  })
+);
 app.get('/api/admin/messages', requireAdmin, (_req, res) => res.json({ messages: db.data.messages }));
 app.get('/api/admin/users', requireAdmin, (_req, res) => res.json({ users: db.data.users.map(sanitizeUser) }));
 
