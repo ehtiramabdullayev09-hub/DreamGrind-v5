@@ -1,5 +1,60 @@
 let products = [];
+const translations = {
+  en: {
+    shippingTo: 'Shipping to:',
+    shop: 'Shop',
+    about: 'About',
+    trackOrder: 'Track order',
+    categories: 'Categories',
+    search: 'Search',
+    cart: 'Cart',
+    markets: 'USA • CANADA • UK',
+browse: 'Browse',
+whyDreamGrind: 'Why DreamGrind',
+orderStatus: 'Order status',
+stayInLoop: 'Stay in the loop'
+  },
+  az: {
+    shippingTo: 'Çatdırılma ölkəsi:',
+    shop: 'Mağaza',
+    about: 'Haqqımızda',
+    trackOrder: 'Sifarişi izlə',
+    categories: 'Kateqoriyalar',
+    search: 'Axtarış',
+    cart: 'Səbət',
+    markets: 'ABŞ • KANADA • BK',
+browse: 'Kəşf et',
+whyDreamGrind: 'Niyə DreamGrind?',
+orderStatus: 'Sifariş statusu',
+stayInLoop: 'Yeniliklərdən xəbərdar ol'
+  }
+};
 
+function setLanguage(language) {
+  const lang = language === 'az' ? 'az' : 'en';
+
+  localStorage.setItem('dg_language', lang);
+  document.documentElement.lang = lang;
+
+  applyLanguage(lang);
+}
+
+function applyLanguage(lang) {
+  const t = translations[lang] || translations.en;
+
+  document.querySelectorAll('[data-i18n]').forEach(element => {
+    const key = element.dataset.i18n;
+
+    if (t[key]) {
+      element.textContent = t[key];
+    }
+  });
+}
+
+function initLanguage() {
+  const savedLanguage = localStorage.getItem('dg_language') || 'en';
+  setLanguage(savedLanguage);
+}
 async function loadProducts() {
     try {
         const response = await fetch('/api/products');
@@ -440,10 +495,132 @@ async function startCheckout() {
   }
 }
     async function trackOrder() { const code = $('trackInput').value.trim().toUpperCase(); if (!code) { $('trackingResult').innerHTML = '<p class="muted">Enter an order number.</p>'; return; } const r = await fetch('/api/orders/track/' + encodeURIComponent(code)); const d = await r.json(); if (!r.ok) { $('trackingResult').innerHTML = '<p class="muted">Order not found.</p>'; return; } const order = d.order; $('trackingResult').innerHTML = `<div class="tracking-result"><div class="tracking-meta"><div><strong>Order ${escapeHtml(order.id)}</strong><div class="muted">Created ${new Date(order.createdAt).toLocaleString()}</div></div><div class="tracking-status">${escapeHtml(order.status)}</div></div><div class="timeline"><div class="step done"><div class="dot"></div><div><strong>Order placed</strong><br><small>Order received</small></div></div><div class="step done"><div class="dot"></div><div><strong>Processing</strong><br><small>Preparing your order</small></div></div><div class="step ${order.status === 'Shipped' || order.status === 'In transit' || order.status === 'Delivered' ? 'done' : ''}"><div class="dot"></div><div><strong>Shipped</strong><br><small>Tracking number assigned</small></div></div><div class="step ${order.status === 'In transit' || order.status === 'Delivered' ? 'done' : ''}"><div class="dot"></div><div><strong>In transit</strong><br><small>Package moving through carrier network</small></div></div><div class="step ${order.status === 'Delivered' ? 'done' : ''}"><div class="dot"></div><div><strong>Delivered</strong><br><small>Final carrier scan</small></div></div></div></div>`; }
-    function showPolicy(type) { const copy = { shipping: { title: 'Shipping policy', html: '<p>Shipping rules shown here are placeholders for the development version.</p><h3>Destinations</h3><p>USA, Canada and UK are enabled in the store interface.</p><h3>Rates</h3><p>Free shipping can be configured for selected orders; the demo currently uses a simple threshold-based estimate.</p>' }, returns: { title: 'Returns & refunds', html: '<p>This development policy is a placeholder. Before launch, you must publish your actual return window, exclusions, refund timing and customer-service contact details.</p>' }, privacy: { title: 'Privacy', html: '<p>This development page is a placeholder. The production store must include an accurate privacy policy describing what customer data is collected, why it is used, retention and third-party processors.</p>' }, terms: { title: 'Terms', html: '<p>This development page is a placeholder. Production terms should reflect the actual business entity, payment provider, shipping terms, jurisdiction and customer rules.</p>' }, cookies: { title: 'Cookies', html: '<p>This development page is a placeholder. The production site should document essential cookies and any analytics/advertising cookies used.</p>' } }[type]; $('modalRoot').innerHTML = `<div class="modal-overlay" onclick="closeModal(event)"><div class="modal"><div class="modal-head"><h2>${copy.title}</h2><button class="close-btn" onclick="closeModal()">✕</button></div><div class="policy-copy">${copy.html}</div></div></div>`; }
+    function showPolicy(type) {
+  const copy = {
+    shipping: {
+      title: 'Shipping Policy',
+      html: `
+        <h3>Shipping destinations</h3>
+        <p>DreamGrind currently accepts orders for customers in the United States, Canada and the United Kingdom.</p>
+
+        <h3>Shipping cost</h3>
+        <p>Shipping is currently free for customers.</p>
+
+        <h3>Processing time</h3>
+        <p>Orders are normally processed after successful payment confirmation. Processing and delivery times may vary depending on the destination, product availability and carrier.</p>
+
+        <h3>Tracking</h3>
+        <p>When tracking information is available, it may be provided to the customer after the order has been dispatched.</p>
+
+        <h3>Delivery delays</h3>
+        <p>DreamGrind is not responsible for delays caused by carriers, customs procedures, weather or other circumstances outside our reasonable control.</p>
+      `
+    },
+
+    returns: {
+      title: 'Returns & Refunds',
+      html: `
+        <h3>Return requests</h3>
+        <p>Customers should contact DreamGrind before returning an item so that return instructions can be provided.</p>
+
+        <h3>Damaged or incorrect items</h3>
+        <p>If an item arrives damaged, defective or different from the item ordered, please contact customer support with the order number and relevant details as soon as possible.</p>
+
+        <h3>Refunds</h3>
+        <p>Approved refunds are processed after the return or issue has been reviewed. The time required for the refund to appear in the customer's account may depend on the payment provider or bank.</p>
+
+        <h3>Exclusions</h3>
+        <p>Items that have been used, damaged after delivery or returned without following the provided return instructions may not qualify for a refund.</p>
+      `
+    },
+
+    privacy: {
+      title: 'Privacy Policy',
+      html: `
+        <h3>1. Information we collect</h3>
+        <p>DreamGrind may collect information that customers provide when creating an account, placing an order or contacting customer support. This may include name, email address, phone number, delivery address, city, country and order information.</p>
+
+        <h3>2. How we use information</h3>
+        <p>We use customer information to create and manage accounts, process orders, arrange delivery, provide order tracking, respond to customer requests, maintain website security and comply with applicable legal obligations.</p>
+
+        <h3>3. Payments</h3>
+        <p>Online payments are processed through our payment provider, Epoint. DreamGrind does not intentionally store customers' full payment card details on its own website servers.</p>
+
+        <h3>4. Service providers</h3>
+        <p>We may use trusted third-party service providers for payment processing, website hosting, database infrastructure, delivery and other services necessary to operate the store.</p>
+
+        <h3>5. Cookies and local storage</h3>
+        <p>The website may use essential cookies and browser local storage to support account sessions, shopping cart preferences, country selection and language preferences.</p>
+
+        <h3>6. Data retention</h3>
+        <p>Customer information is retained for as long as reasonably necessary to provide services, maintain business records, resolve disputes, prevent fraud and meet applicable legal requirements.</p>
+
+        <h3>7. Data security</h3>
+        <p>DreamGrind takes reasonable technical and organisational measures to protect customer information against unauthorised access, alteration or disclosure.</p>
+
+        <h3>8. Contact</h3>
+        <p>Customers may contact DreamGrind through the Contact Us section of the website regarding privacy or personal information questions.</p>
+      `
+    },
+
+    terms: {
+      title: 'Terms & Conditions',
+      html: `
+        <h3>1. Website use</h3>
+        <p>By using the DreamGrind website, you agree to use the website lawfully and not to misuse its services or attempt to interfere with its operation.</p>
+
+        <h3>2. Products and prices</h3>
+        <p>Product availability, descriptions and prices may change without prior notice. We aim to keep product information accurate, but occasional errors may occur.</p>
+
+        <h3>3. Orders</h3>
+        <p>An order is submitted when the customer completes checkout. An order becomes a confirmed paid order only after successful payment confirmation.</p>
+
+        <h3>4. Payment</h3>
+        <p>Payments are processed securely through Epoint. Orders may be cancelled or not completed when payment is declined, cancelled or otherwise unsuccessful.</p>
+
+        <h3>5. Shipping</h3>
+        <p>Delivery times may vary depending on destination, product availability, customs procedures and carrier performance.</p>
+
+        <h3>6. Returns and refunds</h3>
+        <p>Returns and refunds are handled according to the DreamGrind Returns & Refunds Policy.</p>
+
+        <h3>7. Changes to these terms</h3>
+        <p>DreamGrind may update these terms when necessary. The current version published on the website will apply to future use of the website.</p>
+      `
+    },
+
+    cookies: {
+      title: 'Cookies & Local Storage',
+      html: `
+        <h3>How we use cookies and local storage</h3>
+        <p>DreamGrind uses essential browser storage technologies to support website functionality, including account sessions, shopping cart preferences, country selection and language preferences.</p>
+
+        <h3>Third-party services</h3>
+        <p>Some services used by the website, such as payment processing or hosting infrastructure, may use their own technical cookies or similar technologies where necessary to provide their services.</p>
+      `
+    }
+  };
+
+  const selected = copy[type] || copy.privacy;
+
+  $('modalRoot').innerHTML = `
+    <div class="modal-overlay" onclick="closeModal(event)">
+      <div class="modal">
+        <div class="modal-head">
+          <h2>${selected.title}</h2>
+          <button class="close-btn" onclick="closeModal()">✕</button>
+        </div>
+        <div class="policy-copy">
+          ${selected.html}
+        </div>
+      </div>
+    </div>
+  `;
+}
     async function subscribe(e) { e.preventDefault(); const email = $('newsletterEmail').value.trim(); const r = await fetch('/api/newsletter', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email }) }); const d = await r.json(); if (!r.ok) { showToast(d.error || 'Unable to subscribe'); return; } $('newsletterEmail').value = ''; showToast('Subscribed'); }
     function closeModal(e) { if (e && e.target !== e.currentTarget) return; $('modalRoot').innerHTML = ''; }
 
     syncCountryPicker();
     saveAll(); 
    loadProducts();
+initLanguage();
