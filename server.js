@@ -460,7 +460,7 @@ video: parsed.data.video || null,
   res.status(201).json({ product });
 });
 app.patch('/api/admin/products/:id', requireAdmin, async (req, res) => {
-  
+  const parsed = adminProductSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: 'Invalid product details.' });
   const product = db.data.products.find(p => String(p.id) === String(req.params.id));
   if (!product) return res.status(404).json({ error: 'Product not found.' });
