@@ -86,7 +86,7 @@ function encodeEpointData(payload) {
   public_key: EPOINT_PUBLIC_KEY,
   amount: Number(amount).toFixed(2),
   currency: 'AZN',
-  language: 'az',
+  language: 'en',
   order_id: String(orderId),
   description: description || `DreamGrind order ${orderId}`,
   success_redirect_url: `${PAYMENT_BASE_URL}/?payment=success&order_id=${encodeURIComponent(orderId)}`,
