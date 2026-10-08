@@ -77,7 +77,50 @@ const state = { category: 'All', wishlist: new Set(JSON.parse(localStorage.getIt
 let toastTimer = null;
 const $ = id => document.getElementById(id);
 function escapeHtml(value) { return String(value).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' }[c])); }
-function money(value, currency = 'USD') { return new Intl.NumberFormat('en-US', { style: 'currency', currency }).format(value); }
+const USD_TO_AZN = 1.70;
+
+function money(value, currency = 'AZN') {
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency
+  }).format(value);
+}
+
+function currencyConfig() {
+  const country = localStorage.getItem('dg_country') || 'US';
+
+  const configs = {
+    US: { country: 'US', currency: 'USD' },
+    CA: { country: 'CA', currency: 'CAD' },
+    UK: { country: 'UK', currency: 'GBP' }
+  };
+
+  return configs[country] || configs.US;
+}
+
+function syncCountryPicker() {
+  const c = currencyConfig();
+
+  const picker = $('countryPicker');
+  if (picker) picker.value = c.country;
+}
+
+function setCountry(country) {
+  localStorage.setItem('dg_country', country);
+  syncCountryPicker();
+  renderProducts();
+
+  if ($('modalRoot')?.querySelector('.drawer')) {
+    openCart();
+  }
+
+  showToast('Shipping country updated');
+}
+
+function displayPrice(value) {
+  const aznValue = Number(value) * USD_TO_AZN;
+  return money(aznValue, 'AZN');
+}
 function currencyConfig() {
   const country = localStorage.getItem('dg_country') || 'US';
 
@@ -352,7 +395,7 @@ function cartSubtotal() { return state.cart.reduce((sum, x) => { const p = produ
 function shippingCost() {
   return 0;
 }
-function openCart() { const c = currencyConfig(); const lines = state.cart.length ? state.cart.map(x => { const p = products.find(p => p.id === x.id); return `<div class="cart-line"><img src="${(p.images && p.images.length) ? p.images[0] : (p.image || '')}" alt="${escapeHtml(p.title)}"><div><strong>${escapeHtml(p.title)}</strong><div class="muted">${x.variant ? `Option: ${escapeHtml(x.variant)} · ` : ''}${displayPrice(p.price)} each</div><div class="qty-control"><button onclick="changeQty(${x.id},'${encodeURIComponent(x.variant || '')}',-1)">−</button><span>${x.qty}</span><button onclick="changeQty(${x.id},'${encodeURIComponent(x.variant || '')}',1)">+</button></div></div><strong>${displayPrice(p.price * x.qty)}</strong></div>` }).join('') : `<p class="muted">Your cart is empty.</p>`; const sub = cartSubtotal(); const ship = state.cart.length ? shippingCost() : 0; const total = sub + ship; $('modalRoot').innerHTML = `<div class="overlay" onclick="closeModal(event)"><aside class="drawer"><div class="drawer-head"><h2>Your cart</h2><button class="close-btn" onclick="closeModal()">✕</button></div>${lines}<div class="drawer-section"><label for="countrySelect">Shipping country</label><select id="countrySelect" onchange="setCountry(this.value)"><option value="US" ${c.country === 'US' ? 'selected' : ''}>United States</option><option value="CA" ${c.country === 'CA' ? 'selected' : ''}>Canada</option><option value="UK" ${c.country === 'UK' ? 'selected' : ''}>United Kingdom</option></select></div><div class="drawer-section"><input id="couponInput" placeholder="Coupon code (try SAVE10)"></div><div class="summary-row"><span>Subtotal</span><span>${displayPrice(sub)}</span></div><div class="summary-row"><span>Shipping</span><span>${ship === 0 ? 'FREE' : displayPrice(ship)}</span></div><div class="summary-row total"><span>Total</span><span>${displayPrice(total)}</span></div><button class="primary-button full" onclick="startCheckout()" ${state.cart.length ? '' : 'disabled'}>Checkout</button><div class="note-box" style="margin-top:12px">Demo checkout only. Real payment processing, tax calculation and secure order creation will be connected after the backend is built.</div></aside></div>`; }
+function openCart() { const c = currencyConfig(); const lines = state.cart.length ? state.cart.map(x => { const p = products.find(p => p.id === x.id); return `<div class="cart-line"><img src="${(p.images && p.images.length) ? p.images[0] : (p.image || '')}" alt="${escapeHtml(p.title)}"><div><strong>${escapeHtml(p.title)}</strong><div class="muted">${x.variant ? `Option: ${escapeHtml(x.variant)} · ` : ''}${displayPrice(p.price)} each</div><div class="qty-control"><button onclick="changeQty(${x.id},'${encodeURIComponent(x.variant || '')}',-1)">−</button><span>${x.qty}</span><button onclick="changeQty(${x.id},'${encodeURIComponent(x.variant || '')}',1)">+</button></div></div><strong>${displayPrice(p.price * x.qty)}</strong></div>` }).join('') : `<p class="muted">Your cart is empty.</p>`; const sub = cartSubtotal(); const ship = state.cart.length ? shippingCost() : 0; const total = sub + ship; $('modalRoot').innerHTML = `<div class="overlay" onclick="closeModal(event)"><aside class="drawer"><div class="drawer-head"><h2>Your cart</h2><button class="close-btn" onclick="closeModal()">✕</button></div>${lines}<div class="drawer-section"><label for="countrySelect">Shipping country</label><select id="countrySelect" onchange="setCountry(this.value)"><option value="US" ${c.country === 'US' ? 'selected' : ''}>United States</option><option value="CA" ${c.country === 'CA' ? 'selected' : ''}>Canada</option><option value="UK" ${c.country === 'UK' ? 'selected' : ''}>United Kingdom</option></select></div><div class="drawer-section"><input id="couponInput" placeholder="Coupon code (try SAVE10)"></div><div class="summary-row"><span>Subtotal</span><span>${displayPrice(sub)}</span></div><div class="summary-row"><span>Shipping</span><span>${ship === 0 ? 'FREE' : displayPrice(ship)}</span></div><div class="summary-row total"><span>Total</span><span>${displayPrice(total)}</span></div><button class="primary-button full" onclick="startCheckout()" ${state.cart.length ? '' : 'disabled'}>Checkout</button><div class="note-box" style="margin-top:12px">You will be charged in AZN. Secure by Epoint.</div></aside></div>`; }
 function changeQty(id, variantKey, delta) { const variant = decodeURIComponent(variantKey); const item = state.cart.find(x => x.id === id && (x.variant || '') === variant); if (!item) return; item.qty += delta; if (item.qty <= 0) state.cart = state.cart.filter(x => x !== item); saveAll(); openCart(); }
 async function startCheckout() {
     if (!state.cart.length) return;
@@ -414,8 +457,10 @@ async function startCheckout() {
                 </label>
 
                 <div class="note-box">
-                    Payment will be connected after the payment gateway is configured.
-                </div>
+  You will be charged in AZN. Secure payment by Epoint.
+</div>
+                    
+               
 
                 <button class="primary-button" type="submit">
                     Create order
@@ -489,9 +534,7 @@ async function startCheckout() {
       return;
     }
 
-    state.cart = [];
-    saveAll();
-
+  
     window.location.href = payment.redirect_url;
   } catch (error) {
     console.error('PAYMENT ERROR:', error);
@@ -623,7 +666,19 @@ async function startCheckout() {
 }
     async function subscribe(e) { e.preventDefault(); const email = $('newsletterEmail').value.trim(); const r = await fetch('/api/newsletter', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email }) }); const d = await r.json(); if (!r.ok) { showToast(d.error || 'Unable to subscribe'); return; } $('newsletterEmail').value = ''; showToast('Subscribed'); }
     function closeModal(e) { if (e && e.target !== e.currentTarget) return; $('modalRoot').innerHTML = ''; }
+   const paymentStatus = new URLSearchParams(window.location.search).get('payment');
 
+if (paymentStatus === 'success') {
+  state.cart = [];
+  saveAll();
+  window.history.replaceState({}, '', '/');
+  showToast('Payment successful. Thank you for your order!');
+}
+
+if (paymentStatus === 'error') {
+  showToast('Payment was not completed. Your cart is still saved.');
+  window.history.replaceState({}, '', '/');
+}
     syncCountryPicker();
     saveAll(); 
    loadProducts();

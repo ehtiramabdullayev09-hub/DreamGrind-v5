@@ -23,6 +23,7 @@ const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || '';
 const EPOINT_PUBLIC_KEY = process.env.EPOINT_PUBLIC_KEY || '';
 const EPOINT_PRIVATE_KEY = process.env.EPOINT_PRIVATE_KEY || '';
 const PAYMENT_BASE_URL = process.env.PAYMENT_BASE_URL || `http://localhost:${PORT}`;
+const USD_TO_AZN = 1.70;
 if (!JWT_SECRET || JWT_SECRET.length < 32) {
   console.error('JWT_SECRET must be set and at least 32 characters long.');
   process.exit(1);
@@ -242,7 +243,7 @@ app.post('/api/orders', requireAuth, async (req, res) => {
   const normalizedItems = items.map(item => {
     const p = productMap.get(item.id);
     if (!p) throw new Error(`Unknown product: ${item.id}`);
-    return { id: p.id, title: p.title, unitPrice: p.price, qty: item.qty, variant: item.variant ?? null };
+    return { id: p.id, title: p.title, unitPrice: Number((p.price * USD_TO_AZN).toFixed(2)), qty: item.qty, variant: item.variant ?? null };
   });
   const subtotal = normalizedItems.reduce((s, x) => s + x.unitPrice * x.qty, 0);
   const shipping = 0;
@@ -344,13 +345,11 @@ app.post('/api/payment/callback', async (req, res) => {
   order.paymentAmount = decoded.amount || null;
   order.paymentUpdatedAt = new Date().toISOString();
 } else {
-  const orderIndex = db.data.orders.findIndex(
-    o => o.id === decoded.order_id
-  );
-
-  if (orderIndex !== -1) {
-    db.data.orders.splice(orderIndex, 1);
-  }
+  order.paymentStatus = 'Failed';
+  order.status = 'Awaiting payment';
+  order.paymentTransaction = decoded.transaction || null;
+  order.paymentUpdatedAt = new Date().toISOString();
+  order.paymentError = decoded.message || decoded.bank_response || 'Payment failed.';
 }
 
 await db.write();
