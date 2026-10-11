@@ -60,6 +60,14 @@ const orderSchema = z.object({
   phone: z.string().trim().min(7).max(20),
   address: z.string().trim().min(5).max(200),
   city: z.string().trim().min(2).max(120),
+  state: z.string().trim().max(120).optional(),
+region: z.string().trim().max(120).optional(),
+province: z.string().trim().max(120).optional(),
+
+zip: z.string().trim().max(30).optional(),
+zipCode: z.string().trim().max(30).optional(),
+postalCode: z.string().trim().max(30).optional(),
+postal_code: z.string().trim().max(30).optional(),
   country: z.enum(['United States', 'Canada', 'United Kingdom']),
   items: z.array(z.object({ id: z.coerce.number().int().positive(), qty: z.coerce.number().int().min(1).max(20), variant: z.string().max(80).nullable().optional() })).min(1).max(50)
 });
@@ -238,7 +246,22 @@ app.post('/api/newsletter', async (req, res) => {
 app.post('/api/orders', requireAuth, async (req, res) => {
   const parsed = orderSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: 'Invalid order details.' });
-  const { name, email, phone, address, city, country, items } = parsed.data;
+ const {
+  name,
+  email,
+  phone,
+  address,
+  city,
+  country,
+  state,
+  region,
+  province,
+  zip,
+  zipCode,
+  postalCode,
+  postal_code,
+  items
+} = parsed.data;
   const productMap = new Map(db.data.products.map(p => [p.id, p]));
   const normalizedItems = items.map(item => {
     const p = productMap.get(item.id);
@@ -254,7 +277,14 @@ app.post('/api/orders', requireAuth, async (req, res) => {
     status: 'Awaiting payment',
     paymentStatus: 'Pending',
     trackingNumber: null,
-    name, email: email.toLowerCase(), phone, address, city, country,
+    name,
+email: email.toLowerCase(),
+phone,
+address,
+city,
+state: state || region || province || '',
+zip: zip || zipCode || postalCode || postal_code || '',
+country,
     items: normalizedItems,
     subtotal, shipping, total: subtotal + shipping
   };

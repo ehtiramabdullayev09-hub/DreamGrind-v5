@@ -497,7 +497,7 @@ async function startCheckout() {
       phone: $('coPhone').value.trim(),
       address: $('coAddress').value.trim(),
       city: $('coCity').value.trim(),
-      country: $('coCountry').value,
+     country: $('coCountry').value,
       items: state.cart.map(item => ({
   id: Number(item.id),
   qty: Number(item.qty),
