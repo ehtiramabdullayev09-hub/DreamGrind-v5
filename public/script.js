@@ -443,9 +443,22 @@ async function startCheckout() {
                 </label>
 
                 <label>
-                    City / State / Postal code
-                    <input id="coCity" required placeholder="City, State, ZIP">
-                </label>
+  City
+  <input id="coCity" required placeholder="City">
+</label>
+
+<label>
+  State / Province / Region
+  <input id="coState" required placeholder="State / Province / Region">
+</label>
+
+<label>
+  ZIP / Postal code
+  <input id="coZip" required placeholder="ZIP / Postal code">
+</label>
+                    
+                    
+                
 
                 <label>
                     Country
@@ -486,27 +499,30 @@ async function startCheckout() {
   e.preventDefault();
 
   const r = await fetch('/api/orders', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json'
-    },
-    credentials: 'include',
-    body: JSON.stringify({
-      name: $('coName').value.trim(),
-      email: $('coEmail').value.trim(),
-      phone: $('coPhone').value.trim(),
-      address: $('coAddress').value.trim(),
-      city: $('coCity').value.trim(),
-     country: $('coCountry').value,
-      items: state.cart.map(item => ({
-  id: Number(item.id),
-  qty: Number(item.qty),
-  variant: item.variant ?? null
-}))
-    })
-  });
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json'
+  },
+  credentials: 'include',
+  body: JSON.stringify({
+    name: $('coName').value.trim(),
+    email: $('coEmail').value.trim(),
+    phone: $('coPhone').value.trim(),
+    address: $('coAddress').value.trim(),
+    city: $('coCity').value.trim(),
+    state: $('coState').value.trim(),
+    zip: $('coZip').value.trim(),
+    country: $('coCountry').value,
+    items: state.cart.map(item => ({
+      id: Number(item.id),
+      qty: Number(item.qty),
+      variant: item.variant ?? null
+    }))
+  })
+});
 
-  const d = await r.json();
+const d = await r.json();
+
 
   if (!r.ok) {
     showToast(d.error || 'Please log in before checkout');
