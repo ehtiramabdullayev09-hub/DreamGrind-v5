@@ -487,6 +487,7 @@ app.patch('/api/admin/orders/:id', requireAdmin, async (req, res) => {
 const adminProductSchema = z.object({
   title: z.string().trim().min(2).max(160),
   price: z.number().finite().positive().max(100000),
+  description: z.string().trim().max(10000).optional(),
 
   images: z.array(
     z.string().trim().url().max(1000)
@@ -504,6 +505,7 @@ app.post('/api/admin/products', requireAdmin, async (req, res) => {
     id: Math.max(0, ...db.data.products.map(p => p.id || 0)) + 1,
     title: parsed.data.title,
     price: Number(Number(parsed.data.price).toFixed(2)),
+    description: parsed.data.description ?? '',
     images: parsed.data.images || [],
 video: parsed.data.video || null,
     stock: parsed.data.stock ?? 0,
@@ -521,7 +523,9 @@ app.patch('/api/admin/products/:id', requireAdmin, async (req, res) => {
   if (!parsed.success) return res.status(400).json({ error: 'Invalid product details.' });
   const product = db.data.products.find(p => String(p.id) === String(req.params.id));
   if (!product) return res.status(404).json({ error: 'Product not found.' });
-  Object.assign(product, parsed.data);
+  for (const [key, value] of Object.entries(parsed.data)) {
+    if (value !== undefined) product[key] = value;
+  }
   if (parsed.data.price !== undefined) product.price = Number(Number(parsed.data.price).toFixed(2));
   await db.write();
   res.json({ product });
