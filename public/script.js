@@ -67,6 +67,11 @@ async function loadProducts() {
 
         products = data.products || [];
         renderProducts();
+        const initialProductId = new URLSearchParams(window.location.search).get('product');
+        if (initialProductId) {
+          productPageScrollY = 0;
+          renderProductPage(initialProductId);
+        }
     } catch (error) {
         console.error('Product loading error:', error);
     }
@@ -75,6 +80,9 @@ async function loadProducts() {
 
 const state = { category: 'All', wishlist: new Set(JSON.parse(localStorage.getItem('dg_wishlist') || '[]')), cart: JSON.parse(localStorage.getItem('dg_cart') || '[]') };
 let pendingCheckoutItems = null;
+let productPageOpen = false;
+let productPageScrollY = 0;
+const originalDocumentTitle = document.title;
 let toastTimer = null;
 const $ = id => document.getElementById(id);
 function escapeHtml(value) { return String(value).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' }[c])); }
@@ -164,7 +172,7 @@ function cardHtml(p) {
           ${escapeHtml(p.category || 'General')}
         </div>
 
-        <div class="product-title">
+        <div class="product-title" role="button" tabindex="0" onclick="openProduct(${p.id})" onkeydown="if(event.key === 'Enter' || event.key === ' '){event.preventDefault();openProduct(${p.id})}" style="cursor:pointer">
           ${escapeHtml(p.title)}
         </div>
 
@@ -204,149 +212,113 @@ function toggleWishlist(id) { state.wishlist.has(id) ? state.wishlist.delete(id)
 function openWishlist() { const list = products.filter(p => state.wishlist.has(p.id)); $('modalRoot').innerHTML = `<div class="modal-overlay" onclick="closeModal(event)"><div class="modal"><div class="modal-head"><h2>Wishlist</h2><button class="close-btn" onclick="closeModal()">✕</button></div>${list.length ? `<div class="product-grid" style="grid-template-columns:repeat(2,1fr);padding:0">${list.map(cardHtml).join('')}</div>` : '<p class="muted">Your wishlist is empty.</p>'}</div></div>`; }
 function quickAdd(id) { const item = state.cart.find(x => x.id === id); if (item) item.qty++; else state.cart.push({ id, qty: 1, variant: null }); saveAll(); showToast('Added to cart'); openCart(); }
 function openProduct(id) {
-  const p = products.find(x => x.id === id);
+  const p = products.find(x => String(x.id) === String(id));
   if (!p) return;
 
-  const images = (p.images && p.images.length)
-    ? p.images
-    : (p.image ? [p.image] : []);
+  if (!productPageOpen) productPageScrollY = window.scrollY || 0;
+  const url = new URL(window.location.href);
+  url.searchParams.set('product', String(p.id));
+  // Keep advertising attribution parameters while making the product shareable.
+  history.pushState({ dreamgrindProductId: String(p.id) }, '', `${url.pathname}${url.search}${url.hash}`);
+  renderProductPage(p.id);
+}
 
+function renderProductPage(id) {
+  const p = products.find(x => String(x.id) === String(id));
+  if (!p) return;
+
+  productPageOpen = true;
+  document.title = `${p.title} | DreamGrind`;
+
+  const images = (p.images && p.images.length) ? p.images : (p.image ? [p.image] : []);
   const mainImage = images[0] || '';
+  const imageGallery = mainImage
+    ? `<div class="main-product-media"><img id="mainProductImage" src="${escapeHtml(mainImage)}" alt="${escapeHtml(p.title)}"></div>`
+    : '<div class="main-product-media"><div class="product-image-placeholder">Product image coming soon</div></div>';
+  const thumbnails = images.length > 1
+    ? `<div class="product-thumbnails" aria-label="Product images">${images.map((img, i) => `
+        <button type="button" class="product-thumb ${i === 0 ? 'active' : ''}" aria-label="View image ${i + 1}" onclick="changeProductImage('${String(img).replace(/\\/g, '\\\\').replace(/'/g, "\\'")}', this)">
+          <img src="${escapeHtml(img)}" alt="${escapeHtml(p.title)} view ${i + 1}" loading="lazy">
+        </button>`).join('')}</div>`
+    : '';
+  const video = p.video
+    ? `<div class="product-video"><video controls playsinline preload="metadata"><source src="${escapeHtml(p.video)}" type="video/mp4">Your browser does not support video playback.</video></div>`
+    : '';
+  const variants = p.variants && p.variants.length
+    ? `<div class="product-page-options"><label class="product-page-label">Choose option</label><div class="variant-row">${p.variants.map((v, i) => `
+        <button type="button" class="variant ${i === 0 ? 'active' : ''}" onclick="selectVariant(this)">${escapeHtml(v)}</button>`).join('')}</div></div>`
+    : '';
 
   $('modalRoot').innerHTML = `
-    <div class="modal-overlay" onclick="closeModal(event)">
-      <div class="modal" onclick="event.stopPropagation()">
-
-        <div class="modal-head">
-          <h2>Product details</h2>
-          <button class="close-btn" onclick="closeModal()">✕</button>
+    <section class="product-page-overlay" aria-label="Product details">
+      <header class="product-page-topbar">
+        <div class="product-page-topbar-inner">
+          <button class="product-page-back" type="button" onclick="closeProductPage()" aria-label="Back to shop">← <span>Back to shop</span></button>
+          <a class="product-page-brand" href="/" onclick="event.preventDefault();closeProductPage();window.scrollTo({top:0,behavior:'smooth'})">DreamGrind</a>
+          <button class="product-page-cart" type="button" onclick="closeProductPage();openCart()">Cart <span>${state.cart.reduce((n, x) => n + x.qty, 0)}</span></button>
         </div>
+      </header>
 
-        <div class="product-detail">
+      <div class="product-page-shell">
+        <nav class="product-page-breadcrumb" aria-label="Breadcrumb"><a href="/" onclick="event.preventDefault();closeProductPage()">Home</a><span>›</span><a href="/#shop" onclick="event.preventDefault();closeProductPage();location.hash='shop'">Shop</a><span>›</span><span>${escapeHtml(p.title)}</span></nav>
 
-          <div class="product-gallery">
+        <div class="product-page-layout">
+          <section class="product-page-gallery" aria-label="Product gallery">
+            ${imageGallery}
+            ${thumbnails}
+            ${video}
+          </section>
 
-            <div class="main-product-media">
-              ${
-                mainImage
-                  ? `<img id="mainProductImage"
-                      src="${mainImage}"
-                      alt="${escapeHtml(p.title)}">`
-                  : `<div class="product-image-placeholder">No product image</div>`
-              }
+          <section class="product-page-info">
+            <div class="product-page-category">${escapeHtml(p.category || 'General')}</div>
+            <h1 class="product-page-title">${escapeHtml(p.title)}</h1>
+            <div class="product-rating" aria-label="Rated ${p.rating ?? 5} out of 5">★ ${p.rating ?? 5} <span class="product-page-reviews">· ${p.reviews ?? 0} reviews</span></div>
+
+            <div class="product-page-price">${displayPrice(p.price)}${p.oldPrice ? ` <span class="price-old">${displayPrice(p.oldPrice)}</span>` : ''}</div>
+            <div class="product-page-shipping"><span aria-hidden="true">✓</span> Free shipping <span class="product-page-dot">·</span> Secure checkout by Epoint</div>
+
+            <div class="product-page-divider"></div>
+            <h2 class="product-page-section-title">Product details</h2>
+            <p class="product-page-description">${escapeHtml(p.description || 'A thoughtful everyday find from DreamGrind.')}</p>
+
+            ${variants}
+
+            <div class="product-page-quantity"><label for="detailQty" class="product-page-label">Quantity</label><input id="detailQty" type="number" min="1" max="20" value="1" inputmode="numeric"></div>
+
+            <div class="detail-actions product-page-desktop-actions">
+              <button class="primary-button full" type="button" onclick="addProductFromDetail(${p.id})">Add to cart</button>
+              <button class="buy-now-button full" type="button" onclick="buyNowFromDetail(${p.id})">Buy now <span aria-hidden="true">→</span></button>
             </div>
 
-            ${
-              images.length > 1
-                ? `<div class="product-thumbnails">
-                    ${images.map((img, i) => `
-                      <button
-                        type="button"
-                        class="product-thumb ${i === 0 ? 'active' : ''}"
-                        onclick="changeProductImage('${img.replace(/'/g, "\\'")}', this)">
-                        <img src="${img}" alt="${escapeHtml(p.title)} ${i + 1}">
-                      </button>
-                    `).join('')}
-                  </div>`
-                : ''
-            }
-
-            ${
-              p.video
-                ? `
-                  <div class="product-video">
-                    <video controls playsinline preload="metadata">
-                      <source src="${p.video}" type="video/mp4">
-                      Your browser does not support video playback.
-                    </video>
-                  </div>
-                `
-                : ''
-            }
-
-          </div>
-
-          <div>
-
-            <div class="product-category">
-              ${escapeHtml(p.category || 'General')}
-            </div>
-
-            <h2>${escapeHtml(p.title)}</h2>
-
-            <div class="product-rating">
-              ★ ${p.rating || 5} · ${p.reviews || 0} reviews
-            </div>
-
-            <div class="detail-price">
-              ${displayPrice(p.price)}
-              ${
-                p.oldPrice
-                  ? ` <span class="price-old">${displayPrice(p.oldPrice)}</span>`
-                  : ''
-              }
-            </div>
-
-            <p class="detail-copy">
-              ${escapeHtml(p.description || '')}
-            </p>
-
-            ${
-              p.variants && p.variants.length
-                ? `
-                  <label style="font-size:12px;font-weight:900">
-                    Choose option
-                  </label>
-
-                  <div class="variant-row">
-                    ${p.variants.map((v, i) => `
-                      <button
-                        class="variant ${i === 0 ? 'active' : ''}"
-                        onclick="selectVariant(this)">
-                        ${escapeHtml(v)}
-                      </button>
-                    `).join('')}
-                  </div>
-                `
-                : ''
-            }
-
-            <div class="detail-qty">
-              <label>Qty</label>
-              <input
-                id="detailQty"
-                type="number"
-                min="1"
-                max="20"
-                value="1">
-            </div>
-
-            <div class="detail-actions">
-              <button
-                class="primary-button full"
-                onclick="addProductFromDetail(${p.id})">
-                Add to cart
-              </button>
-
-              <button
-                class="buy-now-button full"
-                onclick="buyNowFromDetail(${p.id})">
-                Buy now →
-              </button>
-
-              <button
-                class="secondary-button full"
-                onclick="toggleWishlist(${p.id});openProduct(${p.id})">
-                ${state.wishlist.has(p.id) ? '♥ Wishlisted' : '♡ Wishlist'}
-              </button>
-            </div>
-
-          </div>
-
+            <div class="product-page-trust"><div><span>✓</span><span>Delivery to the US, Canada and UK</span></div><div><span>✓</span><span>Order details confirmed before payment</span></div></div>
+          </section>
         </div>
       </div>
-    </div>
-  `;
+
+      <div class="product-page-sticky-actions" aria-label="Purchase actions">
+        <button class="product-page-mobile-add" type="button" onclick="addProductFromDetail(${p.id})">Add to cart</button>
+        <button class="product-page-mobile-buy" type="button" onclick="buyNowFromDetail(${p.id})">Buy now →</button>
+      </div>
+    </section>`;
+
+  const page = $('modalRoot').querySelector('.product-page-overlay');
+  if (page) page.scrollTop = 0;
+}
+
+function dismissProductPage(updateUrl = true) {
+  if (updateUrl) {
+    const url = new URL(window.location.href);
+    url.searchParams.delete('product');
+    history.replaceState({}, '', `${url.pathname}${url.search}${url.hash}`);
+  }
+  if ($('modalRoot')?.querySelector('.product-page-overlay')) $('modalRoot').innerHTML = '';
+  productPageOpen = false;
+  document.title = originalDocumentTitle;
+  window.scrollTo({ top: Math.max(0, productPageScrollY), behavior: 'auto' });
+}
+
+function closeProductPage() {
+  dismissProductPage(true);
 }
 
 function changeProductImage(src, button) {
@@ -362,8 +334,8 @@ function changeProductImage(src, button) {
   button.classList.add('active');
 }
 function selectVariant(button) { button.parentElement.querySelectorAll('.variant').forEach(x => x.classList.remove('active')); button.classList.add('active'); }
-function addProductFromDetail(id) { const qty = Math.max(1, Math.min(20, Number($('detailQty').value) || 1)); const variant = document.querySelector('.variant.active')?.textContent.trim() || null; const item = state.cart.find(x => x.id === id && x.variant === variant); if (item) item.qty += qty; else state.cart.push({ id, qty, variant }); saveAll(); showToast('Added to cart'); closeModal(); openCart(); }
-function buyNowFromDetail(id) { const product = products.find(x => x.id === id); if (!product) return; const qty = Math.max(1, Math.min(20, Number($('detailQty')?.value) || 1)); const variant = document.querySelector('.variant.active')?.textContent.trim() || null; startCheckout([{ id: Number(product.id), qty, variant }]); }
+function addProductFromDetail(id) { const qty = Math.max(1, Math.min(20, Number($('detailQty')?.value) || 1)); const variant = document.querySelector('.variant.active')?.textContent.trim() || null; const item = state.cart.find(x => x.id === id && x.variant === variant); if (item) item.qty += qty; else state.cart.push({ id, qty, variant }); saveAll(); showToast('Added to cart'); if (productPageOpen) dismissProductPage(true); else closeModal(); openCart(); }
+function buyNowFromDetail(id) { const product = products.find(x => String(x.id) === String(id)); if (!product) return; const qty = Math.max(1, Math.min(20, Number($('detailQty')?.value) || 1)); const variant = document.querySelector('.variant.active')?.textContent.trim() || null; if (productPageOpen) dismissProductPage(true); startCheckout([{ id: Number(product.id), qty, variant }]); }
 function cartSubtotal() { return state.cart.reduce((sum, x) => { const p = products.find(p => p.id === x.id); return sum + (p ? p.price * x.qty : 0) }, 0); }
 function shippingCost() {
   return 0;
@@ -705,7 +677,16 @@ if (paymentStatus === 'error') {
     ? `Payment was not completed for ${returnedOrderId}. Your cart is still saved.`
     : 'Payment was not completed. Your cart is still saved.');
 }
+    window.addEventListener('popstate', () => {
+      const productId = new URLSearchParams(window.location.search).get('product');
+      if (productId) {
+        renderProductPage(productId);
+      } else if (productPageOpen) {
+        dismissProductPage(false);
+      }
+    });
+
     syncCountryPicker();
-    saveAll(); 
-   loadProducts();
-initLanguage();
+    saveAll();
+    loadProducts();
+    initLanguage();
