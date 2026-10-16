@@ -74,6 +74,7 @@ async function loadProducts() {
 
 
 const state = { category: 'All', wishlist: new Set(JSON.parse(localStorage.getItem('dg_wishlist') || '[]')), cart: JSON.parse(localStorage.getItem('dg_cart') || '[]') };
+let pendingCheckoutItems = null;
 let toastTimer = null;
 const $ = id => document.getElementById(id);
 function escapeHtml(value) { return String(value).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' }[c])); }
@@ -86,41 +87,6 @@ function money(value, currency = 'AZN') {
   }).format(value);
 }
 
-function currencyConfig() {
-  const country = localStorage.getItem('dg_country') || 'US';
-
-  const configs = {
-    US: { country: 'US', currency: 'USD' },
-    CA: { country: 'CA', currency: 'CAD' },
-    UK: { country: 'UK', currency: 'GBP' }
-  };
-
-  return configs[country] || configs.US;
-}
-
-function syncCountryPicker() {
-  const c = currencyConfig();
-
-  const picker = $('countryPicker');
-  if (picker) picker.value = c.country;
-}
-
-function setCountry(country) {
-  localStorage.setItem('dg_country', country);
-  syncCountryPicker();
-  renderProducts();
-
-  if ($('modalRoot')?.querySelector('.drawer')) {
-    openCart();
-  }
-
-  showToast('Shipping country updated');
-}
-
-function displayPrice(value) {
-  const aznValue = Number(value) * USD_TO_AZN;
-  return money(aznValue, 'AZN');
-}
 function currencyConfig() {
   const country = localStorage.getItem('dg_country') || 'US';
 
@@ -363,6 +329,12 @@ function openProduct(id) {
               </button>
 
               <button
+                class="buy-now-button full"
+                onclick="buyNowFromDetail(${p.id})">
+                Buy now →
+              </button>
+
+              <button
                 class="secondary-button full"
                 onclick="toggleWishlist(${p.id});openProduct(${p.id})">
                 ${state.wishlist.has(p.id) ? '♥ Wishlisted' : '♡ Wishlist'}
@@ -390,96 +362,98 @@ function changeProductImage(src, button) {
   button.classList.add('active');
 }
 function selectVariant(button) { button.parentElement.querySelectorAll('.variant').forEach(x => x.classList.remove('active')); button.classList.add('active'); }
-function addProductFromDetail(id) { const qty = Math.max(1, Math.min(20, Number($('detailQty').value) || 1)); const variant = document.querySelector('.variant.active')?.textContent || null; const item = state.cart.find(x => x.id === id && x.variant === variant); if (item) item.qty += qty; else state.cart.push({ id, qty, variant }); saveAll(); showToast('Added to cart'); closeModal(); openCart(); }
+function addProductFromDetail(id) { const qty = Math.max(1, Math.min(20, Number($('detailQty').value) || 1)); const variant = document.querySelector('.variant.active')?.textContent.trim() || null; const item = state.cart.find(x => x.id === id && x.variant === variant); if (item) item.qty += qty; else state.cart.push({ id, qty, variant }); saveAll(); showToast('Added to cart'); closeModal(); openCart(); }
+function buyNowFromDetail(id) { const product = products.find(x => x.id === id); if (!product) return; const qty = Math.max(1, Math.min(20, Number($('detailQty')?.value) || 1)); const variant = document.querySelector('.variant.active')?.textContent.trim() || null; startCheckout([{ id: Number(product.id), qty, variant }]); }
 function cartSubtotal() { return state.cart.reduce((sum, x) => { const p = products.find(p => p.id === x.id); return sum + (p ? p.price * x.qty : 0) }, 0); }
 function shippingCost() {
   return 0;
 }
 function openCart() { const c = currencyConfig(); const lines = state.cart.length ? state.cart.map(x => { const p = products.find(p => p.id === x.id); return `<div class="cart-line"><img src="${(p.images && p.images.length) ? p.images[0] : (p.image || '')}" alt="${escapeHtml(p.title)}"><div><strong>${escapeHtml(p.title)}</strong><div class="muted">${x.variant ? `Option: ${escapeHtml(x.variant)} · ` : ''}${displayPrice(p.price)} each</div><div class="qty-control"><button onclick="changeQty(${x.id},'${encodeURIComponent(x.variant || '')}',-1)">−</button><span>${x.qty}</span><button onclick="changeQty(${x.id},'${encodeURIComponent(x.variant || '')}',1)">+</button></div></div><strong>${displayPrice(p.price * x.qty)}</strong></div>` }).join('') : `<p class="muted">Your cart is empty.</p>`; const sub = cartSubtotal(); const ship = state.cart.length ? shippingCost() : 0; const total = sub + ship; $('modalRoot').innerHTML = `<div class="overlay" onclick="closeModal(event)"><aside class="drawer"><div class="drawer-head"><h2>Your cart</h2><button class="close-btn" onclick="closeModal()">✕</button></div>${lines}<div class="drawer-section"><label for="countrySelect">Shipping country</label><select id="countrySelect" onchange="setCountry(this.value)"><option value="US" ${c.country === 'US' ? 'selected' : ''}>United States</option><option value="CA" ${c.country === 'CA' ? 'selected' : ''}>Canada</option><option value="UK" ${c.country === 'UK' ? 'selected' : ''}>United Kingdom</option></select></div><div class="drawer-section"><input id="couponInput" placeholder="Coupon code (try SAVE10)"></div><div class="summary-row"><span>Subtotal</span><span>${displayPrice(sub)}</span></div><div class="summary-row"><span>Shipping</span><span>${ship === 0 ? 'FREE' : displayPrice(ship)}</span></div><div class="summary-row total"><span>Total</span><span>${displayPrice(total)}</span></div><button class="primary-button full" onclick="startCheckout()" ${state.cart.length ? '' : 'disabled'}>Checkout</button><div class="note-box" style="margin-top:12px">You will be charged in AZN. Secure by Epoint.</div></aside></div>`; }
 function changeQty(id, variantKey, delta) { const variant = decodeURIComponent(variantKey); const item = state.cart.find(x => x.id === id && (x.variant || '') === variant); if (!item) return; item.qty += delta; if (item.qty <= 0) state.cart = state.cart.filter(x => x !== item); saveAll(); openCart(); }
-async function startCheckout() {
-    if (!state.cart.length) return;
+async function startCheckout(items = null) {
+  const sourceItems = Array.isArray(items) ? items : state.cart;
+  const checkoutItems = sourceItems
+    .map(item => ({ id: Number(item.id), qty: Math.max(1, Math.min(20, Number(item.qty) || 1)), variant: item.variant ?? null }))
+    .filter(item => Number.isInteger(item.id) && item.id > 0 && item.qty > 0);
 
-    const user = await getCurrentUser();
+  if (!checkoutItems.length) {
+    showToast('Your cart is empty');
+    return;
+  }
 
-    if (!user) {
-        showToast('Please log in or create an account before checkout');
-        openAccount();
-        return;
-    }
+  // Keep a snapshot so Buy now purchases only the selected product.
+  // Remember checkout mode across the Epoint redirect, so a Buy now payment
+  // never clears other items already saved in the customer's cart.
+  pendingCheckoutItems = checkoutItems;
+  sessionStorage.setItem('dg_checkout_mode', Array.isArray(items) ? 'buy-now' : 'cart');
 
-    const c = currencyConfig();
+  let user = null;
+  try {
+    user = await getCurrentUser();
+  } catch (error) {
+    console.warn('Unable to check account session; continuing as guest.', error);
+  }
 
-    $('modalRoot').innerHTML = `
-    <div class="modal-overlay">
-        <div class="modal">
-            <div class="modal-head">
-                <h2>Checkout</h2>
-                <button class="close-btn" onclick="closeModal()">✕</button>
-            </div>
-
-            <form class="form-grid" onsubmit="submitDemoOrder(event)">
-                <label>
-                    Full name
-                    <input id="coName" required value="${escapeHtml(user.name)}">
-                </label>
-
-                <label>
-                    Email
-                    <input id="coEmail" type="email" required value="${escapeHtml(user.email)}">
-                </label>
-<label>
-  Mobile number
-  <input
-    id="coPhone"
-    type="tel"
-    required
-    placeholder="+1 555 123 4567 / +44 7700 900123"
-  >
-</label>
-                <label>
-                    Address
-                    <input id="coAddress" required placeholder="Street address">
-                </label>
-
-                <label>
-  City
-  <input id="coCity" required placeholder="City">
-</label>
-
-<label>
-  State / Province / Region
-  <input id="coState" required placeholder="State / Province / Region">
-</label>
-
-<label>
-  ZIP / Postal code
-  <input id="coZip" required placeholder="ZIP / Postal code">
-</label>
-                    
-                    
-                
-
-                <label>
-                    Country
-                    <select id="coCountry">
-                        <option ${c.country === 'US' ? 'selected' : ''}>United States</option>
-                        <option ${c.country === 'CA' ? 'selected' : ''}>Canada</option>
-                        <option ${c.country === 'UK' ? 'selected' : ''}>United Kingdom</option>
-                    </select>
-                </label>
-
-                <div class="note-box">
-  You will be charged in AZN. Secure payment by Epoint.
-</div>
-                    
-               
-
-                <button class="primary-button" type="submit">
-                    Create order
-                </button>
-            </form>
+  const c = currencyConfig();
+  $('modalRoot').innerHTML = `
+    <div class="modal-overlay" onclick="closeModal(event)">
+      <div class="modal" onclick="event.stopPropagation()">
+        <div class="modal-head">
+          <h2>Checkout</h2>
+          <button class="close-btn" onclick="closeModal()">✕</button>
         </div>
+
+        <p class="muted" style="margin-top:0">Checkout as a guest. No account is required. Enter your contact and delivery details to continue to secure payment.</p>
+
+        <form class="form-grid" onsubmit="submitDemoOrder(event)">
+          <label>
+            Full name
+            <input id="coName" name="name" autocomplete="name" required value="${escapeHtml(user?.name || '')}">
+          </label>
+
+          <label>
+            Email
+            <input id="coEmail" name="email" type="email" autocomplete="email" required value="${escapeHtml(user?.email || '')}">
+          </label>
+
+          <label>
+            Mobile number
+            <input id="coPhone" name="tel" type="tel" autocomplete="tel" required placeholder="+1 555 123 4567 / +44 7700 900123">
+          </label>
+
+          <label>
+            Address
+            <input id="coAddress" name="street-address" autocomplete="street-address" required placeholder="Street address">
+          </label>
+
+          <label>
+            City
+            <input id="coCity" name="address-level2" autocomplete="address-level2" required placeholder="City">
+          </label>
+
+          <label>
+            State / Province / Region
+            <input id="coState" name="address-level1" autocomplete="address-level1" required placeholder="State / Province / Region">
+          </label>
+
+          <label>
+            ZIP / Postal code
+            <input id="coZip" name="postal-code" autocomplete="postal-code" required placeholder="ZIP / Postal code">
+          </label>
+
+          <label>
+            Country
+            <select id="coCountry" name="country" autocomplete="country-name" required>
+              <option value="United States" ${c.country === 'US' ? 'selected' : ''}>United States</option>
+              <option value="Canada" ${c.country === 'CA' ? 'selected' : ''}>Canada</option>
+              <option value="United Kingdom" ${c.country === 'UK' ? 'selected' : ''}>United Kingdom</option>
+            </select>
+          </label>
+
+          <div class="note-box">You will be charged in AZN. Secure payment by Epoint.</div>
+          <button class="primary-button full" type="submit">Continue to secure payment</button>
+        </form>
+      </div>
     </div>`;
 }
 
@@ -498,65 +472,90 @@ async function startCheckout() {
     async function submitDemoOrder(e) {
   e.preventDefault();
 
-  const r = await fetch('/api/orders', {
-  method: 'POST',
-  headers: {
-    'Content-Type': 'application/json'
-  },
-  credentials: 'include',
-  body: JSON.stringify({
-    name: $('coName').value.trim(),
-    email: $('coEmail').value.trim(),
-    phone: $('coPhone').value.trim(),
-    address: $('coAddress').value.trim(),
-    city: $('coCity').value.trim(),
-    state: $('coState').value.trim(),
-    zip: $('coZip').value.trim(),
-    country: $('coCountry').value,
-    items: state.cart.map(item => ({
-      id: Number(item.id),
-      qty: Number(item.qty),
-      variant: item.variant ?? null
-    }))
-  })
-});
+  const form = e.currentTarget;
+  const submitButton = form.querySelector('[type="submit"]');
+  if (submitButton?.disabled) return;
 
-const d = await r.json();
+  const checkoutItems = (pendingCheckoutItems?.length ? pendingCheckoutItems : state.cart)
+    .map(item => ({ id: Number(item.id), qty: Number(item.qty), variant: item.variant ?? null }));
 
-
-  if (!r.ok) {
-    showToast(d.error || 'Please log in before checkout');
+  if (!checkoutItems.length) {
+    showToast('Your cart is empty');
     return;
   }
 
-  const order = d.order;
+  if (submitButton) {
+    submitButton.disabled = true;
+    submitButton.textContent = 'Preparing secure payment…';
+  }
 
   try {
-    const paymentResponse = await fetch('/api/payment/create', {
+    const r = await fetch('/api/orders', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
+      headers: { 'Content-Type': 'application/json' },
       credentials: 'include',
       body: JSON.stringify({
-        orderId: order.id
+        name: $('coName').value.trim(),
+        email: $('coEmail').value.trim(),
+        phone: $('coPhone').value.trim(),
+        address: $('coAddress').value.trim(),
+        city: $('coCity').value.trim(),
+        state: $('coState').value.trim(),
+        zip: $('coZip').value.trim(),
+        country: $('coCountry').value,
+        items: checkoutItems
       })
     });
 
-    const payment = await paymentResponse.json();
-
-    if (!paymentResponse.ok || !payment.redirect_url) {
-      showToast(payment.error || 'Unable to start payment.');
+    const d = await r.json();
+    if (!r.ok) {
+      showToast(d.error || 'Please check your details and try again.');
+      if (submitButton) {
+        submitButton.disabled = false;
+        submitButton.textContent = 'Continue to secure payment';
+      }
       return;
     }
 
-  
+    if (!d.order?.id || !d.checkoutToken) {
+      console.error('Order response did not include secure checkout credentials.');
+      showToast('Order was created, but secure payment could not be started. Contact support with your order number.');
+      if (submitButton) {
+        submitButton.disabled = false;
+        submitButton.textContent = 'Continue to secure payment';
+      }
+      return;
+    }
+
+    const paymentResponse = await fetch('/api/payment/create', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ orderId: d.order.id, checkoutToken: d.checkoutToken })
+    });
+
+    const payment = await paymentResponse.json();
+    if (!paymentResponse.ok || !payment.redirect_url) {
+      console.error('Payment creation failed for order:', d.order.id, payment.error || 'No redirect URL');
+      showToast(payment.error || `Order ${d.order.id} was saved, but payment could not be started.`);
+      if (submitButton) {
+        submitButton.disabled = false;
+        submitButton.textContent = 'Continue to secure payment';
+      }
+      return;
+    }
+
     window.location.href = payment.redirect_url;
   } catch (error) {
-    console.error('PAYMENT ERROR:', error);
-    showToast('Unable to start payment.');
+    console.error('CHECKOUT ERROR:', error);
+    showToast('Unable to continue to payment. Please try again.');
+    if (submitButton) {
+      submitButton.disabled = false;
+      submitButton.textContent = 'Continue to secure payment';
+    }
   }
 }
+
     async function trackOrder() { const code = $('trackInput').value.trim().toUpperCase(); if (!code) { $('trackingResult').innerHTML = '<p class="muted">Enter an order number.</p>'; return; } const r = await fetch('/api/orders/track/' + encodeURIComponent(code)); const d = await r.json(); if (!r.ok) { $('trackingResult').innerHTML = '<p class="muted">Order not found.</p>'; return; } const order = d.order; $('trackingResult').innerHTML = `<div class="tracking-result"><div class="tracking-meta"><div><strong>Order ${escapeHtml(order.id)}</strong><div class="muted">Created ${new Date(order.createdAt).toLocaleString()}</div></div><div class="tracking-status">${escapeHtml(order.status)}</div></div><div class="timeline"><div class="step done"><div class="dot"></div><div><strong>Order placed</strong><br><small>Order received</small></div></div><div class="step done"><div class="dot"></div><div><strong>Processing</strong><br><small>Preparing your order</small></div></div><div class="step ${order.status === 'Shipped' || order.status === 'In transit' || order.status === 'Delivered' ? 'done' : ''}"><div class="dot"></div><div><strong>Shipped</strong><br><small>Tracking number assigned</small></div></div><div class="step ${order.status === 'In transit' || order.status === 'Delivered' ? 'done' : ''}"><div class="dot"></div><div><strong>In transit</strong><br><small>Package moving through carrier network</small></div></div><div class="step ${order.status === 'Delivered' ? 'done' : ''}"><div class="dot"></div><div><strong>Delivered</strong><br><small>Final carrier scan</small></div></div></div></div>`; }
     function showPolicy(type) {
   const copy = {
@@ -682,18 +681,29 @@ const d = await r.json();
 }
     async function subscribe(e) { e.preventDefault(); const email = $('newsletterEmail').value.trim(); const r = await fetch('/api/newsletter', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email }) }); const d = await r.json(); if (!r.ok) { showToast(d.error || 'Unable to subscribe'); return; } $('newsletterEmail').value = ''; showToast('Subscribed'); }
     function closeModal(e) { if (e && e.target !== e.currentTarget) return; $('modalRoot').innerHTML = ''; }
-   const paymentStatus = new URLSearchParams(window.location.search).get('payment');
+   const paymentParams = new URLSearchParams(window.location.search);
+const paymentStatus = paymentParams.get('payment');
+const returnedOrderId = paymentParams.get('order_id');
 
 if (paymentStatus === 'success') {
-  state.cart = [];
-  saveAll();
+  const checkoutMode = sessionStorage.getItem('dg_checkout_mode') || 'cart';
+  if (checkoutMode !== 'buy-now') {
+    state.cart = [];
+    saveAll();
+  }
+  sessionStorage.removeItem('dg_checkout_mode');
   window.history.replaceState({}, '', '/');
-  showToast('Payment successful. Thank you for your order!');
+  showToast(returnedOrderId
+    ? `Payment successful. Order ${returnedOrderId}. Thank you!`
+    : 'Payment successful. Thank you for your order!');
 }
 
 if (paymentStatus === 'error') {
-  showToast('Payment was not completed. Your cart is still saved.');
+  sessionStorage.removeItem('dg_checkout_mode');
   window.history.replaceState({}, '', '/');
+  showToast(returnedOrderId
+    ? `Payment was not completed for ${returnedOrderId}. Your cart is still saved.`
+    : 'Payment was not completed. Your cart is still saved.');
 }
     syncCountryPicker();
     saveAll(); 
