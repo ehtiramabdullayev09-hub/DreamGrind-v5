@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>DreamGrind Admin</title>
 <style>
-:root{font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#111827;background:#f3f4f6}*{box-sizing:border-box}body{margin:0}.wrap{max-width:1250px;margin:0 auto;padding:24px}.top{display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap}.brand{font-size:28px;font-weight:800;letter-spacing:-.03em}.muted{color:#6b7280}.actions{display:flex;gap:10px;flex-wrap:wrap}button{border:1px solid #d1d5db;background:#111827;color:#fff;border-radius:10px;padding:10px 14px;cursor:pointer}button.secondary{background:#fff;color:#111827}button.danger{background:#b91c1c;border-color:#b91c1c}.panel{background:#fff;border:1px solid #e5e7eb;border-radius:16px;padding:18px;margin-top:18px;box-shadow:0 10px 30px rgba(0,0,0,.04)}.login{max-width:420px;margin:70px auto}.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}.metric{padding:18px;border-radius:14px;background:#fff;border:1px solid #e5e7eb}.metric span{display:block;color:#6b7280;font-size:13px}.metric strong{display:block;font-size:30px;margin-top:6px}.tabs{display:flex;gap:8px;flex-wrap:wrap;margin-top:16px}.tab{background:#fff;color:#111827}.tab.active{background:#111827;color:#fff}.hidden{display:none}.table-wrap{overflow:auto}table{width:100%;border-collapse:collapse;min-width:800px}th,td{padding:11px 10px;border-bottom:1px solid #eef0f2;text-align:left;font-size:14px;vertical-align:top}input,select{width:100%;padding:10px 11px;border:1px solid #d1d5db;border-radius:10px;background:#fff}label{display:block;font-size:13px;font-weight:700;margin-bottom:6px}.form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.form-grid .full{grid-column:1/-1}.row-actions{display:flex;gap:8px;flex-wrap:wrap}.notice{padding:12px;border-radius:10px;background:#f9fafb;border:1px solid #e5e7eb}.error{color:#b91c1c;font-size:14px}.ok{color:#166534;font-size:14px}@media(max-width:900px){.grid{grid-template-columns:1fr 1fr}}@media(max-width:600px){.wrap{padding:14px}.grid,.form-grid{grid-template-columns:1fr}.form-grid .full{grid-column:auto}.brand{font-size:23px}}
+:root{font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#111827;background:#f3f4f6}*{box-sizing:border-box}body{margin:0}.wrap{max-width:1250px;margin:0 auto;padding:24px}.top{display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap}.brand{font-size:28px;font-weight:800;letter-spacing:-.03em}.muted{color:#6b7280}.actions{display:flex;gap:10px;flex-wrap:wrap}button{border:1px solid #d1d5db;background:#111827;color:#fff;border-radius:10px;padding:10px 14px;cursor:pointer}button.secondary{background:#fff;color:#111827}button.danger{background:#b91c1c;border-color:#b91c1c}.panel{background:#fff;border:1px solid #e5e7eb;border-radius:16px;padding:18px;margin-top:18px;box-shadow:0 10px 30px rgba(0,0,0,.04)}.login{max-width:420px;margin:70px auto}.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}.metric{padding:18px;border-radius:14px;background:#fff;border:1px solid #e5e7eb}.metric span{display:block;color:#6b7280;font-size:13px}.metric strong{display:block;font-size:30px;margin-top:6px}.tabs{display:flex;gap:8px;flex-wrap:wrap;margin-top:16px}.tab{background:#fff;color:#111827}.tab.active{background:#111827;color:#fff}.hidden{display:none}.table-wrap{overflow:auto}table{width:100%;border-collapse:collapse;min-width:800px}th,td{padding:11px 10px;border-bottom:1px solid #eef0f2;text-align:left;font-size:14px;vertical-align:top}input,select,textarea{width:100%;padding:10px 11px;border:1px solid #d1d5db;border-radius:10px;background:#fff;font:inherit}textarea{min-height:190px;resize:vertical;line-height:1.55}label{display:block;font-size:13px;font-weight:700;margin-bottom:6px}.form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.form-grid .full{grid-column:1/-1}.row-actions{display:flex;gap:8px;flex-wrap:wrap}.notice{padding:12px;border-radius:10px;background:#f9fafb;border:1px solid #e5e7eb}.error{color:#b91c1c;font-size:14px}.ok{color:#166534;font-size:14px}@media(max-width:900px){.grid{grid-template-columns:1fr 1fr}}@media(max-width:600px){.wrap{padding:14px}.grid,.form-grid{grid-template-columns:1fr}.form-grid .full{grid-column:auto}.brand{font-size:23px}}
 </style>
 </head>
 <body>
@@ -51,6 +51,25 @@
       <div><label>Price (USD)</label><input id="productPrice" type="number" min="0.01" step="0.01" required></div>
       <div><label>Category</label><input id="productCategory" placeholder="Gadgets"></div>
       <div><label>Stock</label><input id="productStock" type="number" min="0" step="1" value="0"></div>
+      <div class="full">
+        <label for="productDescription">Product description &amp; features</label>
+        <textarea id="productDescription" rows="9" maxlength="10000" placeholder="Write the full description and all product features here. You can use your own headings and bullets, for example:
+
+Overview:
+...
+
+Key features:
+• ...
+• ...
+
+Specifications:
+• ...
+• ...
+
+What's included:
+• ..."></textarea>
+        <small class="muted">Use one box for everything. Keep each feature on its own line; the product page preserves your line breaks.</small>
+      </div>
      <div class="full">
   <label>Product Images</label>
 
@@ -184,6 +203,7 @@ function editProduct(id){
   $('productPrice').value=p.price;
   $('productCategory').value=p.category||'';
   $('productStock').value=p.stock??0;
+  $('productDescription').value=p.description||'';
 
   const images=p.images||[];
   for(let i=1;i<=8;i++){
@@ -199,7 +219,7 @@ function editProduct(id){
 }
 
 function resetProductForm(){
-  ['productId','productTitle','productPrice','productCategory'].forEach(id=>$(id).value='');
+  ['productId','productTitle','productPrice','productCategory','productDescription'].forEach(id=>$(id).value='');
 
   $('productStock').value=0;
 
@@ -230,6 +250,7 @@ $('productForm').addEventListener('submit',async e=>{
       price:Number($('productPrice').value),
       category:$('productCategory').value.trim()||'General',
       stock:Number($('productStock').value||0),
+      description:$('productDescription').value.trim(),
       images:images,
       video:$('productVideo').value.trim()||null
     };
