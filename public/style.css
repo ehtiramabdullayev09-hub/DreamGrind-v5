@@ -195,3 +195,33 @@
   }
 }
 }
+
+.buy-now-button {
+  display: block;
+  width: 100%;
+  padding: 14px 18px;
+  border: 2px solid #111;
+  border-radius: 12px;
+  background: #fff;
+  color: #111;
+  font-size: 16px;
+  font-weight: 700;
+  text-align: center;
+  cursor: pointer;
+  transition: background 0.2s ease, color 0.2s ease;
+}
+
+.buy-now-button:hover {
+  background: #111;
+  color: #fff;
+}
+
+.buy-now-button:focus-visible {
+  outline: 3px solid #777;
+  outline-offset: 3px;
+}
+
+.buy-now-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
