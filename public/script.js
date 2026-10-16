@@ -132,36 +132,42 @@ function displayPrice(value) { const c = currencyConfig(); return money(value * 
 function saveAll() { localStorage.setItem('dg_wishlist', JSON.stringify([...state.wishlist])); localStorage.setItem('dg_cart', JSON.stringify(state.cart)); updateCounts(); }
 function updateCounts() { $('wishCount').textContent = state.wishlist.size; $('cartCount').textContent = state.cart.reduce((n, x) => n + x.qty, 0); }
 function showToast(message) { clearTimeout(toastTimer); $('toast').textContent = message; $('toast').classList.remove('hidden'); toastTimer = setTimeout(() => $('toast').classList.add('hidden'), 2200); }
+function heroCategoryImage(product) {
+  if (!product) return '';
+  const source = (Array.isArray(product.images) ? product.images.find(Boolean) : '') || product.image || '';
+  return source ? String(source) : '';
+}
+
+function openHeroCategory(category) {
+  setCategory(category);
+}
+
 function renderHeroProduct() {
-  const media = $('heroFeaturedMedia');
-  const title = $('heroProductTitle');
-  const price = $('heroProductPrice');
-  const category = $('heroProductCategory');
-  const card = $('heroProductCard');
-  if (!media || !title || !price || !category || !card) return;
+  const grid = $('heroCategoryGrid');
+  if (!grid) return;
 
-  const product = products.find(p => (Array.isArray(p.images) && p.images.some(Boolean)) || p.image);
-  if (!product) {
-    title.textContent = 'Thoughtful finds for everyday life';
-    price.textContent = 'Explore the collection ↗';
-    category.textContent = 'FEATURED FIND';
-    media.innerHTML = '<div class="hero-empty-art" aria-hidden="true"><span>✦</span><small>FIND SOMETHING GOOD</small></div>';
-    media.onclick = () => { location.hash = 'shop'; };
-    card.onclick = () => { location.hash = 'shop'; };
-    card.onkeydown = event => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); location.hash = 'shop'; } };
-    return;
-  }
+  const categoryCards = [
+    { key: 'Gadgets', overline: 'SMART LITTLE UPGRADES', title: 'Gadgets', description: 'Useful tech for everyday life', placeholder: '✧' },
+    { key: 'Home', overline: 'MAKE IT YOUR SPACE', title: 'Home finds', description: 'Small touches for your space', placeholder: '⌂' },
+    { key: 'Pet', overline: 'FOR YOUR COMPANIONS', title: 'Pet favorites', description: 'Find something for your best friend', placeholder: '🐾' }
+  ];
 
-  const image = (Array.isArray(product.images) ? product.images.find(Boolean) : '') || product.image || '';
-  media.innerHTML = image
-    ? `<img src="${escapeHtml(image)}" alt="${escapeHtml(product.title)}" fetchpriority="high">`
-    : '<div class="hero-empty-art" aria-hidden="true"><span>✦</span><small>FIND SOMETHING GOOD</small></div>';
-  title.textContent = product.title || 'Featured find';
-  price.textContent = displayPrice(Number(product.price) || 0);
-  category.textContent = (product.category || 'FEATURED FIND').toString().toUpperCase();
-  media.onclick = () => openProduct(product.id);
-  card.onclick = () => openProduct(product.id);
-  card.onkeydown = event => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); openProduct(product.id); } };
+  grid.innerHTML = categoryCards.map((category, index) => {
+    const product = products.find(p => String(p.category || '').trim().toLowerCase() === category.key.toLowerCase() && heroCategoryImage(p));
+    const image = heroCategoryImage(product);
+    const imageMarkup = image
+      ? `<img src="${escapeHtml(image)}" alt="${escapeHtml(category.title)} collection" loading="eager" decoding="async">`
+      : `<span class="hero-category-placeholder" aria-hidden="true">${category.placeholder}</span>`;
+    return `
+      <button class="hero-category-card ${index === 0 ? 'hero-category-card-main' : ''}" type="button" onclick="openHeroCategory('${category.key}')" aria-label="Explore ${escapeHtml(category.title)}">
+        <span class="hero-category-media">${imageMarkup}</span>
+        <span class="hero-category-copy">
+          <span class="hero-category-overline">${category.overline}</span>
+          <span class="hero-category-title-row"><strong>${category.title}</strong><span class="hero-category-arrow" aria-hidden="true">↗</span></span>
+          ${index === 0 ? `<span class="hero-category-description">${category.description}</span>` : ''}
+        </span>
+      </button>`;
+  }).join('');
 }
 
 function renderProducts() { const q = ($('searchInput')?.value || '').trim().toLowerCase(); const sort = $('sortSelect')?.value || 'featured'; let list = products.filter(p => (state.category === 'All' || p.category === state.category) && (!q || `${p.title} ${p.category} ${p.description}`.toLowerCase().includes(q))); if (sort === 'rating') list.sort((a, b) => b.rating - a.rating); if (sort === 'low') list.sort((a, b) => a.price - b.price); if (sort === 'high') list.sort((a, b) => b.price - a.price); $('shopTitle').textContent = state.category === 'All' ? 'Trending products' : `${state.category} products`; $('emptyResults').classList.toggle('hidden', list.length > 0); $('productGrid').innerHTML = list.map(cardHtml).join(''); document.querySelectorAll('.chip').forEach(ch => ch.classList.toggle('active', ch.textContent === state.category)); renderHeroProduct(); }
