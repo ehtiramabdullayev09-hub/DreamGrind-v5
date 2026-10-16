@@ -631,3 +631,102 @@
 .hero-category-card:focus-visible { outline: 3px solid #77d6c4; outline-offset: 3px; }
 .hero-category-card:active { transform: translateY(-1px); }
 @media (prefers-reduced-motion: reduce) { .hero-category-card, .hero-category-media img { transition: none; } }
+
+
+/* Product-free, brand-led homepage artwork */
+.hero-brand-art {
+  position: relative;
+  isolation: isolate;
+  min-width: 0;
+  min-height: 480px;
+  overflow: hidden;
+  padding: 19px 22px 16px;
+  border: 1px solid rgba(255,255,255,.82);
+  border-radius: 30px;
+  color: #eef9f5;
+  background:
+    radial-gradient(ellipse at 51% 43%, rgba(55,139,128,.28) 0%, transparent 46%),
+    radial-gradient(ellipse at 100% 100%, rgba(35,113,103,.32) 0%, transparent 46%),
+    linear-gradient(145deg, #162629 0%, #101a1d 55%, #112d2b 100%);
+  box-shadow: 0 28px 70px rgba(17,48,45,.18), inset 0 1px 0 rgba(255,255,255,.04);
+}
+.hero-brand-art::before,
+.hero-brand-art::after {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  border: 1px solid rgba(186,236,225,.10);
+  border-radius: 50%;
+  pointer-events: none;
+}
+.hero-brand-art::before { width: 470px; height: 470px; left: 50%; top: 44%; transform: translate(-50%,-50%); }
+.hero-brand-art::after { width: 355px; height: 355px; left: 50%; top: 44%; transform: translate(-50%,-50%); border-color: rgba(186,236,225,.07); }
+.brand-art-header,
+.brand-art-footer {
+  position: relative;
+  z-index: 4;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.brand-art-kicker { display: inline-flex; align-items: center; gap: 9px; padding: 8px 11px; border: 1px solid rgba(216,244,237,.16); border-radius: 999px; color: #e5f4ef; background: rgba(255,255,255,.055); font-size: 9px; font-weight: 900; letter-spacing: .13em; }
+.brand-art-live-dot { width: 7px; height: 7px; flex: 0 0 7px; border-radius: 50%; background: #74d9c8; box-shadow: 0 0 0 4px rgba(116,217,200,.12); }
+.brand-art-index { color: rgba(224,241,236,.48); font-size: 9px; font-weight: 850; letter-spacing: .16em; }
+.brand-art-scene { position: relative; height: 373px; margin: 2px -5px 0; overflow: hidden; }
+.brand-art-orbit { position: absolute; left: 50%; top: 49%; display: block; border: 1px solid rgba(170,232,220,.25); border-radius: 50%; pointer-events: none; }
+.brand-art-orbit-one { width: 370px; height: 170px; transform: translate(-50%,-50%) rotate(-28deg); }
+.brand-art-orbit-two { width: 280px; height: 330px; transform: translate(-50%,-50%) rotate(31deg); border-color: rgba(170,232,220,.15); }
+.brand-art-orbit-three { width: 420px; height: 250px; transform: translate(-50%,-50%) rotate(20deg); border-color: rgba(170,232,220,.08); }
+.brand-art-core { position: absolute; z-index: 2; left: 50%; top: 48%; display: flex; flex-direction: column; align-items: center; justify-content: center; width: 218px; aspect-ratio: 1; transform: translate(-50%,-50%); border: 1px solid rgba(227,255,248,.54); border-radius: 50%; background: radial-gradient(circle at 30% 22%, #c6f7eb 0%, #70cabc 12%, #378e83 32%, #1c5757 58%, #122c32 78%, #101b21 100%); box-shadow: 0 26px 70px rgba(0,0,0,.32), inset -20px -24px 45px rgba(1,19,25,.48), inset 9px 12px 28px rgba(255,255,255,.22); }
+.brand-art-core::before { content: ""; position: absolute; inset: 13px; border: 1px solid rgba(233,255,249,.26); border-radius: 50%; }
+.brand-art-core::after { content: ""; position: absolute; inset: -15px; border: 1px solid rgba(148,224,211,.15); border-radius: 50%; }
+.brand-art-core-shine { position: absolute; top: 22%; left: 24%; width: 54px; height: 21px; border-radius: 50%; transform: rotate(-38deg); background: rgba(237,255,251,.47); filter: blur(12px); }
+.brand-art-monogram { position: relative; z-index: 2; color: #f0fffb; font-size: 70px; font-weight: 850; letter-spacing: -.1em; line-height: .9; text-shadow: 0 7px 25px rgba(0,0,0,.22); }
+.brand-art-core-caption { position: relative; z-index: 2; margin-top: 12px; color: rgba(232,255,248,.76); font-size: 7px; font-weight: 900; letter-spacing: .22em; }
+.brand-art-star { position: absolute; z-index: 3; color: #b2f2e5; text-shadow: 0 0 19px rgba(123,235,216,.35); }
+.brand-art-star-one { top: 16%; left: 22%; font-size: 22px; }
+.brand-art-star-two { right: 18%; top: 26%; font-size: 29px; }
+.brand-art-star-three { left: 18%; bottom: 18%; font-size: 42px; color: rgba(178,242,229,.60); }
+.brand-art-float { position: absolute; z-index: 4; padding: 12px 14px; border: 1px solid rgba(230,250,245,.18); border-radius: 13px; background: linear-gradient(135deg, rgba(255,255,255,.12), rgba(255,255,255,.045)); box-shadow: 0 12px 30px rgba(0,0,0,.12); backdrop-filter: blur(10px); }
+.brand-art-float-top { top: 23px; right: 0; }
+.brand-art-float-label { display: block; margin-bottom: 6px; color: #a8d9ce; font-size: 7px; font-weight: 900; letter-spacing: .13em; }
+.brand-art-float strong { display: block; color: #effbf7; font-size: 14px; line-height: 1.24; letter-spacing: -.035em; }
+.brand-art-float-bottom { left: 0; bottom: 23px; display: flex; align-items: center; gap: 10px; color: #c1ddd6; font-size: 7px; line-height: 1.6; letter-spacing: .1em; }
+.brand-art-float-bottom strong { color: #f1fbf7; font-size: 8px; letter-spacing: .15em; }
+.brand-art-mini-mark { display: flex; align-items: center; justify-content: center; width: 28px; height: 28px; border: 1px solid rgba(192,242,230,.27); border-radius: 9px; color: #83d8c9; font-size: 17px; }
+.brand-art-footer { gap: 10px; color: rgba(222,241,235,.64); font-size: 8px; font-weight: 850; letter-spacing: .13em; }
+.brand-art-footer-line { height: 1px; min-width: 18px; flex: 1; background: linear-gradient(90deg, rgba(116,217,200,.55), rgba(116,217,200,.04)); }
+.brand-art-footer span:last-child { color: #c4e8df; white-space: nowrap; }
+@media (max-width: 980px) {
+  .hero-brand-art { min-height: 445px; }
+  .brand-art-scene { height: 342px; }
+}
+@media (max-width: 680px) {
+  .hero-brand-art { min-height: 330px; padding: 14px 14px 12px; border-radius: 23px; }
+  .hero-brand-art::before { width: 355px; height: 355px; top: 48%; }
+  .hero-brand-art::after { width: 270px; height: 270px; top: 48%; }
+  .brand-art-header { gap: 8px; }
+  .brand-art-kicker { padding: 7px 9px; font-size: 8px; letter-spacing: .1em; }
+  .brand-art-index { font-size: 8px; }
+  .brand-art-scene { height: 263px; margin-top: 0; }
+  .brand-art-orbit-one { width: 285px; height: 132px; }
+  .brand-art-orbit-two { width: 218px; height: 260px; }
+  .brand-art-orbit-three { width: 330px; height: 195px; }
+  .brand-art-core { width: 158px; }
+  .brand-art-core::before { inset: 9px; }
+  .brand-art-core::after { inset: -10px; }
+  .brand-art-monogram { font-size: 51px; }
+  .brand-art-core-caption { margin-top: 9px; font-size: 6px; }
+  .brand-art-star-one { top: 12%; left: 13%; font-size: 17px; }
+  .brand-art-star-two { right: 10%; top: 22%; font-size: 23px; }
+  .brand-art-star-three { left: 11%; bottom: 12%; font-size: 31px; }
+  .brand-art-float { padding: 9px 10px; border-radius: 10px; }
+  .brand-art-float-top { top: 15px; right: 0; }
+  .brand-art-float-label { margin-bottom: 4px; font-size: 6px; }
+  .brand-art-float strong { font-size: 11px; }
+  .brand-art-float-bottom { left: 0; bottom: 12px; gap: 7px; font-size: 6px; }
+  .brand-art-mini-mark { width: 23px; height: 23px; font-size: 13px; }
+  .brand-art-float-bottom strong { font-size: 7px; }
+  .brand-art-footer { font-size: 7px; letter-spacing: .09em; }
+}
