@@ -9,7 +9,7 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { z } from 'zod';
 import { createDatabase } from './database.js';
-import { createHash } from 'node:crypto';
+import { createHash, randomBytes } from 'node:crypto';
 import { mkdir } from 'node:fs/promises';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -34,7 +34,7 @@ if (!ADMIN_EMAIL || !ADMIN_PASSWORD) {
 }
 
 const db = await createDatabase();
-
+db.data.checkoutTokens ||= {};
 
 const app = express();
 app.set('trust proxy', 1);
@@ -47,6 +47,7 @@ app.use(rateLimit({ windowMs: 15 * 60 * 1000, limit: 300, standardHeaders: 'draf
 app.use(express.static(path.join(__dirname, 'public')));
 
 const authLimiter = rateLimit({ windowMs: 15 * 60 * 1000, limit: 20, standardHeaders: 'draft-8', legacyHeaders: false });
+const orderLimiter = rateLimit({ windowMs: 15 * 60 * 1000, limit: 12, standardHeaders: 'draft-8', legacyHeaders: false, message: { error: 'Too many checkout attempts. Please try again shortly.' } });
 const emailSchema = z.string().trim().email().max(254);
 const registerSchema = z.object({
   name: z.string().trim().min(2).max(80),
@@ -243,7 +244,7 @@ app.post('/api/newsletter', async (req, res) => {
   res.status(201).json({ ok: true });
 });
 
-app.post('/api/orders', requireAuth, async (req, res) => {
+app.post('/api/orders', orderLimiter, async (req, res) => {
   const parsed = orderSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: 'Invalid order details.' });
  const {
@@ -262,6 +263,8 @@ app.post('/api/orders', requireAuth, async (req, res) => {
   postal_code,
   items
 } = parsed.data;
+  const currentUser = getSessionUser(req);
+  const checkoutToken = randomBytes(32).toString('hex');
   const productMap = new Map(db.data.products.map(p => [p.id, p]));
   const normalizedItems = items.map(item => {
     const p = productMap.get(item.id);
@@ -272,7 +275,7 @@ app.post('/api/orders', requireAuth, async (req, res) => {
   const shipping = 0;
   const order = {
     id: nextId('DG', db.data.orders),
-    userId: req.user.id,
+    userId: currentUser?.id ?? null,
     createdAt: new Date().toISOString(),
     status: 'Awaiting payment',
     paymentStatus: 'Pending',
@@ -289,24 +292,33 @@ country,
     subtotal, shipping, total: subtotal + shipping
   };
   db.data.orders.unshift(order);
+  db.data.checkoutTokens[order.id] = {
+    hash: createHash('sha256').update(checkoutToken).digest('hex'),
+    expiresAt: Date.now() + 30 * 60 * 1000
+  };
   await db.write();
-  res.status(201).json({ order: { id: order.id, status: order.status, createdAt: order.createdAt, total: order.total } });
+  res.status(201).json({
+    order: { id: order.id, status: order.status, createdAt: order.createdAt, total: order.total },
+    checkoutToken
+  });
 });
-app.post('/api/payment/create', requireAuth, async (req, res) => {
+app.post('/api/payment/create', orderLimiter, async (req, res) => {
   const parsed = z.object({
-    orderId: z.string().trim().min(3)
+    orderId: z.string().trim().min(3),
+    checkoutToken: z.string().length(64)
   }).safeParse(req.body);
 
   if (!parsed.success) {
     return res.status(400).json({ error: 'Invalid order ID.' });
   }
 
-  const order = db.data.orders.find(
-    o => o.id === parsed.data.orderId && o.userId === req.user.id
-  );
+  const order = db.data.orders.find(o => o.id === parsed.data.orderId);
+  const tokenRecord = order ? db.data.checkoutTokens?.[order.id] : null;
+  const submittedTokenHash = createHash('sha256').update(parsed.data.checkoutToken).digest('hex');
 
-  if (!order) {
-    return res.status(404).json({ error: 'Order not found.' });
+  // The random token authorizes payment for this order without requiring an account.
+  if (!order || !tokenRecord || tokenRecord.expiresAt < Date.now() || tokenRecord.hash !== submittedTokenHash) {
+    return res.status(404).json({ error: 'Checkout session expired. Please start checkout again.' });
   }
 
   if (!EPOINT_PUBLIC_KEY || !EPOINT_PRIVATE_KEY) {
@@ -374,6 +386,7 @@ app.post('/api/payment/callback', async (req, res) => {
   order.paymentTransaction = decoded.transaction || null;
   order.paymentAmount = decoded.amount || null;
   order.paymentUpdatedAt = new Date().toISOString();
+  if (db.data.checkoutTokens) delete db.data.checkoutTokens[order.id];
 } else {
   order.paymentStatus = 'Failed';
   order.status = 'Awaiting payment';
