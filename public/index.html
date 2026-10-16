@@ -59,11 +59,11 @@
   <div class="container hero-grid">
     <div class="hero-copy">
       <p class="eyebrow hero-market-label" data-i18n="markets">USA • CANADA • UK</p>
-      <h1>Discover products <span>that fit your everyday.</span></h1>
-      <p class="hero-lede">Curated gadgets, home finds, pet favorites and lifestyle essentials — with simple shopping, customer accounts and order tracking.</p>
+      <h1>Good finds for a better <span>everyday.</span></h1>
+      <p class="hero-lede">Discover useful gadgets, home essentials and pet favorites for the little things that make life better.</p>
       <div class="hero-actions">
-        <a class="primary-button hero-shop-button" href="#shop">Shop now <span aria-hidden="true">↗</span></a>
-        <button class="secondary-button hero-wishlist-button" onclick="openWishlist()"><span aria-hidden="true">♡</span> View wishlist</button>
+        <a class="primary-button hero-shop-button" href="#shop">Explore the collection <span aria-hidden="true">↗</span></a>
+        <button class="secondary-button hero-wishlist-button" onclick="setCategory('Pet')">Shop pet favorites <span aria-hidden="true">↗</span></button>
       </div>
       <div class="trust-row" aria-label="Shopping benefits">
         <span><i aria-hidden="true">✓</i> Guest checkout</span>
@@ -72,26 +72,27 @@
       </div>
     </div>
 
-    <div class="hero-showcase" id="heroShowcase" aria-label="Featured DreamGrind product">
+    <div class="hero-showcase hero-category-showcase" id="heroShowcase" aria-label="Explore DreamGrind collections">
       <div class="hero-showcase-glow" aria-hidden="true"></div>
       <div class="hero-showcase-top">
         <span class="hero-showcase-tag"><span class="hero-tag-dot"></span> THE EVERYDAY EDIT</span>
-        <span class="hero-showcase-mark">DREAMGRIND / FINDS</span>
+        <span class="hero-showcase-mark">DREAMGRIND / COLLECTIONS</span>
       </div>
-      <button class="hero-featured-media" id="heroFeaturedMedia" type="button" aria-label="View featured product">
-        <div class="hero-empty-art" aria-hidden="true"><span>✦</span><small>FIND SOMETHING GOOD</small></div>
-      </button>
-      <div class="hero-product-card" id="heroProductCard" role="button" tabindex="0" aria-label="Open featured product">
-        <div class="hero-product-card-copy">
-          <span class="hero-product-kicker"><span class="hero-tag-dot"></span><span id="heroProductCategory">FEATURED FIND</span></span>
-          <strong id="heroProductTitle">Thoughtful finds for everyday life</strong>
-        </div>
-        <div class="hero-product-price-wrap">
-          <span class="hero-product-price-label">DISCOVER</span>
-          <strong id="heroProductPrice">Explore the collection ↗</strong>
-        </div>
+      <div class="hero-category-grid" id="heroCategoryGrid">
+        <button class="hero-category-card hero-category-card-main" type="button" onclick="openHeroCategory('Gadgets')" aria-label="Explore gadgets">
+          <span class="hero-category-media"><span class="hero-category-placeholder" aria-hidden="true">✧</span></span>
+          <span class="hero-category-copy"><span class="hero-category-overline">SMART LITTLE UPGRADES</span><span class="hero-category-title-row"><strong>Gadgets</strong><span class="hero-category-arrow" aria-hidden="true">↗</span></span><span class="hero-category-description">Useful tech for everyday life</span></span>
+        </button>
+        <button class="hero-category-card" type="button" onclick="openHeroCategory('Home')" aria-label="Explore home essentials">
+          <span class="hero-category-media"><span class="hero-category-placeholder" aria-hidden="true">⌂</span></span>
+          <span class="hero-category-copy"><span class="hero-category-overline">MAKE IT YOUR SPACE</span><span class="hero-category-title-row"><strong>Home finds</strong><span class="hero-category-arrow" aria-hidden="true">↗</span></span></span>
+        </button>
+        <button class="hero-category-card" type="button" onclick="openHeroCategory('Pet')" aria-label="Explore pet favorites">
+          <span class="hero-category-media"><span class="hero-category-placeholder" aria-hidden="true">🐾</span></span>
+          <span class="hero-category-copy"><span class="hero-category-overline">FOR YOUR COMPANIONS</span><span class="hero-category-title-row"><strong>Pet favorites</strong><span class="hero-category-arrow" aria-hidden="true">↗</span></span></span>
+        </button>
       </div>
-      <div class="hero-showcase-bottom"><span>Useful little upgrades.</span><span>Made to be discovered <b aria-hidden="true">↗</b></span></div>
+      <div class="hero-showcase-bottom"><span>Useful things for everyday life.</span><span>Find your next favorite <b aria-hidden="true">↗</b></span></div>
     </div>
   </div>
 </section>
