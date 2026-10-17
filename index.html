@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="DreamGrind — a modern storefront for customers in the USA, Canada and the UK.">
+  <meta name="theme-color" content="#111111">
+  <title>DreamGrind — Smart Shopping Starts Here</title>
+  <link rel="preconnect" href="https://images.unsplash.com">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="announcement"><div class="container announcement-inner"><span>Free shipping on selected orders</span><button class="link-btn" onclick="showPolicy('shipping')">Shipping info</button></div></div>
+<div class="locale-bar">
+  <div class="container locale-inner">
+    <span>Shipping to:</span>
+
+    <select id="countryPicker" onchange="setCountry(this.value)" aria-label="Shipping country">
+      <option value="US">🇺🇸 United States</option>
+      <option value="CA">🇨🇦 Canada</option>
+      <option value="UK">🇬🇧 United Kingdom</option>
+    </select>
+
+    <span class="currency-badge" id="currencyLabel">USD</span>
+<span class="currency-note">Prices shown in your selected currency</span>
+    <div class="language-switcher">
+  <button type="button" onclick="setLanguage('en')">EN</button>
+  <span>|</span>
+  <button type="button" onclick="setLanguage('az')">AZ</button>
+</div>
+  </div>
+</div>
+  <header class="site-header">
+    <div class="container header-row">
+      <button class="mobile-menu-btn icon-button" aria-label="Open menu" onclick="toggleMobileMenu()">☰</button>
+      <a class="brand" href="#top" onclick="goTop(event)">DreamGrind</a>
+      <nav id="mainNav" class="main-nav" aria-label="Main navigation">
+        <a href="#shop">Shop</a><a href="#categories">Categories</a><a href="#about">About</a><a href="#track">Track order</a>
+      </nav>
+      <div class="header-actions">
+        <button class="icon-button" data-i18n="search" onclick="toggleSearch()">⌕</button>
+        <button class="icon-button" aria-label="Wishlist" onclick="openWishlist()">♡ <span id="wishCount" class="count-pill">0</span></button>
+        <button class="icon-button" aria-label="Account" onclick="openAccount()">◯</button>
+        <button class="cart-button" onclick="openCart()"><span data-i18n="cart">Cart</span> <span id="cartCount">0</span></button>
+      </div>
+    </div>
+    <div id="searchPanel" class="search-panel hidden"><div class="container search-inner"><input id="searchInput" type="search" placeholder="Search products, categories or keywords…" autocomplete="off"><button class="icon-button" onclick="toggleSearch()">✕</button></div></div>
+    <div id="mobileNav" class="mobile-nav hidden">
+  <a href="#shop" data-i18n="shop">Shop</a>
+<a href="#about" data-i18n="about">About</a>
+<a href="#track" data-i18n="trackOrder">Track order</a>
+<a href="#categories" data-i18n="categories">Categories</a>
+  <button type="button" onclick="closeMobileMenu();openAccount()">My account</button>
+</div>
+  </header>
+
+  <main id="top">
+    <section class="hero-section">
+  <div class="container hero-grid">
+    <div class="hero-copy">
+      <p class="eyebrow hero-market-label" data-i18n="markets">USA • CANADA • UK</p>
+      <h1>Good finds for a better <span>everyday.</span></h1>
+      <p class="hero-lede">Discover useful gadgets, home essentials and pet favorites for the little things that make life better.</p>
+      <div class="hero-actions">
+        <a class="primary-button hero-shop-button" href="#shop">Explore the collection <span aria-hidden="true">↗</span></a>
+        <button class="secondary-button hero-wishlist-button" onclick="setCategory('Pet')">Shop pet favorites <span aria-hidden="true">↗</span></button>
+      </div>
+      <div class="trust-row" aria-label="Shopping benefits">
+        <span><i aria-hidden="true">✓</i> Guest checkout</span>
+        <span><i aria-hidden="true">✓</i> Epoint payment</span>
+        <span><i aria-hidden="true">✓</i> Customer support</span>
+      </div>
+    </div>
+
+    <aside class="hero-brand-art" aria-label="DreamGrind brand artwork">
+      <div class="brand-art-header">
+        <span class="brand-art-kicker"><span class="brand-art-live-dot" aria-hidden="true"></span> THE EVERYDAY EDIT</span>
+        <span class="brand-art-index">DG / 01</span>
+      </div>
+
+      <div class="brand-art-scene" aria-hidden="true">
+        <span class="brand-art-orbit brand-art-orbit-one"></span>
+        <span class="brand-art-orbit brand-art-orbit-two"></span>
+        <span class="brand-art-orbit brand-art-orbit-three"></span>
+        <span class="brand-art-star brand-art-star-one">✦</span>
+        <span class="brand-art-star brand-art-star-two">✧</span>
+        <span class="brand-art-star brand-art-star-three">·</span>
+
+        <div class="brand-art-core">
+          <span class="brand-art-core-shine"></span>
+          <span class="brand-art-monogram">DG</span>
+          <span class="brand-art-core-caption">FIND YOUR EVERYDAY</span>
+        </div>
+
+        <div class="brand-art-float brand-art-float-top">
+          <span class="brand-art-float-label">CURATED WITH INTENTION</span>
+          <strong>Little things.<br>Better days.</strong>
+        </div>
+        <div class="brand-art-float brand-art-float-bottom">
+          <span class="brand-art-mini-mark">✳</span>
+          <span>THOUGHTFUL FINDS<br><strong>MADE SIMPLE</strong></span>
+        </div>
+      </div>
+
+      <div class="brand-art-footer">
+        <span>DISCOVER</span><span class="brand-art-footer-line"></span><span>YOUR NEXT FAVORITE ↗</span>
+      </div>
+    </aside>
+  </div>
+</section>
+
+    <section id="categories" class="section container"><div class="section-heading"><div><p class="eyebrow"data-i18n="browse">Browse</p><h2>Shop by category</h2></div><button class="text-button" onclick="setCategory('All')">View all</button></div><div class="category-grid"><button class="category-card" onclick="setCategory('Gadgets')"><span>⚡</span><strong>Gadgets</strong><small>Useful tech & accessories</small></button><button class="category-card" onclick="setCategory('Home')"><span>⌂</span><strong>Home</strong><small>Simple everyday upgrades</small></button><button class="category-card" onclick="setCategory('Pet')"><span>🐾</span><strong>Pet</strong><small>Fun finds for companions</small></button><button class="category-card" onclick="setCategory('Lifestyle')"><span>✦</span><strong>Lifestyle</strong><small>Travel, desk & daily carry</small></button><button class="category-card" onclick="setCategory('General')"><span>✦</span><strong>General</strong><small>Everyday products & more</small></button></div></section>
+
+    <section id="shop" class="section container"><div class="section-heading shop-heading"><div><p class="eyebrow"data-i18n="shop">Shop</p><h2 id="shopTitle">Trending products</h2></div><div class="shop-controls"><div id="categoryChips" class="chip-row"><button class="chip active" onclick="setCategory('All')">All</button><button class="chip" onclick="setCategory('Gadgets')">Gadgets</button><button class="chip" onclick="setCategory('Home')">Home</button><button class="chip" onclick="setCategory('Pet')">Pet</button><button class="chip" onclick="setCategory('Lifestyle')">Lifestyle</button><button class="chip" onclick="setCategory('General')">General</button></div><select id="sortSelect" aria-label="Sort products" onchange="renderProducts()"><option value="featured">Featured</option><option value="rating">Top rated</option><option value="low">Price: low to high</option><option value="high">Price: high to low</option></select></div></div><div id="productGrid" class="product-grid" aria-live="polite"></div><div id="emptyResults" class="empty-state hidden"><div class="empty-icon">⌕</div><h3>No products found</h3><p>Try another search or category.</p><button class="secondary-button" onclick="clearFilters()">Clear filters</button></div></section>
+
+    <section id="about" class="about-section"><div class="container about-grid"><div><p class="eyebrow"data-i18n="whyDreamGrind">Why DreamGrind</p><h2>A small store with a thoughtful shopping experience.</h2></div><div class="about-points"><div><strong>Curated</strong><p>Products can be selected with usefulness and presentation in mind.</p></div><div><strong>Transparent</strong><p>Shipping, order status and support information are designed to be visible.</p></div><div><strong>Human support</strong><p>Customers can contact the store directly rather than being left guessing.</p></div></div></div></section>
+
+    <section id="track" class="track-section"><div class="container track-layout"><div><p class="eyebrow"data-i18n"orderStatus">Order status</p><h2>Track your order</h2><p class="muted">Enter your DreamGrind order number. The current version shows the interface; a real carrier API will be connected later.</p></div><div class="track-card"><div class="track-input-row"><input id="trackInput" placeholder="Example: DG10001" aria-label="Order number"><button class="primary-button" onclick="trackOrder()">Track</button></div><div id="trackingResult"></div></div></div></section>
+
+    <section class="newsletter-section"><div class="container newsletter-card"><div><p class="eyebrow"data-i18n"stayInLoop">Stay in the loop</p><h2>Get new product drops in your inbox.</h2></div><form class="newsletter-form" onsubmit="subscribe(event)"><input id="newsletterEmail" type="email" placeholder="you@example.com" required><button class="primary-button">Subscribe</button></form></div></section>
+  </main>
+
+  <footer class="site-footer"><div class="container footer-grid"><div class="footer-brand"><div class="brand">DreamGrind</div><p class="muted">A modern storefront foundation for international customers.</p><div class="footer-business">
+  <strong>Business Information</strong>
+  <p>DreamGrind</p>
+  <p>Individual Entrepreneur: Ehtiram Abdullayev</p>
+  <p>Legal address: Yukhari Laki, Agdash District, Azerbaijan</p>
+  <p>Business activity: E-commerce and retail sales</p>
+</div></div><div><strong>Customer</strong><button onclick="openAccount()">My account</button><button onclick="openWishlist()">Wishlist</button><button onclick="openCart()">Cart</button></div><div><strong>Support</strong><button onclick="showPolicy('shipping')">Shipping</button><button onclick="showPolicy('returns')">Returns & refunds</button><button onclick="openSupport()">Contact us</button></div><div><strong>Legal</strong><button onclick="showPolicy('privacy')">Privacy</button><button onclick="showPolicy('terms')">Terms</button><button onclick="showPolicy('cookies')">Cookies</button></div></div><div class="container footer-bottom"><span>© 2026 DreamGrind</span><button onclick="openSupport()">Message the store</button></div></footer>
+
+  <div id="modalRoot"></div><div id="toast" class="toast hidden"></div>
+  <script src="script.js"></script>
+</body>
+</html>
