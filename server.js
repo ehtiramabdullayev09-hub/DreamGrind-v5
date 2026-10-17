@@ -24,6 +24,15 @@ const EPOINT_PUBLIC_KEY = process.env.EPOINT_PUBLIC_KEY || '';
 const EPOINT_PRIVATE_KEY = process.env.EPOINT_PRIVATE_KEY || '';
 const PAYMENT_BASE_URL = process.env.PAYMENT_BASE_URL || `http://localhost:${PORT}`;
 const USD_TO_AZN = 1.70;
+function effectiveProductPrice(product, now = Date.now()) {
+  const current = Number(product?.price || 0);
+  const compareAt = Number(product?.oldPrice || 0);
+  if (compareAt > current && product?.saleEndsAt) {
+    const end = Date.parse(product.saleEndsAt);
+    if (Number.isFinite(end) && end <= now) return compareAt;
+  }
+  return current;
+}
 if (!JWT_SECRET || JWT_SECRET.length < 32) {
   console.error('JWT_SECRET must be set and at least 32 characters long.');
   process.exit(1);
@@ -269,7 +278,7 @@ app.post('/api/orders', orderLimiter, async (req, res) => {
   const normalizedItems = items.map(item => {
     const p = productMap.get(item.id);
     if (!p) throw new Error(`Unknown product: ${item.id}`);
-    return { id: p.id, title: p.title, unitPrice: Number((p.price * USD_TO_AZN).toFixed(2)), qty: item.qty, variant: item.variant ?? null };
+    return { id: p.id, title: p.title, unitPrice: Number((effectiveProductPrice(p) * USD_TO_AZN).toFixed(2)), qty: item.qty, variant: item.variant ?? null };
   });
   const subtotal = normalizedItems.reduce((s, x) => s + x.unitPrice * x.qty, 0);
   const shipping = 0;
@@ -487,6 +496,8 @@ app.patch('/api/admin/orders/:id', requireAdmin, async (req, res) => {
 const adminProductSchema = z.object({
   title: z.string().trim().min(2).max(160),
   price: z.number().finite().positive().max(100000),
+  oldPrice: z.number().finite().positive().max(100000).nullable().optional(),
+  saleEndsAt: z.string().datetime().nullable().optional(),
   description: z.string().trim().max(10000).optional(),
 
   images: z.array(
@@ -501,10 +512,14 @@ const adminProductSchema = z.object({
 app.post('/api/admin/products', requireAdmin, async (req, res) => {
   const parsed = adminProductSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: 'Invalid product details.' });
+  if (parsed.data.oldPrice != null && parsed.data.oldPrice <= parsed.data.price) return res.status(400).json({ error: 'Compare-at price must be higher than the current price.' });
+  if (parsed.data.saleEndsAt && parsed.data.oldPrice == null) return res.status(400).json({ error: 'A sale end time requires a compare-at price.' });
   const product = {
     id: Math.max(0, ...db.data.products.map(p => p.id || 0)) + 1,
     title: parsed.data.title,
     price: Number(Number(parsed.data.price).toFixed(2)),
+    oldPrice: parsed.data.oldPrice ?? null,
+    saleEndsAt: parsed.data.saleEndsAt ?? null,
     description: parsed.data.description ?? '',
     images: parsed.data.images || [],
 video: parsed.data.video || null,
@@ -523,6 +538,11 @@ app.patch('/api/admin/products/:id', requireAdmin, async (req, res) => {
   if (!parsed.success) return res.status(400).json({ error: 'Invalid product details.' });
   const product = db.data.products.find(p => String(p.id) === String(req.params.id));
   if (!product) return res.status(404).json({ error: 'Product not found.' });
+  const nextPrice = parsed.data.price !== undefined ? parsed.data.price : Number(product.price);
+  const nextOldPrice = parsed.data.oldPrice !== undefined ? parsed.data.oldPrice : (product.oldPrice ?? null);
+  const nextSaleEndsAt = parsed.data.saleEndsAt !== undefined ? parsed.data.saleEndsAt : (product.saleEndsAt ?? null);
+  if (nextOldPrice != null && nextOldPrice <= nextPrice) return res.status(400).json({ error: 'Compare-at price must be higher than the current price.' });
+  if (nextSaleEndsAt && nextOldPrice == null) return res.status(400).json({ error: 'A sale end time requires a compare-at price.' });
   for (const [key, value] of Object.entries(parsed.data)) {
     if (value !== undefined) product[key] = value;
   }
