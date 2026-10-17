@@ -33,6 +33,44 @@ function effectiveProductPrice(product, now = Date.now()) {
   }
   return current;
 }
+function normalizeVariantValue(value) {
+  return String(value ?? '').trim().toLocaleLowerCase('en-US');
+}
+function findVariantCombination(product, color, size) {
+  const variants = Array.isArray(product?.variantCombinations) ? product.variantCombinations : [];
+  return variants.find(variant => normalizeVariantValue(variant.color) === normalizeVariantValue(color)
+    && normalizeVariantValue(variant.size) === normalizeVariantValue(size)) || null;
+}
+function effectiveVariantPrice(product, variant, now = Date.now()) {
+  if (!variant) return effectiveProductPrice(product, now);
+  const current = Number(product?.price || 0);
+  const compareAt = Number(product?.oldPrice || 0);
+  const variantPrice = Number(variant.price || 0);
+  if (compareAt > current && current > 0 && product?.saleEndsAt) {
+    const end = Date.parse(product.saleEndsAt);
+    if (Number.isFinite(end) && end <= now) return Number((variantPrice * compareAt / current).toFixed(2));
+  }
+  return Number(variantPrice.toFixed(2));
+}
+function validateVariantCombinations(variants) {
+  if (!Array.isArray(variants) || variants.length === 0) return null;
+  const seen = new Set();
+  for (const variant of variants) {
+    const color = normalizeVariantValue(variant.color);
+    const size = normalizeVariantValue(variant.size);
+    if (!color && !size) return 'Each variant must include a color or a size.';
+    const key = JSON.stringify([color, size]);
+    if (seen.has(key)) return 'Each color/size combination must be unique.';
+    seen.add(key);
+  }
+  const hasColor = variants.some(v => normalizeVariantValue(v.color));
+  const hasNoColor = variants.some(v => !normalizeVariantValue(v.color));
+  const hasSize = variants.some(v => normalizeVariantValue(v.size));
+  const hasNoSize = variants.some(v => !normalizeVariantValue(v.size));
+  if (hasColor && hasNoColor) return 'Use a color for every variant, or omit color for every variant.';
+  if (hasSize && hasNoSize) return 'Use a size for every variant, or omit size for every variant.';
+  return null;
+}
 if (!JWT_SECRET || JWT_SECRET.length < 32) {
   console.error('JWT_SECRET must be set and at least 32 characters long.');
   process.exit(1);
@@ -79,7 +117,7 @@ zipCode: z.string().trim().max(30).optional(),
 postalCode: z.string().trim().max(30).optional(),
 postal_code: z.string().trim().max(30).optional(),
   country: z.enum(['United States', 'Canada', 'United Kingdom']),
-  items: z.array(z.object({ id: z.coerce.number().int().positive(), qty: z.coerce.number().int().min(1).max(20), variant: z.string().max(80).nullable().optional() })).min(1).max(50)
+  items: z.array(z.object({ id: z.coerce.number().int().positive(), qty: z.coerce.number().int().min(1).max(20), variant: z.string().max(180).nullable().optional(), variantColor: z.string().trim().max(60).nullable().optional(), variantSize: z.string().trim().max(60).nullable().optional() })).min(1).max(50)
 });
 const messageSchema = z.object({ text: z.string().trim().min(1).max(2000) });
 function createEpointSignature(data) {
@@ -275,11 +313,34 @@ app.post('/api/orders', orderLimiter, async (req, res) => {
   const currentUser = getSessionUser(req);
   const checkoutToken = randomBytes(32).toString('hex');
   const productMap = new Map(db.data.products.map(p => [p.id, p]));
-  const normalizedItems = items.map(item => {
+  const normalizedItems = [];
+  for (const item of items) {
     const p = productMap.get(item.id);
-    if (!p) throw new Error(`Unknown product: ${item.id}`);
-    return { id: p.id, title: p.title, unitPrice: Number((effectiveProductPrice(p) * USD_TO_AZN).toFixed(2)), qty: item.qty, variant: item.variant ?? null };
-  });
+    if (!p) return res.status(400).json({ error: 'One of the selected products is no longer available.' });
+    const combinations = Array.isArray(p.variantCombinations) ? p.variantCombinations : [];
+    let selectedCombination = null;
+    if (combinations.length) {
+      selectedCombination = findVariantCombination(p, item.variantColor, item.variantSize);
+      if (!selectedCombination) {
+        return res.status(400).json({ error: `Please choose a valid color and size for “${p.title}”.` });
+      }
+    } else if (item.variantColor || item.variantSize) {
+      return res.status(400).json({ error: `The options for “${p.title}” have changed. Please add it to your cart again.` });
+    }
+    const variantLabel = selectedCombination
+      ? [selectedCombination.color ? `Color: ${selectedCombination.color}` : '', selectedCombination.size ? `Size: ${selectedCombination.size}` : ''].filter(Boolean).join(' · ')
+      : (item.variant ?? null);
+    const unitPriceUsd = selectedCombination ? effectiveVariantPrice(p, selectedCombination) : effectiveProductPrice(p);
+    normalizedItems.push({
+      id: p.id,
+      title: p.title,
+      unitPrice: Number((unitPriceUsd * USD_TO_AZN).toFixed(2)),
+      qty: item.qty,
+      variant: variantLabel,
+      variantColor: selectedCombination?.color ?? null,
+      variantSize: selectedCombination?.size ?? null
+    });
+  }
   const subtotal = normalizedItems.reduce((s, x) => s + x.unitPrice * x.qty, 0);
   const shipping = 0;
   const order = {
@@ -499,6 +560,11 @@ const adminProductSchema = z.object({
   oldPrice: z.number().finite().positive().max(100000).nullable().optional(),
   saleEndsAt: z.string().datetime().nullable().optional(),
   description: z.string().trim().max(10000).optional(),
+  variantCombinations: z.array(z.object({
+    color: z.string().trim().min(1).max(60).nullable(),
+    size: z.string().trim().min(1).max(60).nullable(),
+    price: z.number().finite().positive().max(100000)
+  })).max(100).optional(),
 
   images: z.array(
     z.string().trim().url().max(1000)
@@ -514,6 +580,8 @@ app.post('/api/admin/products', requireAdmin, async (req, res) => {
   if (!parsed.success) return res.status(400).json({ error: 'Invalid product details.' });
   if (parsed.data.oldPrice != null && parsed.data.oldPrice <= parsed.data.price) return res.status(400).json({ error: 'Compare-at price must be higher than the current price.' });
   if (parsed.data.saleEndsAt && parsed.data.oldPrice == null) return res.status(400).json({ error: 'A sale end time requires a compare-at price.' });
+  const variantError = validateVariantCombinations(parsed.data.variantCombinations || []);
+  if (variantError) return res.status(400).json({ error: variantError });
   const product = {
     id: Math.max(0, ...db.data.products.map(p => p.id || 0)) + 1,
     title: parsed.data.title,
@@ -521,6 +589,7 @@ app.post('/api/admin/products', requireAdmin, async (req, res) => {
     oldPrice: parsed.data.oldPrice ?? null,
     saleEndsAt: parsed.data.saleEndsAt ?? null,
     description: parsed.data.description ?? '',
+    variantCombinations: parsed.data.variantCombinations || [],
     images: parsed.data.images || [],
 video: parsed.data.video || null,
     stock: parsed.data.stock ?? 0,
@@ -543,6 +612,8 @@ app.patch('/api/admin/products/:id', requireAdmin, async (req, res) => {
   const nextSaleEndsAt = parsed.data.saleEndsAt !== undefined ? parsed.data.saleEndsAt : (product.saleEndsAt ?? null);
   if (nextOldPrice != null && nextOldPrice <= nextPrice) return res.status(400).json({ error: 'Compare-at price must be higher than the current price.' });
   if (nextSaleEndsAt && nextOldPrice == null) return res.status(400).json({ error: 'A sale end time requires a compare-at price.' });
+  const variantError = validateVariantCombinations(parsed.data.variantCombinations || product.variantCombinations || []);
+  if (variantError) return res.status(400).json({ error: variantError });
   for (const [key, value] of Object.entries(parsed.data)) {
     if (value !== undefined) product[key] = value;
   }
