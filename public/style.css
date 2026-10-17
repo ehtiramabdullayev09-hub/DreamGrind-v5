@@ -918,3 +918,60 @@
   .product-page-confidence { margin-top: 19px; }
   .product-page-details-text { margin-top: 22px; }
 }
+
+
+/* Product color and size variation selector */
+.product-variant-picker {
+  display: grid;
+  gap: 16px;
+  margin-top: 20px;
+  min-width: 0;
+}
+.variant-choice-group { display: grid; gap: 9px; min-width: 0; }
+.variant-choice-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+.variant-choice-heading .product-page-label { margin: 0; color: #263333; font-size: 13px; }
+.variant-choice-heading > span { color: #69716f; font-size: 12px; }
+.variant-color-options, .variant-size-options { display: flex; flex-wrap: wrap; gap: 8px; }
+.variant-color-button, .variant-size-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 42px;
+  border: 1px solid #dce2e0;
+  border-radius: 11px;
+  padding: 8px 12px;
+  color: #202928;
+  background: #fff;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: border-color .16s ease, background .16s ease, box-shadow .16s ease;
+}
+.variant-color-button:hover, .variant-size-button:hover { border-color: #83b9ad; }
+.variant-color-button.active, .variant-size-button.active {
+  border-color: #187d72;
+  background: #eff8f5;
+  box-shadow: 0 0 0 2px rgba(24,125,114,.10);
+}
+.variant-color-button:focus-visible, .variant-size-button:focus-visible { outline: 3px solid rgba(24,125,114,.35); outline-offset: 2px; }
+.variant-color-swatch {
+  width: 20px;
+  height: 20px;
+  flex: 0 0 20px;
+  border: 1px solid rgba(18,28,27,.20);
+  border-radius: 50%;
+  background: var(--variant-swatch, #a8b9b4);
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,.18);
+}
+.variant-color-button[data-variant-value="White"] .variant-color-swatch,
+.variant-color-button[data-variant-value="white"] .variant-color-swatch { border-color: #c6ceca; }
+.variant-color-button:disabled, .variant-size-button:disabled { opacity: .38; cursor: not-allowed; background: #f5f6f5; }
+.variant-combination-label { margin: -4px 0 0; color: #596663; font-size: 12px; line-height: 1.5; }
+.price-from-label { color: #747c79; font-size: 12px; font-weight: 750; letter-spacing: 0; }
+@media (max-width: 760px) {
+  .product-variant-picker { gap: 14px; margin-top: 18px; }
+  .variant-color-button, .variant-size-button { min-height: 40px; padding: 7px 10px; font-size: 12px; }
+  .variant-color-swatch { width: 18px; height: 18px; flex-basis: 18px; }
+}
