@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>DreamGrind Admin</title>
 <style>
-:root{font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#111827;background:#f3f4f6}*{box-sizing:border-box}body{margin:0}.wrap{max-width:1250px;margin:0 auto;padding:24px}.top{display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap}.brand{font-size:28px;font-weight:800;letter-spacing:-.03em}.muted{color:#6b7280}.actions{display:flex;gap:10px;flex-wrap:wrap}button{border:1px solid #d1d5db;background:#111827;color:#fff;border-radius:10px;padding:10px 14px;cursor:pointer}button.secondary{background:#fff;color:#111827}button.danger{background:#b91c1c;border-color:#b91c1c}.panel{background:#fff;border:1px solid #e5e7eb;border-radius:16px;padding:18px;margin-top:18px;box-shadow:0 10px 30px rgba(0,0,0,.04)}.login{max-width:420px;margin:70px auto}.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}.metric{padding:18px;border-radius:14px;background:#fff;border:1px solid #e5e7eb}.metric span{display:block;color:#6b7280;font-size:13px}.metric strong{display:block;font-size:30px;margin-top:6px}.tabs{display:flex;gap:8px;flex-wrap:wrap;margin-top:16px}.tab{background:#fff;color:#111827}.tab.active{background:#111827;color:#fff}.hidden{display:none}.table-wrap{overflow:auto}table{width:100%;border-collapse:collapse;min-width:800px}th,td{padding:11px 10px;border-bottom:1px solid #eef0f2;text-align:left;font-size:14px;vertical-align:top}input,select,textarea{width:100%;padding:10px 11px;border:1px solid #d1d5db;border-radius:10px;background:#fff;font:inherit}textarea{min-height:190px;resize:vertical;line-height:1.55}label{display:block;font-size:13px;font-weight:700;margin-bottom:6px}.form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.form-grid .full{grid-column:1/-1}.row-actions{display:flex;gap:8px;flex-wrap:wrap}.notice{padding:12px;border-radius:10px;background:#f9fafb;border:1px solid #e5e7eb}.error{color:#b91c1c;font-size:14px}.ok{color:#166534;font-size:14px}@media(max-width:900px){.grid{grid-template-columns:1fr 1fr}}@media(max-width:600px){.wrap{padding:14px}.grid,.form-grid{grid-template-columns:1fr}.form-grid .full{grid-column:auto}.brand{font-size:23px}}
+:root{font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#111827;background:#f3f4f6}*{box-sizing:border-box}body{margin:0}.wrap{max-width:1250px;margin:0 auto;padding:24px}.top{display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap}.brand{font-size:28px;font-weight:800;letter-spacing:-.03em}.muted{color:#6b7280}.actions{display:flex;gap:10px;flex-wrap:wrap}button{border:1px solid #d1d5db;background:#111827;color:#fff;border-radius:10px;padding:10px 14px;cursor:pointer}button.secondary{background:#fff;color:#111827}button.danger{background:#b91c1c;border-color:#b91c1c}.panel{background:#fff;border:1px solid #e5e7eb;border-radius:16px;padding:18px;margin-top:18px;box-shadow:0 10px 30px rgba(0,0,0,.04)}.login{max-width:420px;margin:70px auto}.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}.metric{padding:18px;border-radius:14px;background:#fff;border:1px solid #e5e7eb}.metric span{display:block;color:#6b7280;font-size:13px}.metric strong{display:block;font-size:30px;margin-top:6px}.tabs{display:flex;gap:8px;flex-wrap:wrap;margin-top:16px}.tab{background:#fff;color:#111827}.tab.active{background:#111827;color:#fff}.hidden{display:none}.table-wrap{overflow:auto}table{width:100%;border-collapse:collapse;min-width:800px}th,td{padding:11px 10px;border-bottom:1px solid #eef0f2;text-align:left;font-size:14px;vertical-align:top}.order-item-details{display:grid;gap:8px;margin-top:8px;min-width:180px;font-size:12px}.order-item-details>div{padding-top:7px;border-top:1px solid #eef0f2}.order-item-details .muted{margin-top:3px}input,select,textarea{width:100%;padding:10px 11px;border:1px solid #d1d5db;border-radius:10px;background:#fff;font:inherit}textarea{min-height:190px;resize:vertical;line-height:1.55}label{display:block;font-size:13px;font-weight:700;margin-bottom:6px}.form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.form-grid .full{grid-column:1/-1}.row-actions{display:flex;gap:8px;flex-wrap:wrap}.notice{padding:12px;border-radius:10px;background:#f9fafb;border:1px solid #e5e7eb}.error{color:#b91c1c;font-size:14px}.ok{color:#166534;font-size:14px}@media(max-width:900px){.grid{grid-template-columns:1fr 1fr}}@media(max-width:600px){.wrap{padding:14px}.grid,.form-grid{grid-template-columns:1fr}.form-grid .full{grid-column:auto}.brand{font-size:23px}}
 </style>
 </head>
 <body>
@@ -53,6 +53,18 @@
       <div><label>Sale ends at (optional)</label><input id="productSaleEndsAt" type="datetime-local"><small class="muted">A countdown appears only while this real offer is active. The date uses this device's time zone.</small></div>
       <div><label>Category</label><input id="productCategory" placeholder="Gadgets"></div>
       <div><label>Stock</label><input id="productStock" type="number" min="0" step="1" value="0"></div>
+      <div class="full">
+        <label for="productVariantCombinations">Color / size variants (optional)</label>
+        <textarea id="productVariantCombinations" rows="6" maxlength="10000" placeholder="One combination per line: Color | Size | Price (USD)
+Black | Small | 39.99
+Black | Large | 44.99
+White | Small | 39.99
+White | Large | 44.99
+
+For products with only colors: Black | — | 39.99
+For products with only sizes: — | Small | 19.99"></textarea>
+        <small class="muted">Write one available combination per line. Use “—” when color or size does not apply. Leave blank for products with no variants. The selected option’s price is used in cart and checkout.</small>
+      </div>
       <div class="full">
         <label for="productDescription">Product description &amp; features</label>
         <textarea id="productDescription" rows="9" maxlength="10000" placeholder="Write the full description and all product features here. You can use your own headings and bullets, for example:
@@ -149,6 +161,7 @@ function renderOrders() {
               <td>
                 <strong>${esc(o.id)}</strong>
                 <div class="muted">${o.items?.length || 0} item(s)</div>
+                ${o.items?.length ? `<div class="order-item-details">${o.items.map(item => `<div><strong>${esc(item.title || 'Product')}</strong> × ${Number(item.qty || 1)}${item.variant ? `<div class="muted">${esc(item.variant)}</div>` : ''}</div>`).join('')}</div>` : ''}
               </td>
 
               <td>
@@ -215,6 +228,7 @@ function editProduct(id){
   $('productCategory').value=p.category||'';
   $('productStock').value=p.stock??0;
   $('productDescription').value=p.description||'';
+  $('productVariantCombinations').value=(p.variantCombinations||[]).map(v=>`${v.color||'—'} | ${v.size||'—'} | ${Number(v.price||0).toFixed(2)}`).join('\n');
 
   const images=p.images||[];
   for(let i=1;i<=8;i++){
@@ -230,7 +244,7 @@ function editProduct(id){
 }
 
 function resetProductForm(){
-  ['productId','productTitle','productPrice','productOldPrice','productSaleEndsAt','productCategory','productDescription'].forEach(id=>$(id).value='');
+  ['productId','productTitle','productPrice','productOldPrice','productSaleEndsAt','productCategory','productDescription','productVariantCombinations'].forEach(id=>$(id).value='');
 
   $('productStock').value=0;
 
@@ -241,6 +255,40 @@ function resetProductForm(){
 
   $('productVideo').value='';
   $('saveProductBtn').textContent='Add product';
+}
+
+function normalizeVariantEntry(value){
+  const text=String(value??'').trim();
+  if(!text || ['—','-','–','n/a','none','not applicable'].includes(text.toLowerCase())) return null;
+  return text;
+}
+function parseVariantCombinations(raw){
+  const lines=String(raw||'').replace(/\r/g,'').split('\n');
+  const variants=[];
+  const seen=new Set();
+  for(let i=0;i<lines.length;i++){
+    const line=lines[i].trim();
+    if(!line || line.startsWith('#')) continue;
+    const columns=line.split('|').map(x=>x.trim());
+    if(columns.length!==3) throw new Error(`Variant line ${i+1} must use: Color | Size | Price (USD).`);
+    const color=normalizeVariantEntry(columns[0]);
+    const size=normalizeVariantEntry(columns[1]);
+    const price=Number(columns[2].replace(/^\$/,''));
+    if(!color && !size) throw new Error(`Variant line ${i+1} needs a color or a size.`);
+    if(!Number.isFinite(price) || price<=0 || price>100000) throw new Error(`Variant line ${i+1} has an invalid price.`);
+    const key=`${String(color||'').trim().toLocaleLowerCase()}\u0000${String(size||'').trim().toLocaleLowerCase()}`;
+    if(seen.has(key)) throw new Error(`Variant line ${i+1} repeats a color/size combination.`);
+    seen.add(key);
+    variants.push({color,size,price:Number(price.toFixed(2))});
+    if(variants.length>100) throw new Error('A product can have at most 100 color/size combinations.');
+  }
+  if(variants.length){
+    const hasColor=variants.some(v=>v.color), hasNoColor=variants.some(v=>!v.color);
+    const hasSize=variants.some(v=>v.size), hasNoSize=variants.some(v=>!v.size);
+    if(hasColor && hasNoColor) throw new Error('Use a color on every variant line, or use “—” for color on every line.');
+    if(hasSize && hasNoSize) throw new Error('Use a size on every variant line, or use “—” for size on every line.');
+  }
+  return variants;
 }
 
 $('productForm').addEventListener('submit',async e=>{
@@ -269,6 +317,7 @@ $('productForm').addEventListener('submit',async e=>{
       flash('Add a compare-at price before setting a sale end time.',false);
       return;
     }
+    const variantCombinations=parseVariantCombinations($('productVariantCombinations').value);
     const payload={
       title:$('productTitle').value.trim(),
       price,
@@ -277,6 +326,7 @@ $('productForm').addEventListener('submit',async e=>{
       category:$('productCategory').value.trim()||'General',
       stock:Number($('productStock').value||0),
       description:$('productDescription').value.trim(),
+      variantCombinations,
       images:images,
       video:$('productVideo').value.trim()||null
     };
