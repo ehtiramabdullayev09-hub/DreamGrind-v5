@@ -82,6 +82,7 @@ const state = { category: 'All', wishlist: new Set(JSON.parse(localStorage.getIt
 let pendingCheckoutItems = null;
 let productPageOpen = false;
 let productPageScrollY = 0;
+let productSaleTimer = null;
 const originalDocumentTitle = document.title;
 let toastTimer = null;
 const $ = id => document.getElementById(id);
@@ -129,6 +130,174 @@ function setCountry(country) {
 }
 
 function displayPrice(value) { const c = currencyConfig(); return money(value * c.rate, c.currency); }
+
+// A sale stays active only until its configured end time. After expiry, the
+// compare-at price becomes the amount shown and charged, both in the UI/server.
+function isProductSaleActive(product, now = Date.now()) {
+  const current = Number(product?.price || 0);
+  const compareAt = Number(product?.oldPrice || 0);
+  if (!(compareAt > current && current > 0)) return false;
+  if (product?.saleEndsAt) {
+    const end = Date.parse(product.saleEndsAt);
+    if (Number.isFinite(end) && end <= now) return false;
+  }
+  return true;
+}
+function effectiveProductPrice(product, now = Date.now()) {
+  const current = Number(product?.price || 0);
+  const compareAt = Number(product?.oldPrice || 0);
+  if (compareAt > current && product?.saleEndsAt) {
+    const end = Date.parse(product.saleEndsAt);
+    if (Number.isFinite(end) && end <= now) return compareAt;
+  }
+  return current;
+}
+function productDiscountPercent(product) {
+  const current = Number(product?.price || 0);
+  const compareAt = Number(product?.oldPrice || 0);
+  return compareAt > current && current > 0 ? Math.round((compareAt - current) / compareAt * 100) : 0;
+}
+
+const PRODUCT_DESCRIPTION_HEADINGS = {
+  'overview': 'overview',
+  'description': 'overview',
+  'product description': 'overview',
+  'product details': 'overview',
+  'key features': 'features',
+  'key benefits': 'features',
+  'features': 'features',
+  'benefits': 'features',
+  'specifications': 'Specifications',
+  'technical specifications': 'Specifications',
+  'product specifications': 'Specifications',
+  'technical details': 'Specifications',
+  'how to use': 'How to use',
+  'usage instructions': 'How to use',
+  "what's included": "What's included",
+  'whats included': "What's included",
+  'package contents': "What's included",
+  'in the box': "What's included",
+  'ingredients': 'Ingredients',
+  'care instructions': 'Care instructions',
+  'care & maintenance': 'Care instructions',
+  'shipping info': 'Shipping information',
+  'shipping information': 'Shipping information',
+  'shipping & returns': 'Shipping & returns',
+  'shipping and returns': 'Shipping & returns',
+  'returns & refunds': 'Returns & refunds'
+};
+function normalizeDescriptionHeading(value) {
+  return String(value || '').trim().toLowerCase().replace(/[’‘]/g, "'").replace(/\s+/g, ' ');
+}
+function cleanDescriptionLines(lines) {
+  let start = 0, end = lines.length;
+  while (start < end && !String(lines[start]).trim()) start++;
+  while (end > start && !String(lines[end - 1]).trim()) end--;
+  return lines.slice(start, end);
+}
+function parseProductDescription(rawDescription) {
+  const lines = String(rawDescription || '').replace(/\r/g, '').split('\n');
+  const result = { overview: [], features: [], sections: [] };
+  let target = result.overview;
+  let foundSection = false;
+
+  for (const line of lines) {
+    const match = line.match(/^\s*([^:\n]{2,48})\s*:\s*$/);
+    const normalized = match ? normalizeDescriptionHeading(match[1]) : '';
+    const kind = normalized ? PRODUCT_DESCRIPTION_HEADINGS[normalized] : null;
+    if (kind) {
+      foundSection = true;
+      if (kind === 'overview') {
+        target = result.overview;
+      } else if (kind === 'features') {
+        target = result.features;
+      } else {
+        let section = result.sections.find(x => x.title.toLowerCase() === kind.toLowerCase());
+        if (!section) {
+          section = { title: kind, lines: [] };
+          result.sections.push(section);
+        }
+        target = section.lines;
+      }
+      continue;
+    }
+    target.push(line);
+  }
+
+  result.overview = cleanDescriptionLines(result.overview);
+  result.features = cleanDescriptionLines(result.features);
+  result.sections = result.sections.map(section => ({ ...section, lines: cleanDescriptionLines(section.lines) })).filter(section => section.lines.some(line => String(line).trim()));
+
+  // If the author didn't use recognized headings, keep all text together in
+  // the overview instead of hiding or reordering anything they wrote.
+  if (!foundSection) {
+    result.overview = cleanDescriptionLines(lines);
+    result.features = [];
+    result.sections = [];
+  }
+  return result;
+}
+function isDescriptionBullet(line) {
+  return /^\s*(?:[•·▪◦✓✔\-*–—]|\d+[.)])\s+/.test(String(line || ''));
+}
+function stripDescriptionBullet(line) {
+  return String(line || '').replace(/^\s*(?:[•·▪◦✓✔\-*–—]|\d+[.)])\s+/, '').trim();
+}
+function renderProductDescriptionLines(lines, className = '') {
+  const cleaned = cleanDescriptionLines(Array.isArray(lines) ? lines : []);
+  if (!cleaned.length) return '';
+  const blocks = [];
+  let paragraph = [];
+  const flush = () => {
+    if (!paragraph.length) return;
+    if (paragraph.every(line => isDescriptionBullet(line))) {
+      blocks.push(`<ul class="product-description-list">${paragraph.map(line => `<li>${escapeHtml(stripDescriptionBullet(line))}</li>`).join('')}</ul>`);
+    } else {
+      blocks.push(`<p>${paragraph.map(line => escapeHtml(line.trim())).join('<br>')}</p>`);
+    }
+    paragraph = [];
+  };
+  cleaned.forEach(line => {
+    if (!String(line).trim()) flush();
+    else paragraph.push(String(line));
+  });
+  flush();
+  return `<div class="${className}">${blocks.join('')}</div>`;
+}
+function renderProductFeatureList(lines) {
+  const items = cleanDescriptionLines(Array.isArray(lines) ? lines : []).map(stripDescriptionBullet).filter(Boolean);
+  if (!items.length) return '';
+  return `<ul class="product-page-feature-list">${items.map(item => `<li><span class="product-feature-check" aria-hidden="true">✓</span><span>${escapeHtml(item)}</span></li>`).join('')}</ul>`;
+}
+function startProductSaleCountdown(product) {
+  if (productSaleTimer) clearInterval(productSaleTimer);
+  productSaleTimer = null;
+  const endAt = Date.parse(product?.saleEndsAt || '');
+  const countdown = $('productSaleCountdown');
+  if (!countdown || !isProductSaleActive(product) || !Number.isFinite(endAt)) return;
+
+  const update = () => {
+    const left = endAt - Date.now();
+    if (left <= 0) {
+      if (productSaleTimer) clearInterval(productSaleTimer);
+      productSaleTimer = null;
+      const currentPrice = $('productCurrentPrice');
+      if (currentPrice) currentPrice.textContent = displayPrice(effectiveProductPrice(product));
+      $('productComparePrice')?.remove();
+      $('productDiscountBadge')?.remove();
+      $('productSaleOffer')?.remove();
+      return;
+    }
+    const totalSeconds = Math.floor(left / 1000);
+    const days = Math.floor(totalSeconds / 86400);
+    const hours = Math.floor((totalSeconds % 86400) / 3600);
+    const minutes = Math.floor((totalSeconds % 3600) / 60);
+    const seconds = totalSeconds % 60;
+    countdown.textContent = `${days ? `${days}d ` : ''}${String(hours).padStart(2, '0')}h ${String(minutes).padStart(2, '0')}m ${String(seconds).padStart(2, '0')}s`;
+  };
+  update();
+  productSaleTimer = setInterval(update, 1000);
+}
 function saveAll() { localStorage.setItem('dg_wishlist', JSON.stringify([...state.wishlist])); localStorage.setItem('dg_cart', JSON.stringify(state.cart)); updateCounts(); }
 function updateCounts() { $('wishCount').textContent = state.wishlist.size; $('cartCount').textContent = state.cart.reduce((n, x) => n + x.qty, 0); }
 function showToast(message) { clearTimeout(toastTimer); $('toast').textContent = message; $('toast').classList.remove('hidden'); toastTimer = setTimeout(() => $('toast').classList.add('hidden'), 2200); }
@@ -170,74 +339,41 @@ function renderHeroProduct() {
   }).join('');
 }
 
-function renderProducts() { const q = ($('searchInput')?.value || '').trim().toLowerCase(); const sort = $('sortSelect')?.value || 'featured'; let list = products.filter(p => (state.category === 'All' || p.category === state.category) && (!q || `${p.title} ${p.category} ${p.description}`.toLowerCase().includes(q))); if (sort === 'rating') list.sort((a, b) => b.rating - a.rating); if (sort === 'low') list.sort((a, b) => a.price - b.price); if (sort === 'high') list.sort((a, b) => b.price - a.price); $('shopTitle').textContent = state.category === 'All' ? 'Trending products' : `${state.category} products`; $('emptyResults').classList.toggle('hidden', list.length > 0); $('productGrid').innerHTML = list.map(cardHtml).join(''); document.querySelectorAll('.chip').forEach(ch => ch.classList.toggle('active', ch.textContent === state.category)); renderHeroProduct(); }
+function renderProducts() { const q = ($('searchInput')?.value || '').trim().toLowerCase(); const sort = $('sortSelect')?.value || 'featured'; let list = products.filter(p => (state.category === 'All' || p.category === state.category) && (!q || `${p.title} ${p.category} ${p.description}`.toLowerCase().includes(q))); if (sort === 'rating') list.sort((a, b) => b.rating - a.rating); if (sort === 'low') list.sort((a, b) => effectiveProductPrice(a) - effectiveProductPrice(b)); if (sort === 'high') list.sort((a, b) => effectiveProductPrice(b) - effectiveProductPrice(a)); $('shopTitle').textContent = state.category === 'All' ? 'Trending products' : `${state.category} products`; $('emptyResults').classList.toggle('hidden', list.length > 0); $('productGrid').innerHTML = list.map(cardHtml).join(''); document.querySelectorAll('.chip').forEach(ch => ch.classList.toggle('active', ch.textContent === state.category)); renderHeroProduct(); }
 function cardHtml(p) {
   const wished = state.wishlist.has(p.id);
-
-  const image =
-    (p.images && p.images.length)
-      ? p.images[0]
-      : (p.image || '');
+  const image = (p.images && p.images.length) ? p.images[0] : (p.image || '');
+  const saleActive = isProductSaleActive(p);
+  const price = effectiveProductPrice(p);
+  const discount = saleActive ? productDiscountPercent(p) : 0;
+  const ratingMarkup = Number(p.reviews) > 0
+    ? `<div class="product-rating">★ ${Number(p.rating ?? 0).toFixed(1)} · ${Number(p.reviews)} reviews</div>`
+    : '';
+  const saleMarkup = saleActive && discount > 0
+    ? `<span class="product-sale-badge">Save ${discount}%</span>`
+    : '';
 
   return `
     <article class="product-card">
       <div class="product-image-wrap">
-        ${
-          image
-            ? `<img
-                src="${image}"
-                alt="${escapeHtml(p.title)}"
-                loading="lazy"
-                onclick="openProduct(${p.id})"
-                style="cursor:pointer"
-              >`
-            : `<div class="product-image-placeholder">No image</div>`
-        }
-
+        ${image ? `<img src="${escapeHtml(image)}" alt="${escapeHtml(p.title)}" loading="lazy" onclick="openProduct(${p.id})" style="cursor:pointer">` : `<div class="product-image-placeholder">No image</div>`}
         ${p.badge ? `<span class="badge">${escapeHtml(p.badge)}</span>` : ''}
-
-        <button
-          class="wish-btn ${wished ? 'active' : ''}"
-          aria-label="Toggle wishlist"
-          onclick="toggleWishlist(${p.id})"
-        >
-          ${wished ? '♥' : '♡'}
-        </button>
+        ${saleMarkup}
+        <button class="wish-btn ${wished ? 'active' : ''}" aria-label="Toggle wishlist" onclick="toggleWishlist(${p.id})">${wished ? '♥' : '♡'}</button>
       </div>
-
       <div class="product-info">
-        <div class="product-category">
-          ${escapeHtml(p.category || 'General')}
-        </div>
-
-        <div class="product-title" role="button" tabindex="0" onclick="openProduct(${p.id})" onkeydown="if(event.key === 'Enter' || event.key === ' '){event.preventDefault();openProduct(${p.id})}" style="cursor:pointer">
-          ${escapeHtml(p.title)}
-        </div>
-
-        <div class="product-rating">
-          ★ ${p.rating ?? 5} · ${p.reviews ?? 0} reviews
-        </div>
-
+        <div class="product-category">${escapeHtml(p.category || 'General')}</div>
+        <div class="product-title" role="button" tabindex="0" onclick="openProduct(${p.id})" onkeydown="if(event.key === 'Enter' || event.key === ' '){event.preventDefault();openProduct(${p.id})}" style="cursor:pointer">${escapeHtml(p.title)}</div>
+        ${ratingMarkup}
         <div class="product-bottom">
           <div class="price">
-            ${displayPrice(p.price)}
-            ${
-              p.oldPrice
-                ? `<span class="price-old">${displayPrice(p.oldPrice)}</span>`
-                : ''
-            }
+            ${displayPrice(price)}
+            ${saleActive ? `<span class="price-old">${displayPrice(p.oldPrice)}</span>` : ''}
           </div>
-
-          <button
-            class="add-mini"
-            onclick="quickAdd(${p.id})"
-          >
-            Add
-          </button>
+          <button class="add-mini" onclick="quickAdd(${p.id})">Add</button>
         </div>
       </div>
-    </article>
-  `;
+    </article>`;
 }
 function setCategory(name) { state.category = name; renderProducts(); location.hash = 'shop'; }
 function clearFilters() { state.category = 'All'; $('searchInput').value = ''; renderProducts(); }
@@ -283,8 +419,34 @@ function renderProductPage(id) {
     ? `<div class="product-video"><video controls playsinline preload="metadata"><source src="${escapeHtml(p.video)}" type="video/mp4">Your browser does not support video playback.</video></div>`
     : '';
   const variants = p.variants && p.variants.length
-    ? `<div class="product-page-options"><label class="product-page-label">Choose option</label><div class="variant-row">${p.variants.map((v, i) => `
-        <button type="button" class="variant ${i === 0 ? 'active' : ''}" onclick="selectVariant(this)">${escapeHtml(v)}</button>`).join('')}</div></div>`
+    ? `<div class="product-page-options"><label class="product-page-label">Choose option</label><div class="variant-row">${p.variants.map(v => `
+        <button type="button" class="variant ${p.variants[0] === v ? 'active' : ''}" onclick="selectVariant(this)">${escapeHtml(v)}</button>`).join('')}</div></div>`
+    : '';
+
+  const parsedDescription = parseProductDescription(p.description || '');
+  const overviewMarkup = renderProductDescriptionLines(parsedDescription.overview, 'product-page-description');
+  const featureMarkup = renderProductFeatureList(parsedDescription.features);
+  const hasCustomShipping = parsedDescription.sections.some(section => /shipping|returns/i.test(section.title));
+  const extraSections = parsedDescription.sections.map(section => `
+    <details class="product-page-accordion">
+      <summary>${escapeHtml(section.title)}</summary>
+      ${renderProductDescriptionLines(section.lines, 'product-page-accordion-content')}
+    </details>`).join('');
+  const shippingAccordion = hasCustomShipping ? '' : `
+    <details class="product-page-accordion">
+      <summary>Shipping &amp; returns</summary>
+      <div class="product-page-accordion-content"><p>DreamGrind currently accepts orders for the United States, Canada and the United Kingdom. Shipping is currently free. Processing and delivery times may vary by product and destination. Please contact DreamGrind before returning an item so return instructions can be provided.</p></div>
+    </details>`;
+  const saleActive = isProductSaleActive(p);
+  const discount = saleActive ? productDiscountPercent(p) : 0;
+  const countdownEnd = Date.parse(p.saleEndsAt || '');
+  const showCountdown = saleActive && Number.isFinite(countdownEnd) && countdownEnd > Date.now();
+  const currentPrice = effectiveProductPrice(p);
+  const ratingMarkup = Number(p.reviews) > 0
+    ? `<div class="product-rating" aria-label="Rated ${Number(p.rating ?? 0)} out of 5">★ ${Number(p.rating ?? 0).toFixed(1)} <span class="product-page-reviews">· ${Number(p.reviews)} reviews</span></div>`
+    : '';
+  const saleMarkup = saleActive
+    ? `${discount > 0 ? `<span class="product-page-discount-badge" id="productDiscountBadge">Save ${discount}%</span>` : ''}${`<span class="price-old" id="productComparePrice">${displayPrice(p.oldPrice)}</span>`}`
     : '';
 
   $('modalRoot').innerHTML = `
@@ -310,15 +472,13 @@ function renderProductPage(id) {
           <section class="product-page-info">
             <div class="product-page-category">${escapeHtml(p.category || 'General')}</div>
             <h1 class="product-page-title">${escapeHtml(p.title)}</h1>
-            <div class="product-rating" aria-label="Rated ${p.rating ?? 5} out of 5">★ ${p.rating ?? 5} <span class="product-page-reviews">· ${p.reviews ?? 0} reviews</span></div>
+            ${ratingMarkup}
 
-            <div class="product-page-price">${displayPrice(p.price)}${p.oldPrice ? ` <span class="price-old">${displayPrice(p.oldPrice)}</span>` : ''}</div>
+            <div class="product-page-price" id="productPriceBlock"><span id="productCurrentPrice">${displayPrice(currentPrice)}</span>${saleMarkup}</div>
+            ${showCountdown ? `<div class="product-page-sale-offer" id="productSaleOffer"><span>Limited-time offer ends in</span><strong id="productSaleCountdown" aria-live="off"></strong></div>` : ''}
             <div class="product-page-shipping"><span aria-hidden="true">✓</span> Free shipping <span class="product-page-dot">·</span> Secure checkout by Epoint</div>
 
-            <div class="product-page-divider"></div>
-            <h2 class="product-page-section-title">Product details</h2>
-            <p class="product-page-description">${escapeHtml(p.description || 'A thoughtful everyday find from DreamGrind.')}</p>
-
+            ${featureMarkup}
             ${variants}
 
             <div class="product-page-quantity"><label for="detailQty" class="product-page-label">Quantity</label><input id="detailQty" type="number" min="1" max="20" value="1" inputmode="numeric"></div>
@@ -328,7 +488,18 @@ function renderProductPage(id) {
               <button class="buy-now-button full" type="button" onclick="buyNowFromDetail(${p.id})">Buy now <span aria-hidden="true">→</span></button>
             </div>
 
-            <div class="product-page-trust"><div><span>✓</span><span>Delivery to the US, Canada and UK</span></div><div><span>✓</span><span>Order details confirmed before payment</span></div></div>
+            <section class="product-page-confidence" aria-label="Shopping information">
+              <div class="product-page-confidence-heading"><span class="product-page-confidence-mark" aria-hidden="true">✓</span><strong>Shop with confidence</strong></div>
+              <div class="product-page-confidence-grid">
+                <div class="product-page-confidence-item"><span class="product-page-confidence-icon" aria-hidden="true">↗</span><div><strong>Free shipping</strong><small>United States, Canada &amp; UK</small></div></div>
+                <div class="product-page-confidence-item"><span class="product-page-confidence-icon" aria-hidden="true">▣</span><div><strong>Secure payment</strong><small>Processed through Epoint</small></div></div>
+                <div class="product-page-confidence-item"><span class="product-page-confidence-icon" aria-hidden="true">✓</span><div><strong>Guest checkout</strong><small>No account required</small></div></div>
+              </div>
+              <div class="product-page-confidence-policy">Shipping and returns information is shown below.</div>
+            </section>
+
+            ${overviewMarkup ? `<section class="product-page-details-text"><h2 class="product-page-section-title">Product details</h2>${overviewMarkup}</section>` : ''}
+            ${(extraSections || shippingAccordion) ? `<section class="product-page-accordions" aria-label="More product information">${extraSections}${shippingAccordion}</section>` : ''}
           </section>
         </div>
       </div>
@@ -341,9 +512,11 @@ function renderProductPage(id) {
 
   const page = $('modalRoot').querySelector('.product-page-overlay');
   if (page) page.scrollTop = 0;
+  startProductSaleCountdown(p);
 }
-
 function dismissProductPage(updateUrl = true) {
+  if (productSaleTimer) clearInterval(productSaleTimer);
+  productSaleTimer = null;
   if (updateUrl) {
     const url = new URL(window.location.href);
     url.searchParams.delete('product');
@@ -374,11 +547,11 @@ function changeProductImage(src, button) {
 function selectVariant(button) { button.parentElement.querySelectorAll('.variant').forEach(x => x.classList.remove('active')); button.classList.add('active'); }
 function addProductFromDetail(id) { const qty = Math.max(1, Math.min(20, Number($('detailQty')?.value) || 1)); const variant = document.querySelector('.variant.active')?.textContent.trim() || null; const item = state.cart.find(x => x.id === id && x.variant === variant); if (item) item.qty += qty; else state.cart.push({ id, qty, variant }); saveAll(); showToast('Added to cart'); if (productPageOpen) dismissProductPage(true); else closeModal(); openCart(); }
 function buyNowFromDetail(id) { const product = products.find(x => String(x.id) === String(id)); if (!product) return; const qty = Math.max(1, Math.min(20, Number($('detailQty')?.value) || 1)); const variant = document.querySelector('.variant.active')?.textContent.trim() || null; if (productPageOpen) dismissProductPage(true); startCheckout([{ id: Number(product.id), qty, variant }]); }
-function cartSubtotal() { return state.cart.reduce((sum, x) => { const p = products.find(p => p.id === x.id); return sum + (p ? p.price * x.qty : 0) }, 0); }
+function cartSubtotal() { return state.cart.reduce((sum, x) => { const p = products.find(p => p.id === x.id); return sum + (p ? effectiveProductPrice(p) * x.qty : 0) }, 0); }
 function shippingCost() {
   return 0;
 }
-function openCart() { const c = currencyConfig(); const lines = state.cart.length ? state.cart.map(x => { const p = products.find(p => p.id === x.id); return `<div class="cart-line"><img src="${(p.images && p.images.length) ? p.images[0] : (p.image || '')}" alt="${escapeHtml(p.title)}"><div><strong>${escapeHtml(p.title)}</strong><div class="muted">${x.variant ? `Option: ${escapeHtml(x.variant)} · ` : ''}${displayPrice(p.price)} each</div><div class="qty-control"><button onclick="changeQty(${x.id},'${encodeURIComponent(x.variant || '')}',-1)">−</button><span>${x.qty}</span><button onclick="changeQty(${x.id},'${encodeURIComponent(x.variant || '')}',1)">+</button></div></div><strong>${displayPrice(p.price * x.qty)}</strong></div>` }).join('') : `<p class="muted">Your cart is empty.</p>`; const sub = cartSubtotal(); const ship = state.cart.length ? shippingCost() : 0; const total = sub + ship; $('modalRoot').innerHTML = `<div class="overlay" onclick="closeModal(event)"><aside class="drawer"><div class="drawer-head"><h2>Your cart</h2><button class="close-btn" onclick="closeModal()">✕</button></div>${lines}<div class="drawer-section"><label for="countrySelect">Shipping country</label><select id="countrySelect" onchange="setCountry(this.value)"><option value="US" ${c.country === 'US' ? 'selected' : ''}>United States</option><option value="CA" ${c.country === 'CA' ? 'selected' : ''}>Canada</option><option value="UK" ${c.country === 'UK' ? 'selected' : ''}>United Kingdom</option></select></div><div class="drawer-section"><input id="couponInput" placeholder="Coupon code (try SAVE10)"></div><div class="summary-row"><span>Subtotal</span><span>${displayPrice(sub)}</span></div><div class="summary-row"><span>Shipping</span><span>${ship === 0 ? 'FREE' : displayPrice(ship)}</span></div><div class="summary-row total"><span>Total</span><span>${displayPrice(total)}</span></div><button class="primary-button full" onclick="startCheckout()" ${state.cart.length ? '' : 'disabled'}>Checkout</button><div class="note-box" style="margin-top:12px">You will be charged in AZN. Secure by Epoint.</div></aside></div>`; }
+function openCart() { const c = currencyConfig(); const lines = state.cart.length ? state.cart.map(x => { const p = products.find(p => p.id === x.id); return `<div class="cart-line"><img src="${(p.images && p.images.length) ? p.images[0] : (p.image || '')}" alt="${escapeHtml(p.title)}"><div><strong>${escapeHtml(p.title)}</strong><div class="muted">${x.variant ? `Option: ${escapeHtml(x.variant)} · ` : ''}${displayPrice(effectiveProductPrice(p))} each</div><div class="qty-control"><button onclick="changeQty(${x.id},'${encodeURIComponent(x.variant || '')}',-1)">−</button><span>${x.qty}</span><button onclick="changeQty(${x.id},'${encodeURIComponent(x.variant || '')}',1)">+</button></div></div><strong>${displayPrice(effectiveProductPrice(p) * x.qty)}</strong></div>` }).join('') : `<p class="muted">Your cart is empty.</p>`; const sub = cartSubtotal(); const ship = state.cart.length ? shippingCost() : 0; const total = sub + ship; $('modalRoot').innerHTML = `<div class="overlay" onclick="closeModal(event)"><aside class="drawer"><div class="drawer-head"><h2>Your cart</h2><button class="close-btn" onclick="closeModal()">✕</button></div>${lines}<div class="drawer-section"><label for="countrySelect">Shipping country</label><select id="countrySelect" onchange="setCountry(this.value)"><option value="US" ${c.country === 'US' ? 'selected' : ''}>United States</option><option value="CA" ${c.country === 'CA' ? 'selected' : ''}>Canada</option><option value="UK" ${c.country === 'UK' ? 'selected' : ''}>United Kingdom</option></select></div><div class="drawer-section"><input id="couponInput" placeholder="Coupon code (try SAVE10)"></div><div class="summary-row"><span>Subtotal</span><span>${displayPrice(sub)}</span></div><div class="summary-row"><span>Shipping</span><span>${ship === 0 ? 'FREE' : displayPrice(ship)}</span></div><div class="summary-row total"><span>Total</span><span>${displayPrice(total)}</span></div><button class="primary-button full" onclick="startCheckout()" ${state.cart.length ? '' : 'disabled'}>Checkout</button><div class="note-box" style="margin-top:12px">You will be charged in AZN. Secure by Epoint.</div></aside></div>`; }
 function changeQty(id, variantKey, delta) { const variant = decodeURIComponent(variantKey); const item = state.cart.find(x => x.id === id && (x.variant || '') === variant); if (!item) return; item.qty += delta; if (item.qty <= 0) state.cart = state.cart.filter(x => x !== item); saveAll(); openCart(); }
 async function startCheckout(items = null) {
   const sourceItems = Array.isArray(items) ? items : state.cart;
