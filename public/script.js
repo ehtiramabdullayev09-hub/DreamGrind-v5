@@ -83,6 +83,7 @@ let pendingCheckoutItems = null;
 let productPageOpen = false;
 let productPageScrollY = 0;
 let productSaleTimer = null;
+let activeProductVariant = null;
 const originalDocumentTitle = document.title;
 let toastTimer = null;
 const $ = id => document.getElementById(id);
@@ -156,6 +157,169 @@ function productDiscountPercent(product) {
   const current = Number(product?.price || 0);
   const compareAt = Number(product?.oldPrice || 0);
   return compareAt > current && current > 0 ? Math.round((compareAt - current) / compareAt * 100) : 0;
+}
+function productVariantCombinations(product) {
+  return Array.isArray(product?.variantCombinations) ? product.variantCombinations.filter(v => v && Number.isFinite(Number(v.price)) && Number(v.price) > 0) : [];
+}
+function normalizeVariantValue(value) {
+  return String(value ?? '').trim().toLocaleLowerCase('en-US');
+}
+function findVariantCombination(product, color, size) {
+  return productVariantCombinations(product).find(v => normalizeVariantValue(v.color) === normalizeVariantValue(color)
+    && normalizeVariantValue(v.size) === normalizeVariantValue(size)) || null;
+}
+function effectiveVariantPrice(product, combination, now = Date.now()) {
+  if (!combination) return effectiveProductPrice(product, now);
+  const current = Number(product?.price || 0);
+  const compareAt = Number(product?.oldPrice || 0);
+  const variantPrice = Number(combination.price || 0);
+  if (compareAt > current && current > 0 && product?.saleEndsAt) {
+    const end = Date.parse(product.saleEndsAt);
+    if (Number.isFinite(end) && end <= now) return Number((variantPrice * compareAt / current).toFixed(2));
+  }
+  return Number(variantPrice.toFixed(2));
+}
+function variantCompareAtPrice(product, combination, now = Date.now()) {
+  if (!isProductSaleActive(product, now)) return null;
+  if (!combination) return Number(product.oldPrice);
+  const current = Number(product.price || 0);
+  const compareAt = Number(product.oldPrice || 0);
+  return current > 0 ? Number((Number(combination.price) * compareAt / current).toFixed(2)) : compareAt;
+}
+function variantCombinationLabel(combination) {
+  if (!combination) return '';
+  return [combination.color ? `Color: ${combination.color}` : '', combination.size ? `Size: ${combination.size}` : ''].filter(Boolean).join(' · ');
+}
+function uniqueVariantValues(combinations, key) {
+  const values = [];
+  const seen = new Set();
+  combinations.forEach(v => {
+    const value = v[key];
+    if (value == null || !String(value).trim()) return;
+    const normalized = normalizeVariantValue(value);
+    if (!seen.has(normalized)) { seen.add(normalized); values.push(String(value).trim()); }
+  });
+  return values;
+}
+function initialVariantCombination(product) {
+  const combinations = productVariantCombinations(product);
+  if (!combinations.length) return null;
+  return [...combinations].sort((a, b) => effectiveVariantPrice(product, a) - effectiveVariantPrice(product, b))[0];
+}
+function variantSwatchColor(value) {
+  const palette = {
+    black:'#171717', white:'#ffffff', red:'#d94848', blue:'#3977d5', navy:'#263a67',
+    green:'#2e8659', olive:'#78853b', yellow:'#f1cf43', pink:'#ec9db8', purple:'#875cbb',
+    orange:'#ec8a38', brown:'#8b604a', beige:'#d9c7a3', cream:'#eee7d8', grey:'#8c9298',
+    gray:'#8c9298', silver:'#bac0c6', gold:'#c9a14a', teal:'#2c9b90', mint:'#9bd7c4',
+    khaki:'#aaa078', maroon:'#762e42', clear:'#f0f2f2', transparent:'#f0f2f2'
+  };
+  const tokens = String(value || '').trim().toLowerCase().split(/\s+/);
+  for (const token of tokens.reverse()) if (palette[token]) return palette[token];
+  return '#a8b9b4';
+}
+function renderProductVariantOptions(product) {
+  const combinations = productVariantCombinations(product);
+  if (!combinations.length) { activeProductVariant = null; return ''; }
+  const initial = initialVariantCombination(product);
+  activeProductVariant = { productId: String(product.id), color: initial.color ?? null, size: initial.size ?? null };
+  const colors = uniqueVariantValues(combinations, 'color');
+  const sizes = uniqueVariantValues(combinations, 'size');
+  const colorMarkup = colors.length ? `
+    <div class="variant-choice-group">
+      <div class="variant-choice-heading"><label class="product-page-label">Color</label><span id="selectedVariantColorLabel">${escapeHtml(initial.color || '')}</span></div>
+      <div class="variant-color-options">${colors.map(color => `
+        <button type="button" class="variant-color-button ${normalizeVariantValue(initial.color) === normalizeVariantValue(color) ? 'active' : ''}" data-variant-dimension="color" data-variant-value="${escapeHtml(color)}" aria-pressed="${normalizeVariantValue(initial.color) === normalizeVariantValue(color) ? 'true' : 'false'}">
+          <span class="variant-color-swatch" style="--variant-swatch:${variantSwatchColor(color)}" aria-hidden="true"></span><span>${escapeHtml(color)}</span>
+        </button>`).join('')}</div>
+    </div>` : '';
+  const sizeMarkup = sizes.length ? `
+    <div class="variant-choice-group">
+      <div class="variant-choice-heading"><label class="product-page-label">Size</label><span id="selectedVariantSizeLabel">${escapeHtml(initial.size || '')}</span></div>
+      <div class="variant-size-options">${sizes.map(size => `
+        <button type="button" class="variant-size-button ${normalizeVariantValue(initial.size) === normalizeVariantValue(size) ? 'active' : ''}" data-variant-dimension="size" data-variant-value="${escapeHtml(size)}" aria-pressed="${normalizeVariantValue(initial.size) === normalizeVariantValue(size) ? 'true' : 'false'}">${escapeHtml(size)}</button>`).join('')}</div>
+    </div>` : '';
+  return `<section class="product-variant-picker" id="productVariantPicker" data-product-id="${escapeHtml(product.id)}" aria-label="Product options">${colorMarkup}${sizeMarkup}<p class="variant-combination-label" id="variantCombinationLabel">${escapeHtml(variantCombinationLabel(initial))}</p></section>`;
+}
+function selectedProductVariantCombination(product) {
+  if (!activeProductVariant || String(activeProductVariant.productId) !== String(product?.id)) return null;
+  return findVariantCombination(product, activeProductVariant.color, activeProductVariant.size);
+}
+function updateProductVariantUI(productId) {
+  const product = products.find(p => String(p.id) === String(productId));
+  if (!product || !productVariantCombinations(product).length) return;
+  const combinations = productVariantCombinations(product);
+  const selected = selectedProductVariantCombination(product);
+  const colorButtons = $('modalRoot')?.querySelectorAll('[data-variant-dimension="color"]') || [];
+  const sizeButtons = $('modalRoot')?.querySelectorAll('[data-variant-dimension="size"]') || [];
+  colorButtons.forEach(button => {
+    const value = button.dataset.variantValue;
+    const active = normalizeVariantValue(value) === normalizeVariantValue(activeProductVariant?.color);
+    button.classList.toggle('active', active);
+    button.setAttribute('aria-pressed', active ? 'true' : 'false');
+    button.disabled = !combinations.some(v => normalizeVariantValue(v.color) === normalizeVariantValue(value));
+  });
+  sizeButtons.forEach(button => {
+    const value = button.dataset.variantValue;
+    const active = normalizeVariantValue(value) === normalizeVariantValue(activeProductVariant?.size);
+    button.classList.toggle('active', active);
+    button.setAttribute('aria-pressed', active ? 'true' : 'false');
+    button.disabled = !combinations.some(v => normalizeVariantValue(v.size) === normalizeVariantValue(value)
+      && (!activeProductVariant?.color || normalizeVariantValue(v.color) === normalizeVariantValue(activeProductVariant.color)));
+  });
+  const colorLabel = $('selectedVariantColorLabel');
+  if (colorLabel) colorLabel.textContent = activeProductVariant?.color || '';
+  const sizeLabel = $('selectedVariantSizeLabel');
+  if (sizeLabel) sizeLabel.textContent = activeProductVariant?.size || '';
+  const label = $('variantCombinationLabel');
+  if (label) label.textContent = variantCombinationLabel(selected);
+  const priceElement = $('productCurrentPrice');
+  if (priceElement) priceElement.textContent = displayPrice(selected ? effectiveVariantPrice(product, selected) : effectiveProductPrice(product));
+  const compareElement = $('productComparePrice');
+  const compareAt = selected ? variantCompareAtPrice(product, selected) : variantCompareAtPrice(product, null);
+  if (compareElement && compareAt != null) compareElement.textContent = displayPrice(compareAt);
+  const badge = $('productDiscountBadge');
+  if (badge && isProductSaleActive(product)) badge.textContent = `Save ${productDiscountPercent(product)}%`;
+}
+function selectProductVariantOption(dimension, value) {
+  if (!activeProductVariant) return;
+  const product = products.find(p => String(p.id) === String(activeProductVariant.productId));
+  if (!product) return;
+  const combinations = productVariantCombinations(product);
+  const next = { ...activeProductVariant, [dimension]: value || null };
+  if (!findVariantCombination(product, next.color, next.size)) {
+    const fallback = combinations.find(v => dimension === 'color'
+      ? normalizeVariantValue(v.color) === normalizeVariantValue(value)
+      : normalizeVariantValue(v.size) === normalizeVariantValue(value));
+    if (fallback) { next.color = fallback.color ?? null; next.size = fallback.size ?? null; }
+  }
+  activeProductVariant = next;
+  updateProductVariantUI(product.id);
+}
+function productCartSelection(product) {
+  const combinations = productVariantCombinations(product);
+  if (combinations.length) {
+    const combination = selectedProductVariantCombination(product);
+    if (!combination) { showToast('Please select an available color and size.'); return null; }
+    return {
+      variant: variantCombinationLabel(combination),
+      variantColor: combination.color ?? null,
+      variantSize: combination.size ?? null
+    };
+  }
+  const legacyVariant = $('modalRoot')?.querySelector('.variant.active')?.textContent.trim() || null;
+  return { variant: legacyVariant, variantColor: null, variantSize: null };
+}
+function cartItemPrice(product, item) {
+  const combination = (item.variantColor != null || item.variantSize != null)
+    ? findVariantCombination(product, item.variantColor, item.variantSize) : null;
+  return combination ? effectiveVariantPrice(product, combination) : effectiveProductPrice(product);
+}
+function cartItemVariantLabel(item) {
+  if (item.variantColor != null || item.variantSize != null) {
+    return [item.variantColor ? `Color: ${item.variantColor}` : '', item.variantSize ? `Size: ${item.variantSize}` : ''].filter(Boolean).join(' · ');
+  }
+  return item.variant || '';
 }
 
 const PRODUCT_DESCRIPTION_HEADINGS = {
@@ -282,7 +446,8 @@ function startProductSaleCountdown(product) {
       if (productSaleTimer) clearInterval(productSaleTimer);
       productSaleTimer = null;
       const currentPrice = $('productCurrentPrice');
-      if (currentPrice) currentPrice.textContent = displayPrice(effectiveProductPrice(product));
+      if (productVariantCombinations(product).length) updateProductVariantUI(product.id);
+      else if (currentPrice) currentPrice.textContent = displayPrice(effectiveProductPrice(product));
       $('productComparePrice')?.remove();
       $('productDiscountBadge')?.remove();
       $('productSaleOffer')?.remove();
@@ -344,7 +509,10 @@ function cardHtml(p) {
   const wished = state.wishlist.has(p.id);
   const image = (p.images && p.images.length) ? p.images[0] : (p.image || '');
   const saleActive = isProductSaleActive(p);
-  const price = effectiveProductPrice(p);
+  const combinations = productVariantCombinations(p);
+  const lowestCombination = combinations.length ? [...combinations].sort((a, b) => effectiveVariantPrice(p, a) - effectiveVariantPrice(p, b))[0] : null;
+  const price = lowestCombination ? effectiveVariantPrice(p, lowestCombination) : effectiveProductPrice(p);
+  const comparisonPrice = lowestCombination ? variantCompareAtPrice(p, lowestCombination) : (saleActive ? Number(p.oldPrice) : null);
   const discount = saleActive ? productDiscountPercent(p) : 0;
   const ratingMarkup = Number(p.reviews) > 0
     ? `<div class="product-rating">★ ${Number(p.rating ?? 0).toFixed(1)} · ${Number(p.reviews)} reviews</div>`
@@ -367,10 +535,10 @@ function cardHtml(p) {
         ${ratingMarkup}
         <div class="product-bottom">
           <div class="price">
-            ${displayPrice(price)}
-            ${saleActive ? `<span class="price-old">${displayPrice(p.oldPrice)}</span>` : ''}
+            ${combinations.length ? '<span class="price-from-label">From </span>' : ''}${displayPrice(price)}
+            ${saleActive && comparisonPrice != null ? `<span class="price-old">${displayPrice(comparisonPrice)}</span>` : ''}
           </div>
-          <button class="add-mini" onclick="quickAdd(${p.id})">Add</button>
+          <button class="add-mini" onclick="quickAdd(${p.id})">${combinations.length || (p.variants && p.variants.length) ? 'Choose options' : 'Add'}</button>
         </div>
       </div>
     </article>`;
@@ -384,7 +552,7 @@ function closeMobileMenu() { $('mobileNav').classList.add('hidden'); }
 function goTop(e) { e.preventDefault(); window.scrollTo({ top: 0, behavior: 'smooth' }); }
 function toggleWishlist(id) { state.wishlist.has(id) ? state.wishlist.delete(id) : state.wishlist.add(id); saveAll(); renderProducts(); showToast(state.wishlist.has(id) ? 'Added to wishlist' : 'Removed from wishlist'); }
 function openWishlist() { const list = products.filter(p => state.wishlist.has(p.id)); $('modalRoot').innerHTML = `<div class="modal-overlay" onclick="closeModal(event)"><div class="modal"><div class="modal-head"><h2>Wishlist</h2><button class="close-btn" onclick="closeModal()">✕</button></div>${list.length ? `<div class="product-grid" style="grid-template-columns:repeat(2,1fr);padding:0">${list.map(cardHtml).join('')}</div>` : '<p class="muted">Your wishlist is empty.</p>'}</div></div>`; }
-function quickAdd(id) { const item = state.cart.find(x => x.id === id); if (item) item.qty++; else state.cart.push({ id, qty: 1, variant: null }); saveAll(); showToast('Added to cart'); openCart(); }
+function quickAdd(id) { const product = products.find(p => String(p.id) === String(id)); if (!product) return; if (productVariantCombinations(product).length || (product.variants && product.variants.length)) { openProduct(id); return; } const item = state.cart.find(x => x.id === id && !x.variantColor && !x.variantSize && !x.variant); if (item) item.qty++; else state.cart.push({ id, qty: 1, variant: null, variantColor: null, variantSize: null }); saveAll(); showToast('Added to cart'); openCart(); }
 function openProduct(id) {
   const p = products.find(x => String(x.id) === String(id));
   if (!p) return;
@@ -418,10 +586,13 @@ function renderProductPage(id) {
   const video = p.video
     ? `<div class="product-video"><video controls playsinline preload="metadata"><source src="${escapeHtml(p.video)}" type="video/mp4">Your browser does not support video playback.</video></div>`
     : '';
-  const variants = p.variants && p.variants.length
-    ? `<div class="product-page-options"><label class="product-page-label">Choose option</label><div class="variant-row">${p.variants.map(v => `
-        <button type="button" class="variant ${p.variants[0] === v ? 'active' : ''}" onclick="selectVariant(this)">${escapeHtml(v)}</button>`).join('')}</div></div>`
-    : '';
+  const combinations = productVariantCombinations(p);
+  const variants = combinations.length
+    ? renderProductVariantOptions(p)
+    : (p.variants && p.variants.length
+      ? `<div class="product-page-options"><label class="product-page-label">Choose option</label><div class="variant-row">${p.variants.map(v => `
+          <button type="button" class="variant ${p.variants[0] === v ? 'active' : ''}" onclick="selectVariant(this)">${escapeHtml(v)}</button>`).join('')}</div></div>`
+      : '');
 
   const parsedDescription = parseProductDescription(p.description || '');
   const overviewMarkup = renderProductDescriptionLines(parsedDescription.overview, 'product-page-description');
@@ -441,12 +612,14 @@ function renderProductPage(id) {
   const discount = saleActive ? productDiscountPercent(p) : 0;
   const countdownEnd = Date.parse(p.saleEndsAt || '');
   const showCountdown = saleActive && Number.isFinite(countdownEnd) && countdownEnd > Date.now();
-  const currentPrice = effectiveProductPrice(p);
+  const initialCombination = combinations.length ? selectedProductVariantCombination(p) : null;
+  const currentPrice = initialCombination ? effectiveVariantPrice(p, initialCombination) : effectiveProductPrice(p);
+  const initialCompareAt = initialCombination ? variantCompareAtPrice(p, initialCombination) : Number(p.oldPrice || 0);
   const ratingMarkup = Number(p.reviews) > 0
     ? `<div class="product-rating" aria-label="Rated ${Number(p.rating ?? 0)} out of 5">★ ${Number(p.rating ?? 0).toFixed(1)} <span class="product-page-reviews">· ${Number(p.reviews)} reviews</span></div>`
     : '';
   const saleMarkup = saleActive
-    ? `${discount > 0 ? `<span class="product-page-discount-badge" id="productDiscountBadge">Save ${discount}%</span>` : ''}${`<span class="price-old" id="productComparePrice">${displayPrice(p.oldPrice)}</span>`}`
+    ? `${discount > 0 ? `<span class="product-page-discount-badge" id="productDiscountBadge">Save ${discount}%</span>` : ''}<span class="price-old" id="productComparePrice">${displayPrice(initialCompareAt || p.oldPrice)}</span>`
     : '';
 
   $('modalRoot').innerHTML = `
@@ -512,6 +685,12 @@ function renderProductPage(id) {
 
   const page = $('modalRoot').querySelector('.product-page-overlay');
   if (page) page.scrollTop = 0;
+  if (combinations.length) {
+    $('modalRoot').querySelectorAll('[data-variant-dimension]').forEach(button => {
+      button.addEventListener('click', () => selectProductVariantOption(button.dataset.variantDimension, button.dataset.variantValue));
+    });
+    updateProductVariantUI(p.id);
+  }
   startProductSaleCountdown(p);
 }
 function dismissProductPage(updateUrl = true) {
@@ -545,19 +724,75 @@ function changeProductImage(src, button) {
   button.classList.add('active');
 }
 function selectVariant(button) { button.parentElement.querySelectorAll('.variant').forEach(x => x.classList.remove('active')); button.classList.add('active'); }
-function addProductFromDetail(id) { const qty = Math.max(1, Math.min(20, Number($('detailQty')?.value) || 1)); const variant = document.querySelector('.variant.active')?.textContent.trim() || null; const item = state.cart.find(x => x.id === id && x.variant === variant); if (item) item.qty += qty; else state.cart.push({ id, qty, variant }); saveAll(); showToast('Added to cart'); if (productPageOpen) dismissProductPage(true); else closeModal(); openCart(); }
-function buyNowFromDetail(id) { const product = products.find(x => String(x.id) === String(id)); if (!product) return; const qty = Math.max(1, Math.min(20, Number($('detailQty')?.value) || 1)); const variant = document.querySelector('.variant.active')?.textContent.trim() || null; if (productPageOpen) dismissProductPage(true); startCheckout([{ id: Number(product.id), qty, variant }]); }
-function cartSubtotal() { return state.cart.reduce((sum, x) => { const p = products.find(p => p.id === x.id); return sum + (p ? effectiveProductPrice(p) * x.qty : 0) }, 0); }
-function shippingCost() {
-  return 0;
+function addProductFromDetail(id) {
+  const product = products.find(p => String(p.id) === String(id));
+  if (!product) return;
+  const selection = productCartSelection(product);
+  if (!selection) return;
+  const qty = Math.max(1, Math.min(20, Number($('detailQty')?.value) || 1));
+  const usesDimensionVariant = selection.variantColor != null || selection.variantSize != null;
+  const item = state.cart.find(x => Number(x.id) === Number(id) && (
+    usesDimensionVariant
+      ? normalizeVariantValue(x.variantColor) === normalizeVariantValue(selection.variantColor) && normalizeVariantValue(x.variantSize) === normalizeVariantValue(selection.variantSize)
+      : x.variantColor == null && x.variantSize == null && (x.variant || null) === (selection.variant || null)
+  ));
+  if (item) item.qty += qty;
+  else state.cart.push({ id: Number(id), qty, variant: selection.variant, variantColor: selection.variantColor, variantSize: selection.variantSize });
+  saveAll(); showToast('Added to cart');
+  if (productPageOpen) dismissProductPage(true); else closeModal();
+  openCart();
 }
-function openCart() { const c = currencyConfig(); const lines = state.cart.length ? state.cart.map(x => { const p = products.find(p => p.id === x.id); return `<div class="cart-line"><img src="${(p.images && p.images.length) ? p.images[0] : (p.image || '')}" alt="${escapeHtml(p.title)}"><div><strong>${escapeHtml(p.title)}</strong><div class="muted">${x.variant ? `Option: ${escapeHtml(x.variant)} · ` : ''}${displayPrice(effectiveProductPrice(p))} each</div><div class="qty-control"><button onclick="changeQty(${x.id},'${encodeURIComponent(x.variant || '')}',-1)">−</button><span>${x.qty}</span><button onclick="changeQty(${x.id},'${encodeURIComponent(x.variant || '')}',1)">+</button></div></div><strong>${displayPrice(effectiveProductPrice(p) * x.qty)}</strong></div>` }).join('') : `<p class="muted">Your cart is empty.</p>`; const sub = cartSubtotal(); const ship = state.cart.length ? shippingCost() : 0; const total = sub + ship; $('modalRoot').innerHTML = `<div class="overlay" onclick="closeModal(event)"><aside class="drawer"><div class="drawer-head"><h2>Your cart</h2><button class="close-btn" onclick="closeModal()">✕</button></div>${lines}<div class="drawer-section"><label for="countrySelect">Shipping country</label><select id="countrySelect" onchange="setCountry(this.value)"><option value="US" ${c.country === 'US' ? 'selected' : ''}>United States</option><option value="CA" ${c.country === 'CA' ? 'selected' : ''}>Canada</option><option value="UK" ${c.country === 'UK' ? 'selected' : ''}>United Kingdom</option></select></div><div class="drawer-section"><input id="couponInput" placeholder="Coupon code (try SAVE10)"></div><div class="summary-row"><span>Subtotal</span><span>${displayPrice(sub)}</span></div><div class="summary-row"><span>Shipping</span><span>${ship === 0 ? 'FREE' : displayPrice(ship)}</span></div><div class="summary-row total"><span>Total</span><span>${displayPrice(total)}</span></div><button class="primary-button full" onclick="startCheckout()" ${state.cart.length ? '' : 'disabled'}>Checkout</button><div class="note-box" style="margin-top:12px">You will be charged in AZN. Secure by Epoint.</div></aside></div>`; }
-function changeQty(id, variantKey, delta) { const variant = decodeURIComponent(variantKey); const item = state.cart.find(x => x.id === id && (x.variant || '') === variant); if (!item) return; item.qty += delta; if (item.qty <= 0) state.cart = state.cart.filter(x => x !== item); saveAll(); openCart(); }
+function buyNowFromDetail(id) {
+  const product = products.find(x => String(x.id) === String(id));
+  if (!product) return;
+  const selection = productCartSelection(product);
+  if (!selection) return;
+  const qty = Math.max(1, Math.min(20, Number($('detailQty')?.value) || 1));
+  if (productPageOpen) dismissProductPage(true);
+  startCheckout([{ id: Number(product.id), qty, ...selection }]);
+}
+function cartSubtotal() {
+  return state.cart.reduce((sum, item) => {
+    const product = products.find(p => Number(p.id) === Number(item.id));
+    return sum + (product ? cartItemPrice(product, item) * item.qty : 0);
+  }, 0);
+}
+function shippingCost() { return 0; }
+function openCart() {
+  const c = currencyConfig();
+  const lines = state.cart.length ? state.cart.map(item => {
+    const p = products.find(product => Number(product.id) === Number(item.id));
+    if (!p) return '';
+    const unitPrice = cartItemPrice(p, item);
+    const optionLabel = cartItemVariantLabel(item);
+    return `<div class="cart-line"><img src="${(p.images && p.images.length) ? p.images[0] : (p.image || '')}" alt="${escapeHtml(p.title)}"><div><strong>${escapeHtml(p.title)}</strong><div class="muted">${optionLabel ? `Option: ${escapeHtml(optionLabel)} · ` : ''}${displayPrice(unitPrice)} each</div><div class="qty-control"><button onclick="changeQty(${p.id},'${encodeURIComponent(item.variant || '')}',-1)">−</button><span>${item.qty}</span><button onclick="changeQty(${p.id},'${encodeURIComponent(item.variant || '')}',1)">+</button></div></div><strong>${displayPrice(unitPrice * item.qty)}</strong></div>`;
+  }).join('') : `<p class="muted">Your cart is empty.</p>`;
+  const sub = cartSubtotal();
+  const ship = state.cart.length ? shippingCost() : 0;
+  const total = sub + ship;
+  $('modalRoot').innerHTML = `<div class="overlay" onclick="closeModal(event)"><aside class="drawer"><div class="drawer-head"><h2>Your cart</h2><button class="close-btn" onclick="closeModal()">✕</button></div>${lines}<div class="drawer-section"><label for="countrySelect">Shipping country</label><select id="countrySelect" onchange="setCountry(this.value)"><option value="US" ${c.country === 'US' ? 'selected' : ''}>United States</option><option value="CA" ${c.country === 'CA' ? 'selected' : ''}>Canada</option><option value="UK" ${c.country === 'UK' ? 'selected' : ''}>United Kingdom</option></select></div><div class="drawer-section"><input id="couponInput" placeholder="Coupon code (try SAVE10)"></div><div class="summary-row"><span>Subtotal</span><span>${displayPrice(sub)}</span></div><div class="summary-row"><span>Shipping</span><span>${ship === 0 ? 'FREE' : displayPrice(ship)}</span></div><div class="summary-row total"><span>Total</span><span>${displayPrice(total)}</span></div><button class="primary-button full" onclick="startCheckout()" ${state.cart.length ? '' : 'disabled'}>Checkout</button><div class="note-box" style="margin-top:12px">You will be charged in AZN. Secure by Epoint.</div></aside></div>`;
+}
+function changeQty(id, variantKey, delta) {
+  const variant = decodeURIComponent(variantKey);
+  const item = state.cart.find(x => Number(x.id) === Number(id) && (x.variant || '') === variant);
+  if (!item) return;
+  item.qty += delta;
+  if (item.qty <= 0) state.cart = state.cart.filter(x => x !== item);
+  saveAll(); openCart();
+}
 async function startCheckout(items = null) {
   const sourceItems = Array.isArray(items) ? items : state.cart;
   const checkoutItems = sourceItems
-    .map(item => ({ id: Number(item.id), qty: Math.max(1, Math.min(20, Number(item.qty) || 1)), variant: item.variant ?? null }))
+    .map(item => ({ id: Number(item.id), qty: Math.max(1, Math.min(20, Number(item.qty) || 1)), variant: item.variant ?? null, variantColor: item.variantColor ?? null, variantSize: item.variantSize ?? null }))
     .filter(item => Number.isInteger(item.id) && item.id > 0 && item.qty > 0);
+  const staleVariant = checkoutItems.find(item => {
+    const product = products.find(p => Number(p.id) === item.id);
+    return productVariantCombinations(product).length && item.variantColor == null && item.variantSize == null;
+  });
+  if (staleVariant) {
+    showToast('Please remove the outdated item from your cart and select its color/size again.');
+    return;
+  }
 
   if (!checkoutItems.length) {
     showToast('Your cart is empty');
@@ -660,7 +895,7 @@ async function startCheckout(items = null) {
   if (submitButton?.disabled) return;
 
   const checkoutItems = (pendingCheckoutItems?.length ? pendingCheckoutItems : state.cart)
-    .map(item => ({ id: Number(item.id), qty: Number(item.qty), variant: item.variant ?? null }));
+    .map(item => ({ id: Number(item.id), qty: Number(item.qty), variant: item.variant ?? null, variantColor: item.variantColor ?? null, variantSize: item.variantSize ?? null }));
 
   if (!checkoutItems.length) {
     showToast('Your cart is empty');
