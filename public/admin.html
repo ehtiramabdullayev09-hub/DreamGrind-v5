@@ -49,6 +49,8 @@
       <input id="productId" type="hidden">
       <div><label>Title</label><input id="productTitle" required></div>
       <div><label>Price (USD)</label><input id="productPrice" type="number" min="0.01" step="0.01" required></div>
+      <div><label>Compare-at price (USD, optional)</label><input id="productOldPrice" type="number" min="0.01" step="0.01" placeholder="e.g. 49.99"><small class="muted">Use only a genuine previous/regular price higher than the current price.</small></div>
+      <div><label>Sale ends at (optional)</label><input id="productSaleEndsAt" type="datetime-local"><small class="muted">A countdown appears only while this real offer is active. The date uses this device's time zone.</small></div>
       <div><label>Category</label><input id="productCategory" placeholder="Gadgets"></div>
       <div><label>Stock</label><input id="productStock" type="number" min="0" step="1" value="0"></div>
       <div class="full">
@@ -194,6 +196,13 @@ function renderOrders() {
 }
 async function saveOrder(id){try{const status=$('st-'+id).value;const tracking=$('tr-'+id).value.trim();await api('/api/admin/orders/'+encodeURIComponent(id),{method:'PATCH',body:JSON.stringify({status,trackingNumber:tracking||null})});flash('Order updated.');await loadAll()}catch(e){flash(e.message,false)}}
 function renderProducts(){if(!state.products.length){$('products').innerHTML='<p class="muted">No products.</p>';return}$('products').innerHTML=`<table><thead><tr><th>ID</th><th>Product</th><th>Price</th><th>Category</th><th>Stock</th><th>Actions</th></tr></thead><tbody>${state.products.map(p=>`<tr><td>${p.id}</td><td><strong>${esc(p.title)}</strong>${p.image?`<div class="muted">Image set</div>`:''}</td><td>$${Number(p.price||0).toFixed(2)}</td><td>${esc(p.category||'General')}</td><td>${Number.isFinite(Number(p.stock))?p.stock:'—'}</td><td class="row-actions"><button onclick="editProduct(${p.id})">Edit</button><button class="danger" onclick="deleteProduct(${p.id})">Delete</button></td></tr>`).join('')}</tbody></table>`}
+function toLocalDateTimeInput(value){
+  if(!value)return '';
+  const d=new Date(value);
+  if(!Number.isFinite(d.getTime()))return '';
+  const pad=n=>String(n).padStart(2,'0');
+  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
 function editProduct(id){
   const p=state.products.find(x=>x.id===id);
   if(!p)return;
@@ -201,6 +210,8 @@ function editProduct(id){
   $('productId').value=p.id;
   $('productTitle').value=p.title;
   $('productPrice').value=p.price;
+  $('productOldPrice').value=p.oldPrice ?? '';
+  $('productSaleEndsAt').value=toLocalDateTimeInput(p.saleEndsAt);
   $('productCategory').value=p.category||'';
   $('productStock').value=p.stock??0;
   $('productDescription').value=p.description||'';
@@ -219,7 +230,7 @@ function editProduct(id){
 }
 
 function resetProductForm(){
-  ['productId','productTitle','productPrice','productCategory','productDescription'].forEach(id=>$(id).value='');
+  ['productId','productTitle','productPrice','productOldPrice','productSaleEndsAt','productCategory','productDescription'].forEach(id=>$(id).value='');
 
   $('productStock').value=0;
 
@@ -245,9 +256,24 @@ $('productForm').addEventListener('submit',async e=>{
       if(value) images.push(value);
     }
 
+    const price=Number($('productPrice').value);
+    const oldPriceValue=$('productOldPrice').value.trim();
+    const oldPrice=oldPriceValue?Number(oldPriceValue):null;
+    const saleDateValue=$('productSaleEndsAt').value;
+    const saleEndsAt=saleDateValue?new Date(saleDateValue).toISOString():null;
+    if(oldPrice!==null && !(oldPrice>price)){
+      flash('Compare-at price must be higher than the current price.',false);
+      return;
+    }
+    if(saleEndsAt && oldPrice===null){
+      flash('Add a compare-at price before setting a sale end time.',false);
+      return;
+    }
     const payload={
       title:$('productTitle').value.trim(),
-      price:Number($('productPrice').value),
+      price,
+      oldPrice,
+      saleEndsAt,
       category:$('productCategory').value.trim()||'General',
       stock:Number($('productStock').value||0),
       description:$('productDescription').value.trim(),
