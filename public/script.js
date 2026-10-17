@@ -836,7 +836,18 @@ async function startCheckout(items = null) {
 
           <label>
             Mobile number
-            <input id="coPhone" name="tel" type="tel" autocomplete="tel" required placeholder="+1 555 123 4567 / +44 7700 900123">
+            <input id="coPhone" name="tel" type="tel" autocomplete="tel" required placeholder="${c.country === 'UK' ? '+44 7700 900123' : c.country === 'CA' ? '+1 416 555 0123' : '+1 555 123 4567'}">
+            <small class="checkout-field-help" id="coPhoneHelp">Use a phone number that can receive delivery updates.</small>
+          </label>
+
+          <label>
+            Country
+            <select id="coCountry" name="country" autocomplete="country-name" required data-last-country="${c.country === 'US' ? 'United States' : c.country === 'CA' ? 'Canada' : 'United Kingdom'}" onchange="handleCheckoutCountryChange()">
+              <option value="United States" ${c.country === 'US' ? 'selected' : ''}>United States</option>
+              <option value="Canada" ${c.country === 'CA' ? 'selected' : ''}>Canada</option>
+              <option value="United Kingdom" ${c.country === 'UK' ? 'selected' : ''}>United Kingdom</option>
+            </select>
+            <small class="checkout-field-help">Choose the delivery destination first. The address fields will adjust to this country.</small>
           </label>
 
           <label>
@@ -845,34 +856,103 @@ async function startCheckout(items = null) {
           </label>
 
           <label>
-            City
-            <input id="coCity" name="address-level2" autocomplete="address-level2" required placeholder="City">
+            City / Town
+            <input id="coCity" name="address-level2" autocomplete="address-level2" required placeholder="City or town">
           </label>
 
           <label>
-            State / Province / Region
-            <input id="coState" name="address-level1" autocomplete="address-level1" required placeholder="State / Province / Region">
+            <span id="coStateLabel">${c.country === 'UK' ? 'County (optional)' : c.country === 'CA' ? 'Province / Territory *' : 'State *'}</span>
+            <input id="coState" name="address-level1" autocomplete="address-level1" ${c.country === 'UK' ? '' : 'required'} aria-required="${c.country === 'UK' ? 'false' : 'true'}" placeholder="${c.country === 'UK' ? 'County, if applicable' : c.country === 'CA' ? 'e.g. Ontario' : 'e.g. California'}">
+            <small class="checkout-field-help" id="coStateHelp">${c.country === 'UK' ? 'County is optional for most UK delivery addresses.' : c.country === 'CA' ? 'Enter the province or territory for the delivery address.' : 'Enter the state for the delivery address.'}</small>
           </label>
 
           <label>
-            ZIP / Postal code
-            <input id="coZip" name="postal-code" autocomplete="postal-code" required placeholder="ZIP / Postal code">
+            <span id="coZipLabel">${c.country === 'UK' ? 'Postcode *' : c.country === 'CA' ? 'Postal code *' : 'ZIP code *'}</span>
+            <input id="coZip" name="postal-code" autocomplete="postal-code" autocapitalize="characters" required placeholder="${c.country === 'UK' ? 'e.g. SW1A 1AA' : c.country === 'CA' ? 'e.g. K1A 0B1' : 'e.g. 90210'}">
+            <small class="checkout-field-help" id="coZipHelp">${c.country === 'UK' ? 'Enter the UK postcode as provided by the recipient.' : c.country === 'CA' ? 'Enter the Canadian postal code, including the space if shown.' : 'Enter the ZIP code for the delivery address.'}</small>
           </label>
 
-          <label>
-            Country
-            <select id="coCountry" name="country" autocomplete="country-name" required>
-              <option value="United States" ${c.country === 'US' ? 'selected' : ''}>United States</option>
-              <option value="Canada" ${c.country === 'CA' ? 'selected' : ''}>Canada</option>
-              <option value="United Kingdom" ${c.country === 'UK' ? 'selected' : ''}>United Kingdom</option>
-            </select>
-          </label>
-
-          <div class="note-box">You will be charged in AZN. Secure payment by Epoint.</div>
+          <p class="checkout-country-message full" id="checkoutCountryMessage" role="status" aria-live="polite"></p>
+          <div class="note-box full">You will be charged in AZN. Secure payment by Epoint.</div>
           <button class="primary-button full" type="submit">Continue to secure payment</button>
         </form>
       </div>
     </div>`;
+  const checkoutCountrySelect = $('coCountry');
+  if (checkoutCountrySelect) checkoutCountrySelect.dataset.lastCountry = checkoutCountrySelect.value;
+  updateCheckoutAddressFields();
+}
+
+function updateCheckoutAddressFields() {
+  const country = $('coCountry')?.value || 'United States';
+  const stateLabel = $('coStateLabel');
+  const stateInput = $('coState');
+  const stateHelp = $('coStateHelp');
+  const zipLabel = $('coZipLabel');
+  const zipInput = $('coZip');
+  const zipHelp = $('coZipHelp');
+  const phoneInput = $('coPhone');
+
+  const rules = {
+    'United States': {
+      stateLabel: 'State *', statePlaceholder: 'e.g. California', stateRequired: true,
+      stateHelp: 'Enter the state for the delivery address.',
+      zipLabel: 'ZIP code *', zipPlaceholder: 'e.g. 90210',
+      zipHelp: 'Enter the ZIP code for the delivery address.', phonePlaceholder: '+1 555 123 4567'
+    },
+    'Canada': {
+      stateLabel: 'Province / Territory *', statePlaceholder: 'e.g. Ontario', stateRequired: true,
+      stateHelp: 'Enter the province or territory for the delivery address.',
+      zipLabel: 'Postal code *', zipPlaceholder: 'e.g. K1A 0B1',
+      zipHelp: 'Enter the Canadian postal code, including the space if shown.', phonePlaceholder: '+1 416 555 0123'
+    },
+    'United Kingdom': {
+      stateLabel: 'County (optional)', statePlaceholder: 'County, if applicable', stateRequired: false,
+      stateHelp: 'County is optional for most UK delivery addresses.',
+      zipLabel: 'Postcode *', zipPlaceholder: 'e.g. SW1A 1AA',
+      zipHelp: 'Enter the UK postcode as provided by the recipient.', phonePlaceholder: '+44 7700 900123'
+    }
+  };
+
+  const rule = rules[country] || rules['United States'];
+  if (stateLabel) stateLabel.textContent = rule.stateLabel;
+  if (stateInput) {
+    stateInput.placeholder = rule.statePlaceholder;
+    stateInput.required = rule.stateRequired;
+    stateInput.setAttribute('aria-required', String(rule.stateRequired));
+  }
+  if (stateHelp) stateHelp.textContent = rule.stateHelp;
+  if (zipLabel) zipLabel.textContent = rule.zipLabel;
+  if (zipInput) {
+    zipInput.placeholder = rule.zipPlaceholder;
+    zipInput.required = true;
+    zipInput.setAttribute('aria-required', 'true');
+    zipInput.autocapitalize = 'characters';
+  }
+  if (zipHelp) zipHelp.textContent = rule.zipHelp;
+  if (phoneInput) phoneInput.placeholder = rule.phonePlaceholder;
+}
+
+function handleCheckoutCountryChange() {
+  const select = $('coCountry');
+  if (!select) return;
+
+  const previousCountry = select.dataset.lastCountry || select.value;
+  const nextCountry = select.value;
+
+  if (previousCountry !== nextCountry) {
+    if ($('coState')) $('coState').value = '';
+    if ($('coZip')) $('coZip').value = '';
+    const message = $('checkoutCountryMessage');
+    if (message) message.textContent = 'Country changed. Please confirm the region and postal code for the new destination.';
+  }
+
+  select.dataset.lastCountry = nextCountry;
+  const countryCodes = { 'United States': 'US', 'Canada': 'CA', 'United Kingdom': 'UK' };
+  localStorage.setItem('dg_country', countryCodes[nextCountry] || 'US');
+  syncCountryPicker();
+  renderProducts();
+  updateCheckoutAddressFields();
 }
 
     async function getCurrentUser() { const r = await fetch('/api/auth/me', { credentials: 'include' }); const d = await r.json(); return d.user || null; }
