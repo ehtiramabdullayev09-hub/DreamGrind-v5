@@ -52,6 +52,38 @@ function effectiveVariantPrice(product, variant, now = Date.now()) {
   }
   return Number(variantPrice.toFixed(2));
 }
+
+// Market prices are stored in their local currencies. Epoint checkout settles in AZN.
+const CURRENCY_TO_AZN = { US: USD_TO_AZN, CA: USD_TO_AZN / 1.36, UK: USD_TO_AZN / 0.75 };
+function countryCodeFromName(country) {
+  if (country === 'Canada') return 'CA';
+  if (country === 'United Kingdom') return 'UK';
+  return 'US';
+}
+function isProductAvailableForCountry(product, country) {
+  const code = countryCodeFromName(country);
+  return product?.availabilityByCountry?.[code] !== false;
+}
+function effectiveProductPriceForCountry(product, country, now = Date.now()) {
+  const code = countryCodeFromName(country);
+  const usdAmount = effectiveProductPrice(product, now);
+  if (code === 'US') return usdAmount;
+  const configured = Number(product?.countryPrices?.[code]);
+  const baseUsd = Number(product?.price || 0);
+  if (Number.isFinite(configured) && configured > 0 && baseUsd > 0) return Number((configured * usdAmount / baseUsd).toFixed(2));
+  const rate = code === 'CA' ? 1.36 : 0.75;
+  return Number((usdAmount * rate).toFixed(2));
+}
+function effectiveVariantPriceForCountry(product, variant, country, now = Date.now()) {
+  const code = countryCodeFromName(country);
+  const usdAmount = effectiveVariantPrice(product, variant, now);
+  if (code === 'US') return usdAmount;
+  const configured = Number(product?.countryPrices?.[code]);
+  const baseUsd = Number(product?.price || 0);
+  if (Number.isFinite(configured) && configured > 0 && baseUsd > 0) return Number((configured * usdAmount / baseUsd).toFixed(2));
+  const rate = code === 'CA' ? 1.36 : 0.75;
+  return Number((usdAmount * rate).toFixed(2));
+}
 function validateVariantCombinations(variants) {
   if (!Array.isArray(variants) || variants.length === 0) return null;
   const seen = new Set();
@@ -317,6 +349,9 @@ app.post('/api/orders', orderLimiter, async (req, res) => {
   for (const item of items) {
     const p = productMap.get(item.id);
     if (!p) return res.status(400).json({ error: 'One of the selected products is no longer available.' });
+    if (!isProductAvailableForCountry(p, country)) {
+      return res.status(400).json({ error: `“${p.title}” is not available for delivery to ${country}. Please remove it from your cart.` });
+    }
     const combinations = Array.isArray(p.variantCombinations) ? p.variantCombinations : [];
     let selectedCombination = null;
     if (combinations.length) {
@@ -330,11 +365,15 @@ app.post('/api/orders', orderLimiter, async (req, res) => {
     const variantLabel = selectedCombination
       ? [selectedCombination.color ? `Color: ${selectedCombination.color}` : '', selectedCombination.size ? `Size: ${selectedCombination.size}` : ''].filter(Boolean).join(' · ')
       : (item.variant ?? null);
-    const unitPriceUsd = selectedCombination ? effectiveVariantPrice(p, selectedCombination) : effectiveProductPrice(p);
+    const countryCode = countryCodeFromName(country);
+    const unitPriceLocal = selectedCombination
+      ? effectiveVariantPriceForCountry(p, selectedCombination, country)
+      : effectiveProductPriceForCountry(p, country);
+    const unitPriceAzn = unitPriceLocal * CURRENCY_TO_AZN[countryCode];
     normalizedItems.push({
       id: p.id,
       title: p.title,
-      unitPrice: Number((unitPriceUsd * USD_TO_AZN).toFixed(2)),
+      unitPrice: Number(unitPriceAzn.toFixed(2)),
       qty: item.qty,
       variant: variantLabel,
       variantColor: selectedCombination?.color ?? null,
@@ -559,6 +598,14 @@ const adminProductSchema = z.object({
   price: z.number().finite().positive().max(100000),
   oldPrice: z.number().finite().positive().max(100000).nullable().optional(),
   saleEndsAt: z.string().datetime().nullable().optional(),
+  countryPrices: z.object({
+    US: z.number().finite().positive().max(100000).nullable().optional(),
+    CA: z.number().finite().positive().max(100000).nullable().optional(),
+    UK: z.number().finite().positive().max(100000).nullable().optional()
+  }).optional(),
+  availabilityByCountry: z.object({
+    US: z.boolean().optional(), CA: z.boolean().optional(), UK: z.boolean().optional()
+  }).optional(),
   description: z.string().trim().max(10000).optional(),
   variantCombinations: z.array(z.object({
     color: z.string().trim().min(1).max(60).nullable(),
@@ -588,6 +635,8 @@ app.post('/api/admin/products', requireAdmin, async (req, res) => {
     price: Number(Number(parsed.data.price).toFixed(2)),
     oldPrice: parsed.data.oldPrice ?? null,
     saleEndsAt: parsed.data.saleEndsAt ?? null,
+    countryPrices: parsed.data.countryPrices || { US: Number(parsed.data.price), CA: null, UK: null },
+    availabilityByCountry: { US: true, CA: true, UK: true, ...(parsed.data.availabilityByCountry || {}) },
     description: parsed.data.description ?? '',
     variantCombinations: parsed.data.variantCombinations || [],
     images: parsed.data.images || [],
@@ -616,6 +665,10 @@ app.patch('/api/admin/products/:id', requireAdmin, async (req, res) => {
   if (variantError) return res.status(400).json({ error: variantError });
   for (const [key, value] of Object.entries(parsed.data)) {
     if (value !== undefined) product[key] = value;
+  }
+  if (parsed.data.countryPrices !== undefined) product.countryPrices = parsed.data.countryPrices;
+  if (parsed.data.availabilityByCountry !== undefined) {
+    product.availabilityByCountry = { US: true, CA: true, UK: true, ...(product.availabilityByCountry || {}), ...parsed.data.availabilityByCountry };
   }
   if (parsed.data.price !== undefined) product.price = Number(Number(parsed.data.price).toFixed(2));
   await db.write();
