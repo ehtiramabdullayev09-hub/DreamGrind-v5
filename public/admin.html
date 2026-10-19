@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>DreamGrind Admin</title>
 <style>
-:root{font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#111827;background:#f3f4f6}*{box-sizing:border-box}body{margin:0}.wrap{max-width:1250px;margin:0 auto;padding:24px}.top{display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap}.brand{font-size:28px;font-weight:800;letter-spacing:-.03em}.muted{color:#6b7280}.actions{display:flex;gap:10px;flex-wrap:wrap}button{border:1px solid #d1d5db;background:#111827;color:#fff;border-radius:10px;padding:10px 14px;cursor:pointer}button.secondary{background:#fff;color:#111827}button.danger{background:#b91c1c;border-color:#b91c1c}.panel{background:#fff;border:1px solid #e5e7eb;border-radius:16px;padding:18px;margin-top:18px;box-shadow:0 10px 30px rgba(0,0,0,.04)}.login{max-width:420px;margin:70px auto}.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}.metric{padding:18px;border-radius:14px;background:#fff;border:1px solid #e5e7eb}.metric span{display:block;color:#6b7280;font-size:13px}.metric strong{display:block;font-size:30px;margin-top:6px}.tabs{display:flex;gap:8px;flex-wrap:wrap;margin-top:16px}.tab{background:#fff;color:#111827}.tab.active{background:#111827;color:#fff}.hidden{display:none}.table-wrap{overflow:auto}table{width:100%;border-collapse:collapse;min-width:800px}th,td{padding:11px 10px;border-bottom:1px solid #eef0f2;text-align:left;font-size:14px;vertical-align:top}.order-item-details{display:grid;gap:8px;margin-top:8px;min-width:180px;font-size:12px}.order-item-details>div{padding-top:7px;border-top:1px solid #eef0f2}.order-item-details .muted{margin-top:3px}input,select,textarea{width:100%;padding:10px 11px;border:1px solid #d1d5db;border-radius:10px;background:#fff;font:inherit}textarea{min-height:190px;resize:vertical;line-height:1.55}label{display:block;font-size:13px;font-weight:700;margin-bottom:6px}.form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.form-grid .full{grid-column:1/-1}.row-actions{display:flex;gap:8px;flex-wrap:wrap}.notice{padding:12px;border-radius:10px;background:#f9fafb;border:1px solid #e5e7eb}.error{color:#b91c1c;font-size:14px}.ok{color:#166534;font-size:14px}@media(max-width:900px){.grid{grid-template-columns:1fr 1fr}}@media(max-width:600px){.wrap{padding:14px}.grid,.form-grid{grid-template-columns:1fr}.form-grid .full{grid-column:auto}.brand{font-size:23px}}
+:root{font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#111827;background:#f3f4f6}*{box-sizing:border-box}body{margin:0}.wrap{max-width:1250px;margin:0 auto;padding:24px}.top{display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap}.brand{font-size:28px;font-weight:800;letter-spacing:-.03em}.muted{color:#6b7280}.actions{display:flex;gap:10px;flex-wrap:wrap}button{border:1px solid #d1d5db;background:#111827;color:#fff;border-radius:10px;padding:10px 14px;cursor:pointer}button.secondary{background:#fff;color:#111827}button.danger{background:#b91c1c;border-color:#b91c1c}.panel{background:#fff;border:1px solid #e5e7eb;border-radius:16px;padding:18px;margin-top:18px;box-shadow:0 10px 30px rgba(0,0,0,.04)}.login{max-width:420px;margin:70px auto}.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}.metric{padding:18px;border-radius:14px;background:#fff;border:1px solid #e5e7eb}.metric span{display:block;color:#6b7280;font-size:13px}.metric strong{display:block;font-size:30px;margin-top:6px}.tabs{display:flex;gap:8px;flex-wrap:wrap;margin-top:16px}.tab{background:#fff;color:#111827}.tab.active{background:#111827;color:#fff}.hidden{display:none}.table-wrap{overflow:auto}table{width:100%;border-collapse:collapse;min-width:800px}th,td{padding:11px 10px;border-bottom:1px solid #eef0f2;text-align:left;font-size:14px;vertical-align:top}.order-item-details{display:grid;gap:8px;margin-top:8px;min-width:180px;font-size:12px}.order-item-details>div{padding-top:7px;border-top:1px solid #eef0f2}.order-item-details .muted{margin-top:3px}input,select,textarea{width:100%;padding:10px 11px;border:1px solid #d1d5db;border-radius:10px;background:#fff;font:inherit}textarea{min-height:190px;resize:vertical;line-height:1.55}label{display:block;font-size:13px;font-weight:700;margin-bottom:6px}.form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.form-grid .full{grid-column:1/-1}.row-actions{display:flex;gap:8px;flex-wrap:wrap}.notice{padding:12px;border-radius:10px;background:#f9fafb;border:1px solid #e5e7eb}.error{color:#b91c1c;font-size:14px}.ok{color:#166534;font-size:14px}.market-pricing-panel{border:1px solid #dbe3e8;border-radius:14px;padding:14px;background:#fbfcfd}.market-pricing-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}.market-pricing-card{border:1px solid #e5e7eb;border-radius:12px;padding:12px;min-width:0;background:#fff}.market-availability{display:flex;align-items:center;gap:8px;margin-bottom:12px}.market-availability input{width:auto;margin:0}.market-pricing-card small{display:block;line-height:1.45}.market-pricing-card label:not(.market-availability){margin-top:8px}@media(max-width:900px){.market-pricing-grid{grid-template-columns:1fr}}@media(max-width:900px){.grid{grid-template-columns:1fr 1fr}}@media(max-width:600px){.wrap{padding:14px}.grid,.form-grid{grid-template-columns:1fr}.form-grid .full{grid-column:auto}.brand{font-size:23px}}
 </style>
 </head>
 <body>
@@ -53,6 +53,26 @@
       <div><label>Sale ends at (optional)</label><input id="productSaleEndsAt" type="datetime-local"><small class="muted">A countdown appears only while this real offer is active. The date uses this device's time zone.</small></div>
       <div><label>Category</label><input id="productCategory" placeholder="Gadgets"></div>
       <div><label>Stock</label><input id="productStock" type="number" min="0" step="1" value="0"></div>
+      <div class="full market-pricing-panel">
+        <h3 style="margin:0 0 6px">Country availability &amp; prices</h3>
+        <p class="muted" style="margin:0 0 12px">Untick a country to hide this product there and block checkout. Canada and UK prices are optional: leave them blank to use the site's automatic currency conversion.</p>
+        <div class="market-pricing-grid">
+          <div class="market-pricing-card">
+            <label class="market-availability"><input id="productAvailableUS" type="checkbox" checked> Available in United States</label>
+            <small class="muted">Price comes from the Price (USD) field above.</small>
+          </div>
+          <div class="market-pricing-card">
+            <label class="market-availability"><input id="productAvailableCA" type="checkbox" checked> Available in Canada</label>
+            <label for="productPriceCA">Canada price (CAD)</label>
+            <input id="productPriceCA" type="number" min="0.01" step="0.01" placeholder="Auto-convert from USD">
+          </div>
+          <div class="market-pricing-card">
+            <label class="market-availability"><input id="productAvailableUK" type="checkbox" checked> Available in United Kingdom</label>
+            <label for="productPriceUK">United Kingdom price (GBP)</label>
+            <input id="productPriceUK" type="number" min="0.01" step="0.01" placeholder="Auto-convert from USD">
+          </div>
+        </div>
+      </div>
       <div class="full">
         <label for="productVariantCombinations">Color / size variants (optional)</label>
         <textarea id="productVariantCombinations" rows="6" maxlength="10000" placeholder="One combination per line: Color | Size | Price (USD)
@@ -208,7 +228,7 @@ function renderOrders() {
   `;
 }
 async function saveOrder(id){try{const status=$('st-'+id).value;const tracking=$('tr-'+id).value.trim();await api('/api/admin/orders/'+encodeURIComponent(id),{method:'PATCH',body:JSON.stringify({status,trackingNumber:tracking||null})});flash('Order updated.');await loadAll()}catch(e){flash(e.message,false)}}
-function renderProducts(){if(!state.products.length){$('products').innerHTML='<p class="muted">No products.</p>';return}$('products').innerHTML=`<table><thead><tr><th>ID</th><th>Product</th><th>Price</th><th>Category</th><th>Stock</th><th>Actions</th></tr></thead><tbody>${state.products.map(p=>`<tr><td>${p.id}</td><td><strong>${esc(p.title)}</strong>${p.image?`<div class="muted">Image set</div>`:''}</td><td>$${Number(p.price||0).toFixed(2)}</td><td>${esc(p.category||'General')}</td><td>${Number.isFinite(Number(p.stock))?p.stock:'—'}</td><td class="row-actions"><button onclick="editProduct(${p.id})">Edit</button><button class="danger" onclick="deleteProduct(${p.id})">Delete</button></td></tr>`).join('')}</tbody></table>`}
+function renderProducts(){if(!state.products.length){$('products').innerHTML='<p class="muted">No products.</p>';return}$('products').innerHTML=`<table><thead><tr><th>ID</th><th>Product</th><th>US price</th><th>Category</th><th>Markets</th><th>Stock</th><th>Actions</th></tr></thead><tbody>${state.products.map(p=>{const m=p.availabilityByCountry||{};const markets=[['US',m.US!==false],['CA',m.CA!==false],['UK',m.UK!==false]].map(([c,on])=>`<span style="color:${on?'#166534':'#b91c1c'}">${c} ${on?'✓':'×'}</span>`).join(' · ');return `<tr><td>${p.id}</td><td><strong>${esc(p.title)}</strong>${p.image?`<div class="muted">Image set</div>`:''}</td><td>$${Number(p.price||0).toFixed(2)}</td><td>${esc(p.category||'General')}</td><td>${markets}</td><td>${Number.isFinite(Number(p.stock))?p.stock:'—'}</td><td class="row-actions"><button onclick="editProduct(${p.id})">Edit</button><button class="danger" onclick="deleteProduct(${p.id})">Delete</button></td></tr>`}).join('')}</tbody></table>`}
 function toLocalDateTimeInput(value){
   if(!value)return '';
   const d=new Date(value);
@@ -227,6 +247,11 @@ function editProduct(id){
   $('productSaleEndsAt').value=toLocalDateTimeInput(p.saleEndsAt);
   $('productCategory').value=p.category||'';
   $('productStock').value=p.stock??0;
+  $('productAvailableUS').checked=p.availabilityByCountry?.US!==false;
+  $('productAvailableCA').checked=p.availabilityByCountry?.CA!==false;
+  $('productAvailableUK').checked=p.availabilityByCountry?.UK!==false;
+  $('productPriceCA').value=p.countryPrices?.CA ?? '';
+  $('productPriceUK').value=p.countryPrices?.UK ?? '';
   $('productDescription').value=p.description||'';
   $('productVariantCombinations').value=(p.variantCombinations||[]).map(v=>`${v.color||'—'} | ${v.size||'—'} | ${Number(v.price||0).toFixed(2)}`).join('\n');
 
@@ -244,8 +269,11 @@ function editProduct(id){
 }
 
 function resetProductForm(){
-  ['productId','productTitle','productPrice','productOldPrice','productSaleEndsAt','productCategory','productDescription','productVariantCombinations'].forEach(id=>$(id).value='');
+  ['productId','productTitle','productPrice','productOldPrice','productSaleEndsAt','productCategory','productDescription','productVariantCombinations','productPriceCA','productPriceUK'].forEach(id=>$(id).value='');
 
+  $('productAvailableUS').checked=true;
+  $('productAvailableCA').checked=true;
+  $('productAvailableUK').checked=true;
   $('productStock').value=0;
 
   for(let i=1;i<=8;i++){
@@ -318,6 +346,15 @@ $('productForm').addEventListener('submit',async e=>{
       return;
     }
     const variantCombinations=parseVariantCombinations($('productVariantCombinations').value);
+    const caPriceValue=$('productPriceCA').value.trim();
+    const ukPriceValue=$('productPriceUK').value.trim();
+    const countryPrices={US:price,CA:caPriceValue?Number(caPriceValue):null,UK:ukPriceValue?Number(ukPriceValue):null};
+    for(const [countryCode,countryPrice] of Object.entries(countryPrices)){
+      if(countryPrice!==null && (!Number.isFinite(countryPrice) || countryPrice<=0 || countryPrice>100000)){
+        flash(`Enter a valid price for ${countryCode}, or leave it blank for automatic conversion.`,false);
+        return;
+      }
+    }
     const payload={
       title:$('productTitle').value.trim(),
       price,
@@ -327,6 +364,8 @@ $('productForm').addEventListener('submit',async e=>{
       stock:Number($('productStock').value||0),
       description:$('productDescription').value.trim(),
       variantCombinations,
+      countryPrices,
+      availabilityByCountry:{US:$('productAvailableUS').checked,CA:$('productAvailableCA').checked,UK:$('productAvailableUK').checked},
       images:images,
       video:$('productVideo').value.trim()||null
     };
