@@ -66,6 +66,7 @@ async function loadProducts() {
         }
 
         products = data.products || [];
+        removeUnavailableCartItemsForCurrentCountry();
         renderProducts();
         const initialProductId = new URLSearchParams(window.location.search).get('product');
         if (initialProductId) {
@@ -121,16 +122,67 @@ function syncCountryPicker() {
 function setCountry(country) {
   localStorage.setItem('dg_country', country);
   syncCountryPicker();
+  const removedUnavailable = removeUnavailableCartItemsForCurrentCountry();
   renderProducts();
 
   if ($('modalRoot')?.querySelector('.drawer')) {
     openCart();
   }
 
-  showToast('Shipping country updated');
+  showToast(removedUnavailable
+    ? 'Some cart items were removed because they are not available in this country.'
+    : 'Shipping country updated');
 }
 
+// displayPrice converts a USD amount using the storefront's existing display rates.
 function displayPrice(value) { const c = currencyConfig(); return money(value * c.rate, c.currency); }
+// Product and cart prices returned by the country-aware helpers are already in local currency.
+function displayCountryPrice(value) { return money(value, currencyConfig().currency); }
+function isProductAvailableInCountry(product, country = currencyConfig().country) {
+  return product?.availabilityByCountry?.[country] !== false;
+}
+function countryBasePrice(product, country = currencyConfig().country) {
+  if (country === 'US') return Number(product?.price || 0);
+  const configured = product?.countryPrices?.[country];
+  return Number.isFinite(Number(configured)) && Number(configured) > 0 ? Number(configured) : null;
+}
+function productPriceForCountry(product, now = Date.now()) {
+  const country = currencyConfig().country;
+  const usdPrice = effectiveProductPrice(product, now);
+  if (country === 'US') return usdPrice;
+  const customPrice = countryBasePrice(product, country);
+  const baseUsd = Number(product?.price || 0);
+  if (customPrice != null && baseUsd > 0) return Number((customPrice * usdPrice / baseUsd).toFixed(2));
+  return Number((usdPrice * currencyConfig().rate).toFixed(2));
+}
+function variantPriceForCountry(product, combination, now = Date.now()) {
+  const country = currencyConfig().country;
+  const usdPrice = effectiveVariantPrice(product, combination, now);
+  if (country === 'US') return usdPrice;
+  const customPrice = countryBasePrice(product, country);
+  const baseUsd = Number(product?.price || 0);
+  if (customPrice != null && baseUsd > 0) return Number((customPrice * usdPrice / baseUsd).toFixed(2));
+  return Number((usdPrice * currencyConfig().rate).toFixed(2));
+}
+function compareAtPriceForCountry(product, combination = null, now = Date.now()) {
+  const country = currencyConfig().country;
+  const usdCompareAt = combination ? variantCompareAtPrice(product, combination, now) : variantCompareAtPrice(product, null, now);
+  if (usdCompareAt == null) return null;
+  if (country === 'US') return usdCompareAt;
+  const customPrice = countryBasePrice(product, country);
+  const baseUsd = Number(product?.price || 0);
+  if (customPrice != null && baseUsd > 0) return Number((customPrice * usdCompareAt / baseUsd).toFixed(2));
+  return Number((usdCompareAt * currencyConfig().rate).toFixed(2));
+}
+function removeUnavailableCartItemsForCurrentCountry() {
+  const before = state.cart.length;
+  state.cart = state.cart.filter(item => {
+    const product = products.find(p => Number(p.id) === Number(item.id));
+    return product && isProductAvailableInCountry(product);
+  });
+  if (state.cart.length !== before) saveAll();
+  return state.cart.length !== before;
+}
 
 // A sale stays active only until its configured end time. After expiry, the
 // compare-at price becomes the amount shown and charged, both in the UI/server.
@@ -274,10 +326,10 @@ function updateProductVariantUI(productId) {
   const label = $('variantCombinationLabel');
   if (label) label.textContent = variantCombinationLabel(selected);
   const priceElement = $('productCurrentPrice');
-  if (priceElement) priceElement.textContent = displayPrice(selected ? effectiveVariantPrice(product, selected) : effectiveProductPrice(product));
+  if (priceElement) priceElement.textContent = displayCountryPrice(selected ? variantPriceForCountry(product, selected) : productPriceForCountry(product));
   const compareElement = $('productComparePrice');
-  const compareAt = selected ? variantCompareAtPrice(product, selected) : variantCompareAtPrice(product, null);
-  if (compareElement && compareAt != null) compareElement.textContent = displayPrice(compareAt);
+  const compareAt = compareAtPriceForCountry(product, selected);
+  if (compareElement && compareAt != null) compareElement.textContent = displayCountryPrice(compareAt);
   const badge = $('productDiscountBadge');
   if (badge && isProductSaleActive(product)) badge.textContent = `Save ${productDiscountPercent(product)}%`;
 }
@@ -313,7 +365,7 @@ function productCartSelection(product) {
 function cartItemPrice(product, item) {
   const combination = (item.variantColor != null || item.variantSize != null)
     ? findVariantCombination(product, item.variantColor, item.variantSize) : null;
-  return combination ? effectiveVariantPrice(product, combination) : effectiveProductPrice(product);
+  return combination ? variantPriceForCountry(product, combination) : productPriceForCountry(product);
 }
 function cartItemVariantLabel(item) {
   if (item.variantColor != null || item.variantSize != null) {
@@ -447,7 +499,7 @@ function startProductSaleCountdown(product) {
       productSaleTimer = null;
       const currentPrice = $('productCurrentPrice');
       if (productVariantCombinations(product).length) updateProductVariantUI(product.id);
-      else if (currentPrice) currentPrice.textContent = displayPrice(effectiveProductPrice(product));
+      else if (currentPrice) currentPrice.textContent = displayCountryPrice(productPriceForCountry(product));
       $('productComparePrice')?.remove();
       $('productDiscountBadge')?.remove();
       $('productSaleOffer')?.remove();
@@ -487,7 +539,7 @@ function renderHeroProduct() {
   ];
 
   grid.innerHTML = categoryCards.map((category, index) => {
-    const product = products.find(p => String(p.category || '').trim().toLowerCase() === category.key.toLowerCase() && heroCategoryImage(p));
+    const product = products.find(p => isProductAvailableInCountry(p) && String(p.category || '').trim().toLowerCase() === category.key.toLowerCase() && heroCategoryImage(p));
     const image = heroCategoryImage(product);
     const imageMarkup = image
       ? `<img src="${escapeHtml(image)}" alt="${escapeHtml(category.title)} collection" loading="eager" decoding="async">`
@@ -504,15 +556,15 @@ function renderHeroProduct() {
   }).join('');
 }
 
-function renderProducts() { const q = ($('searchInput')?.value || '').trim().toLowerCase(); const sort = $('sortSelect')?.value || 'featured'; let list = products.filter(p => (state.category === 'All' || p.category === state.category) && (!q || `${p.title} ${p.category} ${p.description}`.toLowerCase().includes(q))); if (sort === 'rating') list.sort((a, b) => b.rating - a.rating); if (sort === 'low') list.sort((a, b) => effectiveProductPrice(a) - effectiveProductPrice(b)); if (sort === 'high') list.sort((a, b) => effectiveProductPrice(b) - effectiveProductPrice(a)); $('shopTitle').textContent = state.category === 'All' ? 'Trending products' : `${state.category} products`; $('emptyResults').classList.toggle('hidden', list.length > 0); $('productGrid').innerHTML = list.map(cardHtml).join(''); document.querySelectorAll('.chip').forEach(ch => ch.classList.toggle('active', ch.textContent === state.category)); renderHeroProduct(); }
+function renderProducts() { const q = ($('searchInput')?.value || '').trim().toLowerCase(); const sort = $('sortSelect')?.value || 'featured'; let list = products.filter(p => isProductAvailableInCountry(p) && (state.category === 'All' || p.category === state.category) && (!q || `${p.title} ${p.category} ${p.description}`.toLowerCase().includes(q))); if (sort === 'rating') list.sort((a, b) => b.rating - a.rating); if (sort === 'low') list.sort((a, b) => productPriceForCountry(a) - productPriceForCountry(b)); if (sort === 'high') list.sort((a, b) => productPriceForCountry(b) - productPriceForCountry(a)); $('shopTitle').textContent = state.category === 'All' ? 'Trending products' : `${state.category} products`; $('emptyResults').classList.toggle('hidden', list.length > 0); $('productGrid').innerHTML = list.map(cardHtml).join(''); document.querySelectorAll('.chip').forEach(ch => ch.classList.toggle('active', ch.textContent === state.category)); renderHeroProduct(); }
 function cardHtml(p) {
   const wished = state.wishlist.has(p.id);
   const image = (p.images && p.images.length) ? p.images[0] : (p.image || '');
   const saleActive = isProductSaleActive(p);
   const combinations = productVariantCombinations(p);
-  const lowestCombination = combinations.length ? [...combinations].sort((a, b) => effectiveVariantPrice(p, a) - effectiveVariantPrice(p, b))[0] : null;
-  const price = lowestCombination ? effectiveVariantPrice(p, lowestCombination) : effectiveProductPrice(p);
-  const comparisonPrice = lowestCombination ? variantCompareAtPrice(p, lowestCombination) : (saleActive ? Number(p.oldPrice) : null);
+  const lowestCombination = combinations.length ? [...combinations].sort((a, b) => variantPriceForCountry(p, a) - variantPriceForCountry(p, b))[0] : null;
+  const price = lowestCombination ? variantPriceForCountry(p, lowestCombination) : productPriceForCountry(p);
+  const comparisonPrice = lowestCombination ? compareAtPriceForCountry(p, lowestCombination) : (saleActive ? compareAtPriceForCountry(p, null) : null);
   const discount = saleActive ? productDiscountPercent(p) : 0;
   const ratingMarkup = Number(p.reviews) > 0
     ? `<div class="product-rating">★ ${Number(p.rating ?? 0).toFixed(1)} · ${Number(p.reviews)} reviews</div>`
@@ -535,8 +587,8 @@ function cardHtml(p) {
         ${ratingMarkup}
         <div class="product-bottom">
           <div class="price">
-            ${combinations.length ? '<span class="price-from-label">From </span>' : ''}${displayPrice(price)}
-            ${saleActive && comparisonPrice != null ? `<span class="price-old">${displayPrice(comparisonPrice)}</span>` : ''}
+            ${combinations.length ? '<span class="price-from-label">From </span>' : ''}${displayCountryPrice(price)}
+            ${saleActive && comparisonPrice != null ? `<span class="price-old">${displayCountryPrice(comparisonPrice)}</span>` : ''}
           </div>
           <button class="add-mini" onclick="quickAdd(${p.id})">${combinations.length || (p.variants && p.variants.length) ? 'Choose options' : 'Add'}</button>
         </div>
@@ -551,8 +603,8 @@ function toggleMobileMenu() { $('mobileNav').classList.toggle('hidden'); }
 function closeMobileMenu() { $('mobileNav').classList.add('hidden'); }
 function goTop(e) { e.preventDefault(); window.scrollTo({ top: 0, behavior: 'smooth' }); }
 function toggleWishlist(id) { state.wishlist.has(id) ? state.wishlist.delete(id) : state.wishlist.add(id); saveAll(); renderProducts(); showToast(state.wishlist.has(id) ? 'Added to wishlist' : 'Removed from wishlist'); }
-function openWishlist() { const list = products.filter(p => state.wishlist.has(p.id)); $('modalRoot').innerHTML = `<div class="modal-overlay" onclick="closeModal(event)"><div class="modal"><div class="modal-head"><h2>Wishlist</h2><button class="close-btn" onclick="closeModal()">✕</button></div>${list.length ? `<div class="product-grid" style="grid-template-columns:repeat(2,1fr);padding:0">${list.map(cardHtml).join('')}</div>` : '<p class="muted">Your wishlist is empty.</p>'}</div></div>`; }
-function quickAdd(id) { const product = products.find(p => String(p.id) === String(id)); if (!product) return; if (productVariantCombinations(product).length || (product.variants && product.variants.length)) { openProduct(id); return; } const item = state.cart.find(x => x.id === id && !x.variantColor && !x.variantSize && !x.variant); if (item) item.qty++; else state.cart.push({ id, qty: 1, variant: null, variantColor: null, variantSize: null }); saveAll(); showToast('Added to cart'); openCart(); }
+function openWishlist() { const list = products.filter(p => state.wishlist.has(p.id) && isProductAvailableInCountry(p)); $('modalRoot').innerHTML = `<div class="modal-overlay" onclick="closeModal(event)"><div class="modal"><div class="modal-head"><h2>Wishlist</h2><button class="close-btn" onclick="closeModal()">✕</button></div>${list.length ? `<div class="product-grid" style="grid-template-columns:repeat(2,1fr);padding:0">${list.map(cardHtml).join('')}</div>` : '<p class="muted">Your wishlist is empty.</p>'}</div></div>`; }
+function quickAdd(id) { const product = products.find(p => String(p.id) === String(id)); if (!product) return; if (!isProductAvailableInCountry(product)) { showToast('This product is not available in your shipping country.'); return; } if (productVariantCombinations(product).length || (product.variants && product.variants.length)) { openProduct(id); return; } const item = state.cart.find(x => x.id === id && !x.variantColor && !x.variantSize && !x.variant); if (item) item.qty++; else state.cart.push({ id, qty: 1, variant: null, variantColor: null, variantSize: null }); saveAll(); showToast('Added to cart'); openCart(); }
 function openProduct(id) {
   const p = products.find(x => String(x.id) === String(id));
   if (!p) return;
@@ -571,6 +623,7 @@ function renderProductPage(id) {
 
   productPageOpen = true;
   document.title = `${p.title} | DreamGrind`;
+  const availableInMarket = isProductAvailableInCountry(p);
 
   const images = (p.images && p.images.length) ? p.images : (p.image ? [p.image] : []);
   const mainImage = images[0] || '';
@@ -613,13 +666,13 @@ function renderProductPage(id) {
   const countdownEnd = Date.parse(p.saleEndsAt || '');
   const showCountdown = saleActive && Number.isFinite(countdownEnd) && countdownEnd > Date.now();
   const initialCombination = combinations.length ? selectedProductVariantCombination(p) : null;
-  const currentPrice = initialCombination ? effectiveVariantPrice(p, initialCombination) : effectiveProductPrice(p);
-  const initialCompareAt = initialCombination ? variantCompareAtPrice(p, initialCombination) : Number(p.oldPrice || 0);
+  const currentPrice = initialCombination ? variantPriceForCountry(p, initialCombination) : productPriceForCountry(p);
+  const initialCompareAt = initialCombination ? compareAtPriceForCountry(p, initialCombination) : compareAtPriceForCountry(p, null);
   const ratingMarkup = Number(p.reviews) > 0
     ? `<div class="product-rating" aria-label="Rated ${Number(p.rating ?? 0)} out of 5">★ ${Number(p.rating ?? 0).toFixed(1)} <span class="product-page-reviews">· ${Number(p.reviews)} reviews</span></div>`
     : '';
   const saleMarkup = saleActive
-    ? `${discount > 0 ? `<span class="product-page-discount-badge" id="productDiscountBadge">Save ${discount}%</span>` : ''}<span class="price-old" id="productComparePrice">${displayPrice(initialCompareAt || p.oldPrice)}</span>`
+    ? `${discount > 0 ? `<span class="product-page-discount-badge" id="productDiscountBadge">Save ${discount}%</span>` : ''}<span class="price-old" id="productComparePrice">${displayCountryPrice(initialCompareAt ?? p.oldPrice)}</span>`
     : '';
 
   $('modalRoot').innerHTML = `
@@ -647,7 +700,8 @@ function renderProductPage(id) {
             <h1 class="product-page-title">${escapeHtml(p.title)}</h1>
             ${ratingMarkup}
 
-            <div class="product-page-price" id="productPriceBlock"><span id="productCurrentPrice">${displayPrice(currentPrice)}</span>${saleMarkup}</div>
+            <div class="product-page-price" id="productPriceBlock"><span id="productCurrentPrice">${displayCountryPrice(currentPrice)}</span>${saleMarkup}</div>
+            ${availableInMarket ? '' : `<div class="note-box" role="status">This product is not available for delivery to ${escapeHtml(currencyConfig().country === 'CA' ? 'Canada' : currencyConfig().country === 'UK' ? 'the United Kingdom' : 'the United States')}.</div>`}
             ${showCountdown ? `<div class="product-page-sale-offer" id="productSaleOffer"><span>Limited-time offer ends in</span><strong id="productSaleCountdown" aria-live="off"></strong></div>` : ''}
             <div class="product-page-shipping"><span aria-hidden="true">✓</span> Free shipping <span class="product-page-dot">·</span> Secure checkout by Epoint</div>
 
@@ -657,8 +711,8 @@ function renderProductPage(id) {
             <div class="product-page-quantity"><label for="detailQty" class="product-page-label">Quantity</label><input id="detailQty" type="number" min="1" max="20" value="1" inputmode="numeric"></div>
 
             <div class="detail-actions product-page-desktop-actions">
-              <button class="primary-button full" type="button" onclick="addProductFromDetail(${p.id})">Add to cart</button>
-              <button class="buy-now-button full" type="button" onclick="buyNowFromDetail(${p.id})">Buy now <span aria-hidden="true">→</span></button>
+              <button class="primary-button full" type="button" onclick="addProductFromDetail(${p.id})" ${availableInMarket ? '' : 'disabled'}>Add to cart</button>
+              <button class="buy-now-button full" type="button" onclick="buyNowFromDetail(${p.id})" ${availableInMarket ? '' : 'disabled'}>Buy now <span aria-hidden="true">→</span></button>
             </div>
 
             <section class="product-page-confidence" aria-label="Shopping information">
@@ -678,8 +732,8 @@ function renderProductPage(id) {
       </div>
 
       <div class="product-page-sticky-actions" aria-label="Purchase actions">
-        <button class="product-page-mobile-add" type="button" onclick="addProductFromDetail(${p.id})">Add to cart</button>
-        <button class="product-page-mobile-buy" type="button" onclick="buyNowFromDetail(${p.id})">Buy now →</button>
+        <button class="product-page-mobile-add" type="button" onclick="addProductFromDetail(${p.id})" ${availableInMarket ? '' : 'disabled'}>Add to cart</button>
+        <button class="product-page-mobile-buy" type="button" onclick="buyNowFromDetail(${p.id})" ${availableInMarket ? '' : 'disabled'}>Buy now →</button>
       </div>
     </section>`;
 
@@ -727,6 +781,7 @@ function selectVariant(button) { button.parentElement.querySelectorAll('.variant
 function addProductFromDetail(id) {
   const product = products.find(p => String(p.id) === String(id));
   if (!product) return;
+  if (!isProductAvailableInCountry(product)) { showToast('This product is not available in your shipping country.'); return; }
   const selection = productCartSelection(product);
   if (!selection) return;
   const qty = Math.max(1, Math.min(20, Number($('detailQty')?.value) || 1));
@@ -745,6 +800,7 @@ function addProductFromDetail(id) {
 function buyNowFromDetail(id) {
   const product = products.find(x => String(x.id) === String(id));
   if (!product) return;
+  if (!isProductAvailableInCountry(product)) { showToast('This product is not available in your shipping country.'); return; }
   const selection = productCartSelection(product);
   if (!selection) return;
   const qty = Math.max(1, Math.min(20, Number($('detailQty')?.value) || 1));
@@ -765,12 +821,12 @@ function openCart() {
     if (!p) return '';
     const unitPrice = cartItemPrice(p, item);
     const optionLabel = cartItemVariantLabel(item);
-    return `<div class="cart-line"><img src="${(p.images && p.images.length) ? p.images[0] : (p.image || '')}" alt="${escapeHtml(p.title)}"><div><strong>${escapeHtml(p.title)}</strong><div class="muted">${optionLabel ? `Option: ${escapeHtml(optionLabel)} · ` : ''}${displayPrice(unitPrice)} each</div><div class="qty-control"><button onclick="changeQty(${p.id},'${encodeURIComponent(item.variant || '')}',-1)">−</button><span>${item.qty}</span><button onclick="changeQty(${p.id},'${encodeURIComponent(item.variant || '')}',1)">+</button></div></div><strong>${displayPrice(unitPrice * item.qty)}</strong></div>`;
+    return `<div class="cart-line"><img src="${(p.images && p.images.length) ? p.images[0] : (p.image || '')}" alt="${escapeHtml(p.title)}"><div><strong>${escapeHtml(p.title)}</strong><div class="muted">${optionLabel ? `Option: ${escapeHtml(optionLabel)} · ` : ''}${displayCountryPrice(unitPrice)} each</div><div class="qty-control"><button onclick="changeQty(${p.id},'${encodeURIComponent(item.variant || '')}',-1)">−</button><span>${item.qty}</span><button onclick="changeQty(${p.id},'${encodeURIComponent(item.variant || '')}',1)">+</button></div></div><strong>${displayCountryPrice(unitPrice * item.qty)}</strong></div>`;
   }).join('') : `<p class="muted">Your cart is empty.</p>`;
   const sub = cartSubtotal();
   const ship = state.cart.length ? shippingCost() : 0;
   const total = sub + ship;
-  $('modalRoot').innerHTML = `<div class="overlay" onclick="closeModal(event)"><aside class="drawer"><div class="drawer-head"><h2>Your cart</h2><button class="close-btn" onclick="closeModal()">✕</button></div>${lines}<div class="drawer-section"><label for="countrySelect">Shipping country</label><select id="countrySelect" onchange="setCountry(this.value)"><option value="US" ${c.country === 'US' ? 'selected' : ''}>United States</option><option value="CA" ${c.country === 'CA' ? 'selected' : ''}>Canada</option><option value="UK" ${c.country === 'UK' ? 'selected' : ''}>United Kingdom</option></select></div><div class="drawer-section"><input id="couponInput" placeholder="Coupon code (try SAVE10)"></div><div class="summary-row"><span>Subtotal</span><span>${displayPrice(sub)}</span></div><div class="summary-row"><span>Shipping</span><span>${ship === 0 ? 'FREE' : displayPrice(ship)}</span></div><div class="summary-row total"><span>Total</span><span>${displayPrice(total)}</span></div><button class="primary-button full" onclick="startCheckout()" ${state.cart.length ? '' : 'disabled'}>Checkout</button><div class="note-box" style="margin-top:12px">You will be charged in AZN. Secure by Epoint.</div></aside></div>`;
+  $('modalRoot').innerHTML = `<div class="overlay" onclick="closeModal(event)"><aside class="drawer"><div class="drawer-head"><h2>Your cart</h2><button class="close-btn" onclick="closeModal()">✕</button></div>${lines}<div class="drawer-section"><label for="countrySelect">Shipping country</label><select id="countrySelect" onchange="setCountry(this.value)"><option value="US" ${c.country === 'US' ? 'selected' : ''}>United States</option><option value="CA" ${c.country === 'CA' ? 'selected' : ''}>Canada</option><option value="UK" ${c.country === 'UK' ? 'selected' : ''}>United Kingdom</option></select></div><div class="drawer-section"><input id="couponInput" placeholder="Coupon code (try SAVE10)"></div><div class="summary-row"><span>Subtotal</span><span>${displayCountryPrice(sub)}</span></div><div class="summary-row"><span>Shipping</span><span>${ship === 0 ? 'FREE' : displayCountryPrice(ship)}</span></div><div class="summary-row total"><span>Total</span><span>${displayCountryPrice(total)}</span></div><button class="primary-button full" onclick="startCheckout()" ${state.cart.length ? '' : 'disabled'}>Checkout</button><div class="note-box" style="margin-top:12px">You will be charged in AZN. Secure by Epoint.</div></aside></div>`;
 }
 function changeQty(id, variantKey, delta) {
   const variant = decodeURIComponent(variantKey);
@@ -953,6 +1009,15 @@ function handleCheckoutCountryChange() {
   syncCountryPicker();
   renderProducts();
   updateCheckoutAddressFields();
+  const code = countryCodes[nextCountry] || 'US';
+  const checkoutItems = (pendingCheckoutItems?.length ? pendingCheckoutItems : state.cart);
+  const unavailable = checkoutItems.some(item => {
+    const product = products.find(p => Number(p.id) === Number(item.id));
+    return !product || !isProductAvailableInCountry(product, code);
+  });
+  if (unavailable && $('checkoutCountryMessage')) {
+    $('checkoutCountryMessage').textContent = 'One or more products are not available for this destination. Change the country or remove those products before paying.';
+  }
 }
 
     async function getCurrentUser() { const r = await fetch('/api/auth/me', { credentials: 'include' }); const d = await r.json(); return d.user || null; }
@@ -964,7 +1029,7 @@ function handleCheckoutCountryChange() {
     async function loginUser(e) { e.preventDefault(); const r = await fetch('/api/auth/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify({ email: $('loginEmail').value.trim(), password: $('loginPassword').value }) }); const d = await r.json(); if (!r.ok) { showToast(d.error || 'Unable to sign in'); return; } showToast('Logged in'); openAccount(); }
     function accountHome(user) { return `<p>Welcome back, <strong>${escapeHtml(user.name)}</strong>.</p><div class="note-box">Email: ${escapeHtml(user.email)}<br>Account type: ${user.role === 'admin' ? 'Admin' : 'Customer'}</div><div style="display:grid;gap:8px;margin-top:14px"><button class="secondary-button" onclick="openOrderHistory()">My orders</button><button class="secondary-button" onclick="openSupport()">Message the store</button>${user.role === 'admin' ? '<button class="primary-button" onclick="window.location.href=\'/admin.html\'">Admin panel</button>' : ''}<button class="primary-button" onclick="logoutUser()">Log out</button></div>`; }
     async function logoutUser() { await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' }); openAccount(); }
-    async function openOrderHistory() { const r = await fetch('/api/orders/me', { credentials: 'include' }); const d = await r.json(); if (!r.ok) { showToast('Please log in first'); return; } const orders = d.orders || []; $('modalRoot').innerHTML = `<div class="modal-overlay" onclick="closeModal(event)"><div class="modal"><div class="modal-head"><h2>My orders</h2><button class="close-btn" onclick="closeModal()">✕</button></div>${orders.length ? orders.map(o => `<div class="note-box" style="margin-bottom:9px"><strong>${escapeHtml(o.id)}</strong><br>${new Date(o.createdAt).toLocaleString()}<br>Status: ${escapeHtml(o.status)}<br>Total: ${displayPrice(o.total || 0)}<br><button class="text-button" onclick="closeModal();$('trackInput').value='${o.id}';trackOrder();location.hash='track'">Track order</button></div>`).join('') : '<p class="muted">No orders yet.</p>'}</div></div>`; }
+    async function openOrderHistory() { const r = await fetch('/api/orders/me', { credentials: 'include' }); const d = await r.json(); if (!r.ok) { showToast('Please log in first'); return; } const orders = d.orders || []; $('modalRoot').innerHTML = `<div class="modal-overlay" onclick="closeModal(event)"><div class="modal"><div class="modal-head"><h2>My orders</h2><button class="close-btn" onclick="closeModal()">✕</button></div>${orders.length ? orders.map(o => `<div class="note-box" style="margin-bottom:9px"><strong>${escapeHtml(o.id)}</strong><br>${new Date(o.createdAt).toLocaleString()}<br>Status: ${escapeHtml(o.status)}<br>Total: ${money(o.total || 0, 'AZN')}<br><button class="text-button" onclick="closeModal();$('trackInput').value='${o.id}';trackOrder();location.hash='track'">Track order</button></div>`).join('') : '<p class="muted">No orders yet.</p>'}</div></div>`; }
     async function openSupport() { const r = await fetch('/api/messages/me', { credentials: 'include' }); const d = await r.json(); if (!r.ok) { showToast('Please log in first'); return; } const old = d.messages || []; $('modalRoot').innerHTML = `<div class="modal-overlay" onclick="closeModal(event)"><div class="modal"><div class="modal-head"><h2>Contact DreamGrind</h2><button class="close-btn" onclick="closeModal()">✕</button></div><div class="message-list">${old.slice(-8).map(m => `<div class="message"><strong>${m.from === 'customer' ? 'You' : 'DreamGrind'}</strong><br>${escapeHtml(m.text)}<small>${new Date(m.createdAt).toLocaleString()}</small></div>`).join('') || '<p class="muted">No messages yet.</p>'}</div><form class="form-grid" onsubmit="sendMessage(event)"><label>Your message<textarea id="supportMessage" required placeholder="How can we help?"></textarea></label><button class="primary-button" type="submit">Send message</button></form></div></div>`; }
     async function sendMessage(e) { e.preventDefault(); const r = await fetch('/api/messages', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify({ text: $('supportMessage').value.trim() }) }); const d = await r.json(); if (!r.ok) { showToast(d.error || 'Please log in first'); return; } showToast('Message sent'); openSupport(); }
     async function submitDemoOrder(e) {
