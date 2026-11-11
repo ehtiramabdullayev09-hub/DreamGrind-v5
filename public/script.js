@@ -1,32 +1,37 @@
 let products = [];
+let storeConfig = { azerbaijanCheckoutEnabled: false };
 const translations = {
   en: {
     shippingTo: 'Shipping to:',
+    currencyNote: 'Prices shown in your selected currency',
     shop: 'Shop',
     about: 'About',
     trackOrder: 'Track order',
     categories: 'Categories',
     search: 'Search',
     cart: 'Cart',
-    markets: 'USA • CANADA • UK',
+    markets: 'USA • CANADA • UK • AZERBAIJAN SOON',
 browse: 'Browse',
 whyDreamGrind: 'Why DreamGrind',
 orderStatus: 'Order status',
-stayInLoop: 'Stay in the loop'
+stayInLoop: 'Stay in the loop',
+    azComingSoon: 'Azerbaijan orders are coming soon. Delivery arrangements are being finalised.'
   },
   az: {
     shippingTo: 'Çatdırılma ölkəsi:',
+    currencyNote: 'Qiymətlər seçilmiş valyutada göstərilir',
     shop: 'Mağaza',
     about: 'Haqqımızda',
     trackOrder: 'Sifarişi izlə',
     categories: 'Kateqoriyalar',
     search: 'Axtarış',
     cart: 'Səbət',
-    markets: 'ABŞ • KANADA • BK',
+    markets: 'ABŞ • KANADA • BK • AZƏRBAYCAN TEZLİKLƏ',
 browse: 'Kəşf et',
 whyDreamGrind: 'Niyə DreamGrind?',
 orderStatus: 'Sifariş statusu',
-stayInLoop: 'Yeniliklərdən xəbərdar ol'
+stayInLoop: 'Yeniliklərdən xəbərdar ol',
+    azComingSoon: 'Azərbaycan üzrə sifariş qəbulu tezliklə açılacaq. Çatdırılma şərtləri dəqiqləşdirilir.'
   }
 };
 
@@ -37,6 +42,7 @@ function setLanguage(language) {
   document.documentElement.lang = lang;
 
   applyLanguage(lang);
+  syncCountryPicker();
 }
 
 function applyLanguage(lang) {
@@ -66,7 +72,7 @@ async function loadProducts() {
         }
 
         products = data.products || [];
-        removeUnavailableCartItemsForCurrentCountry();
+        if (currencyConfig().country !== 'AZ') removeUnavailableCartItemsForCurrentCountry();
         renderProducts();
         const initialProductId = new URLSearchParams(window.location.search).get('product');
         if (initialProductId) {
@@ -78,6 +84,16 @@ async function loadProducts() {
     }
 }
 
+
+async function refreshStoreConfig() {
+  try {
+    const response = await fetch('/api/store-config', { cache: 'no-store' });
+    if (response.ok) storeConfig = { ...storeConfig, ...(await response.json()) };
+  } catch (error) {
+    console.warn('Unable to load store configuration; keeping safe defaults.', error);
+  }
+  return storeConfig;
+}
 
 const state = { category: 'All', wishlist: new Set(JSON.parse(localStorage.getItem('dg_wishlist') || '[]')), cart: JSON.parse(localStorage.getItem('dg_cart') || '[]') };
 let pendingCheckoutItems = null;
@@ -92,7 +108,8 @@ function escapeHtml(value) { return String(value).replace(/[&<>"']/g, c => ({ '&
 const USD_TO_AZN = 1.70;
 
 function money(value, currency = 'AZN') {
-  return new Intl.NumberFormat('en-US', {
+  const locale = currency === 'AZN' ? 'az-AZ' : 'en-US';
+  return new Intl.NumberFormat(locale, {
     style: 'currency',
     currency
   }).format(value);
@@ -104,7 +121,8 @@ function currencyConfig() {
   const configs = {
     US: { country: 'US', currency: 'USD', rate: 1 },
     CA: { country: 'CA', currency: 'CAD', rate: 1.36 },
-    UK: { country: 'UK', currency: 'GBP', rate: 0.75 }
+    UK: { country: 'UK', currency: 'GBP', rate: 0.75 },
+    AZ: { country: 'AZ', currency: 'AZN', rate: 1 }
   };
 
   return configs[country] || configs.US;
@@ -118,11 +136,19 @@ function syncCountryPicker() {
 
   const label = $('currencyLabel');
   if (label) label.textContent = c.currency;
+  const announcement = $('announcementText');
+  if (announcement) {
+    const az = localStorage.getItem('dg_language') === 'az';
+    announcement.textContent = c.country === 'AZ'
+      ? (az ? 'Azərbaycan üzrə sifariş qəbulu tezliklə açılacaq' : 'Azerbaijan orders opening soon')
+      : (az ? 'Seçilmiş sifarişlərdə pulsuz çatdırılma' : 'Free shipping on selected orders');
+  }
 }
 function setCountry(country) {
   localStorage.setItem('dg_country', country);
   syncCountryPicker();
-  const removedUnavailable = removeUnavailableCartItemsForCurrentCountry();
+  // Keep the existing cart intact while the Azerbaijan market is in preparation.
+  const removedUnavailable = country === 'AZ' ? false : removeUnavailableCartItemsForCurrentCountry();
   renderProducts();
 
   if ($('modalRoot')?.querySelector('.drawer')) {
@@ -139,6 +165,7 @@ function displayPrice(value) { const c = currencyConfig(); return money(value * 
 // Product and cart prices returned by the country-aware helpers are already in local currency.
 function displayCountryPrice(value) { return money(value, currencyConfig().currency); }
 function isProductAvailableInCountry(product, country = currencyConfig().country) {
+  if (country === 'AZ') return product?.availabilityByCountry?.AZ === true && Number(product?.countryPrices?.AZ) > 0;
   return product?.availabilityByCountry?.[country] !== false;
 }
 function countryBasePrice(product, country = currencyConfig().country) {
@@ -153,6 +180,7 @@ function productPriceForCountry(product, now = Date.now()) {
   const customPrice = countryBasePrice(product, country);
   const baseUsd = Number(product?.price || 0);
   if (customPrice != null && baseUsd > 0) return Number((customPrice * usdPrice / baseUsd).toFixed(2));
+  if (country === 'AZ') return 0;
   return Number((usdPrice * currencyConfig().rate).toFixed(2));
 }
 function variantPriceForCountry(product, combination, now = Date.now()) {
@@ -162,6 +190,7 @@ function variantPriceForCountry(product, combination, now = Date.now()) {
   const customPrice = countryBasePrice(product, country);
   const baseUsd = Number(product?.price || 0);
   if (customPrice != null && baseUsd > 0) return Number((customPrice * usdPrice / baseUsd).toFixed(2));
+  if (country === 'AZ') return 0;
   return Number((usdPrice * currencyConfig().rate).toFixed(2));
 }
 function compareAtPriceForCountry(product, combination = null, now = Date.now()) {
@@ -172,6 +201,7 @@ function compareAtPriceForCountry(product, combination = null, now = Date.now())
   const customPrice = countryBasePrice(product, country);
   const baseUsd = Number(product?.price || 0);
   if (customPrice != null && baseUsd > 0) return Number((customPrice * usdCompareAt / baseUsd).toFixed(2));
+  if (country === 'AZ') return 0;
   return Number((usdCompareAt * currencyConfig().rate).toFixed(2));
 }
 function removeUnavailableCartItemsForCurrentCountry() {
@@ -326,10 +356,12 @@ function updateProductVariantUI(productId) {
   const label = $('variantCombinationLabel');
   if (label) label.textContent = variantCombinationLabel(selected);
   const priceElement = $('productCurrentPrice');
-  if (priceElement) priceElement.textContent = displayCountryPrice(selected ? variantPriceForCountry(product, selected) : productPriceForCountry(product));
+  if (priceElement) priceElement.textContent = isProductAvailableInCountry(product)
+    ? displayCountryPrice(selected ? variantPriceForCountry(product, selected) : productPriceForCountry(product))
+    : (currencyConfig().country === 'AZ' ? 'Not yet listed for Azerbaijan' : 'Not available in this market');
   const compareElement = $('productComparePrice');
   const compareAt = compareAtPriceForCountry(product, selected);
-  if (compareElement && compareAt != null) compareElement.textContent = displayCountryPrice(compareAt);
+  if (compareElement) compareElement.textContent = isProductAvailableInCountry(product) && compareAt != null ? displayCountryPrice(compareAt) : '';
   const badge = $('productDiscountBadge');
   if (badge && isProductSaleActive(product)) badge.textContent = `Save ${productDiscountPercent(product)}%`;
 }
@@ -659,7 +691,7 @@ function renderProductPage(id) {
   const shippingAccordion = hasCustomShipping ? '' : `
     <details class="product-page-accordion">
       <summary>Shipping &amp; returns</summary>
-      <div class="product-page-accordion-content"><p>DreamGrind currently accepts orders for the United States, Canada and the United Kingdom. Shipping is currently free. Processing and delivery times may vary by product and destination. Please contact DreamGrind before returning an item so return instructions can be provided.</p></div>
+      <div class="product-page-accordion-content"><p>DreamGrind currently accepts orders for the United States, Canada and the United Kingdom. Azerbaijan is being prepared as an additional market; orders there are not open yet. Please contact DreamGrind before returning an item so return instructions can be provided.</p></div>
     </details>`;
   const saleActive = isProductSaleActive(p);
   const discount = saleActive ? productDiscountPercent(p) : 0;
@@ -700,10 +732,10 @@ function renderProductPage(id) {
             <h1 class="product-page-title">${escapeHtml(p.title)}</h1>
             ${ratingMarkup}
 
-            <div class="product-page-price" id="productPriceBlock"><span id="productCurrentPrice">${displayCountryPrice(currentPrice)}</span>${saleMarkup}</div>
-            ${availableInMarket ? '' : `<div class="note-box" role="status">This product is not available for delivery to ${escapeHtml(currencyConfig().country === 'CA' ? 'Canada' : currencyConfig().country === 'UK' ? 'the United Kingdom' : 'the United States')}.</div>`}
+            <div class="product-page-price" id="productPriceBlock"><span id="productCurrentPrice">${availableInMarket ? displayCountryPrice(currentPrice) : (currencyConfig().country === 'AZ' ? 'Not yet listed for Azerbaijan' : 'Not available in this market')}</span>${availableInMarket ? saleMarkup : ''}</div>
+            ${availableInMarket ? '' : `<div class="note-box" role="status">This product is not available for delivery to ${escapeHtml(currencyConfig().country === 'CA' ? 'Canada' : currencyConfig().country === 'UK' ? 'the United Kingdom' : currencyConfig().country === 'AZ' ? 'Azerbaijan' : 'the United States')}.</div>`}
             ${showCountdown ? `<div class="product-page-sale-offer" id="productSaleOffer"><span>Limited-time offer ends in</span><strong id="productSaleCountdown" aria-live="off"></strong></div>` : ''}
-            <div class="product-page-shipping"><span aria-hidden="true">✓</span> Free shipping <span class="product-page-dot">·</span> Secure checkout by Epoint</div>
+            <div class="product-page-shipping"><span aria-hidden="true">✓</span> ${currencyConfig().country === 'AZ' ? 'Azerbaijan delivery details coming soon' : 'Free shipping'} <span class="product-page-dot">·</span> Secure checkout by Epoint</div>
 
             ${featureMarkup}
             ${variants}
@@ -810,7 +842,8 @@ function buyNowFromDetail(id) {
 function cartSubtotal() {
   return state.cart.reduce((sum, item) => {
     const product = products.find(p => Number(p.id) === Number(item.id));
-    return sum + (product ? cartItemPrice(product, item) * item.qty : 0);
+    if (!product || !isProductAvailableInCountry(product)) return sum;
+    return sum + cartItemPrice(product, item) * item.qty;
   }, 0);
 }
 function shippingCost() { return 0; }
@@ -819,14 +852,17 @@ function openCart() {
   const lines = state.cart.length ? state.cart.map(item => {
     const p = products.find(product => Number(product.id) === Number(item.id));
     if (!p) return '';
-    const unitPrice = cartItemPrice(p, item);
+    const available = isProductAvailableInCountry(p);
+    const unitPrice = available ? cartItemPrice(p, item) : 0;
     const optionLabel = cartItemVariantLabel(item);
-    return `<div class="cart-line"><img src="${(p.images && p.images.length) ? p.images[0] : (p.image || '')}" alt="${escapeHtml(p.title)}"><div><strong>${escapeHtml(p.title)}</strong><div class="muted">${optionLabel ? `Option: ${escapeHtml(optionLabel)} · ` : ''}${displayCountryPrice(unitPrice)} each</div><div class="qty-control"><button onclick="changeQty(${p.id},'${encodeURIComponent(item.variant || '')}',-1)">−</button><span>${item.qty}</span><button onclick="changeQty(${p.id},'${encodeURIComponent(item.variant || '')}',1)">+</button></div></div><strong>${displayCountryPrice(unitPrice * item.qty)}</strong></div>`;
+    const priceLabel = available ? `${displayCountryPrice(unitPrice)} each` : (c.country === 'AZ' ? 'Not yet listed for Azerbaijan' : 'Not available for this destination');
+    const lineTotal = available ? displayCountryPrice(unitPrice * item.qty) : '—';
+    return `<div class="cart-line"><img src="${(p.images && p.images.length) ? p.images[0] : (p.image || '')}" alt="${escapeHtml(p.title)}"><div><strong>${escapeHtml(p.title)}</strong><div class="muted">${optionLabel ? `Option: ${escapeHtml(optionLabel)} · ` : ''}${priceLabel}</div><div class="qty-control"><button onclick="changeQty(${p.id},'${encodeURIComponent(item.variant || '')}',-1)">−</button><span>${item.qty}</span><button onclick="changeQty(${p.id},'${encodeURIComponent(item.variant || '')}',1)">+</button></div></div><strong>${lineTotal}</strong></div>`;
   }).join('') : `<p class="muted">Your cart is empty.</p>`;
   const sub = cartSubtotal();
   const ship = state.cart.length ? shippingCost() : 0;
   const total = sub + ship;
-  $('modalRoot').innerHTML = `<div class="overlay" onclick="closeModal(event)"><aside class="drawer"><div class="drawer-head"><h2>Your cart</h2><button class="close-btn" onclick="closeModal()">✕</button></div>${lines}<div class="drawer-section"><label for="countrySelect">Shipping country</label><select id="countrySelect" onchange="setCountry(this.value)"><option value="US" ${c.country === 'US' ? 'selected' : ''}>United States</option><option value="CA" ${c.country === 'CA' ? 'selected' : ''}>Canada</option><option value="UK" ${c.country === 'UK' ? 'selected' : ''}>United Kingdom</option></select></div><div class="drawer-section"><input id="couponInput" placeholder="Coupon code (try SAVE10)"></div><div class="summary-row"><span>Subtotal</span><span>${displayCountryPrice(sub)}</span></div><div class="summary-row"><span>Shipping</span><span>${ship === 0 ? 'FREE' : displayCountryPrice(ship)}</span></div><div class="summary-row total"><span>Total</span><span>${displayCountryPrice(total)}</span></div><button class="primary-button full" onclick="startCheckout()" ${state.cart.length ? '' : 'disabled'}>Checkout</button><div class="note-box" style="margin-top:12px">You will be charged in AZN. Secure by Epoint.</div></aside></div>`;
+  $('modalRoot').innerHTML = `<div class="overlay" onclick="closeModal(event)"><aside class="drawer"><div class="drawer-head"><h2>Your cart</h2><button class="close-btn" onclick="closeModal()">✕</button></div>${lines}<div class="drawer-section"><label for="countrySelect">Shipping country</label><select id="countrySelect" onchange="setCountry(this.value)"><option value="US" ${c.country === 'US' ? 'selected' : ''}>United States</option><option value="CA" ${c.country === 'CA' ? 'selected' : ''}>Canada</option><option value="UK" ${c.country === 'UK' ? 'selected' : ''}>United Kingdom</option><option value="AZ" ${c.country === 'AZ' ? 'selected' : ''}>Azerbaijan</option></select></div><div class="drawer-section"><input id="couponInput" placeholder="Coupon code (try SAVE10)"></div><div class="summary-row"><span>Subtotal</span><span>${displayCountryPrice(sub)}</span></div><div class="summary-row"><span>Shipping</span><span>${c.country === 'AZ' ? 'To be confirmed' : (ship === 0 ? 'FREE' : displayCountryPrice(ship))}</span></div><div class="summary-row total"><span>${c.country === 'AZ' ? 'Current subtotal' : 'Total'}</span><span>${displayCountryPrice(total)}</span></div><button class="primary-button full" onclick="startCheckout()" ${state.cart.length ? '' : 'disabled'}>${c.country === 'AZ' && !storeConfig.azerbaijanCheckoutEnabled ? (localStorage.getItem('dg_language') === 'az' ? 'Sifariş qəbulu tezliklə açılacaq' : 'Orders opening soon') : 'Checkout'}</button><div class="note-box" style="margin-top:12px">${c.country === 'AZ' ? (localStorage.getItem('dg_language') === 'az' ? 'Azərbaycan üzrə sifariş qəbulu hələ açılmayıb. Çatdırılma qiyməti dəqiqləşdirilir.' : 'Azerbaijan orders are not open yet. Delivery pricing is being confirmed.') : 'You will be charged in AZN. Secure by Epoint.'}</div></aside></div>`;
 }
 function changeQty(id, variantKey, delta) {
   const variant = decodeURIComponent(variantKey);
@@ -837,6 +873,7 @@ function changeQty(id, variantKey, delta) {
   saveAll(); openCart();
 }
 async function startCheckout(items = null) {
+  await refreshStoreConfig();
   const sourceItems = Array.isArray(items) ? items : state.cart;
   const checkoutItems = sourceItems
     .map(item => ({ id: Number(item.id), qty: Math.max(1, Math.min(20, Number(item.qty) || 1)), variant: item.variant ?? null, variantColor: item.variantColor ?? null, variantSize: item.variantSize ?? null }))
@@ -852,6 +889,14 @@ async function startCheckout(items = null) {
 
   if (!checkoutItems.length) {
     showToast('Your cart is empty');
+    return;
+  }
+  const unavailableItem = checkoutItems.find(item => {
+    const product = products.find(p => Number(p.id) === Number(item.id));
+    return !product || !isProductAvailableInCountry(product);
+  });
+  if (unavailableItem) {
+    showToast('One or more products are not available for the selected destination.');
     return;
   }
 
@@ -881,62 +926,77 @@ async function startCheckout(items = null) {
 
         <form class="form-grid" onsubmit="submitDemoOrder(event)">
           <label>
-            Full name
+            <span id="coNameLabel">Full name</span>
             <input id="coName" name="name" autocomplete="name" required value="${escapeHtml(user?.name || '')}">
           </label>
 
           <label>
-            Email
+            <span id="coEmailLabel">Email</span>
             <input id="coEmail" name="email" type="email" autocomplete="email" required value="${escapeHtml(user?.email || '')}">
           </label>
 
           <label>
-            Mobile number
-            <input id="coPhone" name="tel" type="tel" autocomplete="tel" required placeholder="${c.country === 'UK' ? '+44 7700 900123' : c.country === 'CA' ? '+1 416 555 0123' : '+1 555 123 4567'}">
+            <span id="coPhoneLabel">Mobile number</span>
+            <input id="coPhone" name="tel" type="tel" autocomplete="tel" required placeholder="${c.country === 'AZ' ? '+994501234567' : c.country === 'UK' ? '+44 7700 900123' : c.country === 'CA' ? '+1 416 555 0123' : '+1 555 123 4567'}">
             <small class="checkout-field-help" id="coPhoneHelp">Use a phone number that can receive delivery updates.</small>
           </label>
 
           <label>
-            Country
-            <select id="coCountry" name="country" autocomplete="country-name" required data-last-country="${c.country === 'US' ? 'United States' : c.country === 'CA' ? 'Canada' : 'United Kingdom'}" onchange="handleCheckoutCountryChange()">
+            <span id="coCountryLabel">Country</span>
+            <select id="coCountry" name="country" autocomplete="country-name" required data-last-country="${c.country === 'US' ? 'United States' : c.country === 'CA' ? 'Canada' : c.country === 'UK' ? 'United Kingdom' : 'Azerbaijan'}" onchange="handleCheckoutCountryChange()">
               <option value="United States" ${c.country === 'US' ? 'selected' : ''}>United States</option>
               <option value="Canada" ${c.country === 'CA' ? 'selected' : ''}>Canada</option>
               <option value="United Kingdom" ${c.country === 'UK' ? 'selected' : ''}>United Kingdom</option>
+              <option value="Azerbaijan" ${c.country === 'AZ' ? 'selected' : ''}>Azerbaijan</option>
             </select>
             <small class="checkout-field-help">Choose the delivery destination first. The address fields will adjust to this country.</small>
           </label>
 
           <label>
-            Address
+            <span id="coAddressLabel">Address</span>
             <input id="coAddress" name="street-address" autocomplete="street-address" required placeholder="Street address">
           </label>
 
           <label>
-            City / Town
+            <span id="coAddressLine2Label">Address details (optional)</span>
+            <input id="coAddressLine2" name="address-line2" autocomplete="address-line2" placeholder="Apartment, building, entrance">
+          </label>
+
+          <label>
+            <span id="coCityLabel">City / Town</span>
             <input id="coCity" name="address-level2" autocomplete="address-level2" required placeholder="City or town">
           </label>
 
           <label>
-            <span id="coStateLabel">${c.country === 'UK' ? 'County (optional)' : c.country === 'CA' ? 'Province / Territory *' : 'State *'}</span>
-            <input id="coState" name="address-level1" autocomplete="address-level1" ${c.country === 'UK' ? '' : 'required'} aria-required="${c.country === 'UK' ? 'false' : 'true'}" placeholder="${c.country === 'UK' ? 'County, if applicable' : c.country === 'CA' ? 'e.g. Ontario' : 'e.g. California'}">
-            <small class="checkout-field-help" id="coStateHelp">${c.country === 'UK' ? 'County is optional for most UK delivery addresses.' : c.country === 'CA' ? 'Enter the province or territory for the delivery address.' : 'Enter the state for the delivery address.'}</small>
+            <span id="coStateLabel">${c.country === 'UK' ? 'County (optional)' : c.country === 'CA' ? 'Province / Territory *' : c.country === 'AZ' ? 'Rayon / district *' : 'State *'}</span>
+            <input id="coState" name="address-level1" autocomplete="address-level1" ${c.country === 'UK' ? '' : 'required'} aria-required="${c.country === 'UK' ? 'false' : 'true'}" placeholder="${c.country === 'UK' ? 'County, if applicable' : c.country === 'CA' ? 'e.g. Ontario' : c.country === 'AZ' ? 'e.g. Yasamal' : 'e.g. California'}">
+            <small class="checkout-field-help" id="coStateHelp">${c.country === 'UK' ? 'County is optional for most UK delivery addresses.' : c.country === 'CA' ? 'Enter the province or territory for the delivery address.' : c.country === 'AZ' ? 'Enter the rayon or administrative area.' : 'Enter the state for the delivery address.'}</small>
           </label>
 
           <label>
-            <span id="coZipLabel">${c.country === 'UK' ? 'Postcode *' : c.country === 'CA' ? 'Postal code *' : 'ZIP code *'}</span>
-            <input id="coZip" name="postal-code" autocomplete="postal-code" autocapitalize="characters" required placeholder="${c.country === 'UK' ? 'e.g. SW1A 1AA' : c.country === 'CA' ? 'e.g. K1A 0B1' : 'e.g. 90210'}">
-            <small class="checkout-field-help" id="coZipHelp">${c.country === 'UK' ? 'Enter the UK postcode as provided by the recipient.' : c.country === 'CA' ? 'Enter the Canadian postal code, including the space if shown.' : 'Enter the ZIP code for the delivery address.'}</small>
+            <span id="coZipLabel">${c.country === 'UK' ? 'Postcode *' : c.country === 'CA' ? 'Postal code *' : c.country === 'AZ' ? 'Postal code (optional)' : 'ZIP code *'}</span>
+            <input id="coZip" name="postal-code" autocomplete="postal-code" autocapitalize="characters" ${c.country === 'AZ' ? '' : 'required'} placeholder="${c.country === 'UK' ? 'e.g. SW1A 1AA' : c.country === 'CA' ? 'e.g. K1A 0B1' : c.country === 'AZ' ? 'Optional' : 'e.g. 90210'}">
+            <small class="checkout-field-help" id="coZipHelp">${c.country === 'UK' ? 'Enter the UK postcode as provided by the recipient.' : c.country === 'CA' ? 'Enter the Canadian postal code, including the space if shown.' : c.country === 'AZ' ? 'Enter a postal code when available.' : 'Enter the ZIP code for the delivery address.'}</small>
           </label>
 
+          <label class="full">
+            <span id="coDeliveryNotesLabel">Delivery notes (optional)</span>
+            <textarea id="coDeliveryNotes" name="delivery-notes" maxlength="500" placeholder="Landmark or instructions for the courier"></textarea>
+          </label>
           <p class="checkout-country-message full" id="checkoutCountryMessage" role="status" aria-live="polite"></p>
           <div class="note-box full">You will be charged in AZN. Secure payment by Epoint.</div>
-          <button class="primary-button full" type="submit">Continue to secure payment</button>
+          <button id="coSubmitButton" class="primary-button full" type="submit" ${c.country === 'AZ' && !storeConfig.azerbaijanCheckoutEnabled ? 'disabled' : ''}>${c.country === 'AZ' && !storeConfig.azerbaijanCheckoutEnabled ? (localStorage.getItem('dg_language') === 'az' ? 'Sifariş qəbulu tezliklə açılacaq' : 'Orders opening soon') : 'Continue to secure payment'}</button>
         </form>
       </div>
     </div>`;
   const checkoutCountrySelect = $('coCountry');
   if (checkoutCountrySelect) checkoutCountrySelect.dataset.lastCountry = checkoutCountrySelect.value;
   updateCheckoutAddressFields();
+  if (c.country === 'AZ' && $('checkoutCountryMessage')) {
+    $('checkoutCountryMessage').textContent = localStorage.getItem('dg_language') === 'az'
+      ? 'Azərbaycan üzrə sifariş qəbulu hələ açılmayıb. Çatdırılma və gömrük şərtləri təsdiqlənəndən sonra aktivləşdiriləcək.'
+      : 'Azerbaijan orders are not open yet. Checkout will be enabled after delivery and customs arrangements are confirmed.';
+  }
 }
 
 function updateCheckoutAddressFields() {
@@ -953,40 +1013,73 @@ function updateCheckoutAddressFields() {
     'United States': {
       stateLabel: 'State *', statePlaceholder: 'e.g. California', stateRequired: true,
       stateHelp: 'Enter the state for the delivery address.',
-      zipLabel: 'ZIP code *', zipPlaceholder: 'e.g. 90210',
+      zipLabel: 'ZIP code *', zipPlaceholder: 'e.g. 90210', zipRequired: true,
       zipHelp: 'Enter the ZIP code for the delivery address.', phonePlaceholder: '+1 555 123 4567'
     },
     'Canada': {
       stateLabel: 'Province / Territory *', statePlaceholder: 'e.g. Ontario', stateRequired: true,
       stateHelp: 'Enter the province or territory for the delivery address.',
-      zipLabel: 'Postal code *', zipPlaceholder: 'e.g. K1A 0B1',
+      zipLabel: 'Postal code *', zipPlaceholder: 'e.g. K1A 0B1', zipRequired: true,
       zipHelp: 'Enter the Canadian postal code, including the space if shown.', phonePlaceholder: '+1 416 555 0123'
     },
     'United Kingdom': {
       stateLabel: 'County (optional)', statePlaceholder: 'County, if applicable', stateRequired: false,
       stateHelp: 'County is optional for most UK delivery addresses.',
-      zipLabel: 'Postcode *', zipPlaceholder: 'e.g. SW1A 1AA',
+      zipLabel: 'Postcode *', zipPlaceholder: 'e.g. SW1A 1AA', zipRequired: true,
       zipHelp: 'Enter the UK postcode as provided by the recipient.', phonePlaceholder: '+44 7700 900123'
+    },
+    'Azerbaijan': {
+      stateLabel: 'Rayon / district *', statePlaceholder: 'e.g. Yasamal', stateRequired: true,
+      stateHelp: 'Enter the rayon or administrative area for the delivery address.',
+      zipLabel: 'Postal code (optional)', zipPlaceholder: 'Optional', zipRequired: false,
+      zipHelp: 'Enter a postal code when available.', phonePlaceholder: '+994501234567'
     }
   };
 
   const rule = rules[country] || rules['United States'];
-  if (stateLabel) stateLabel.textContent = rule.stateLabel;
+  const azLanguage = country === 'Azerbaijan' && localStorage.getItem('dg_language') === 'az';
+  if (azLanguage) {
+    const labels = {
+      coNameLabel: 'Ad və soyad', coEmailLabel: 'E-poçt', coPhoneLabel: 'Mobil nömrə',
+      coCountryLabel: 'Ölkə', coAddressLabel: 'Küçə və ev ünvanı',
+      coAddressLine2Label: 'Mənzil, bina, giriş (istəyə bağlı)', coCityLabel: 'Şəhər / qəsəbə',
+      coDeliveryNotesLabel: 'Kuryer üçün qeyd (istəyə bağlı)'
+    };
+    for (const [id, value] of Object.entries(labels)) { const node = $(id); if (node) node.textContent = value; }
+    const phoneHelp = $('coPhoneHelp');
+    if (phoneHelp) phoneHelp.textContent = 'Çatdırılma üçün istifadə etdiyiniz aktiv telefon nömrəsini daxil edin.';
+    if (stateLabel) stateLabel.textContent = 'Rayon *';
+    if (stateHelp) stateHelp.textContent = 'Çatdırılma ünvanınızın rayonunu daxil edin.';
+    if (zipLabel) zipLabel.textContent = 'Poçt indeksi (istəyə bağlı)';
+    if (zipHelp) zipHelp.textContent = 'Mövcuddursa, poçt indeksini daxil edin.';
+  } else {
+    const labels = { coNameLabel: 'Full name', coEmailLabel: 'Email', coPhoneLabel: 'Mobile number', coCountryLabel: 'Country', coAddressLabel: 'Address', coAddressLine2Label: 'Address details (optional)', coCityLabel: 'City / Town', coDeliveryNotesLabel: 'Delivery notes (optional)' };
+    for (const [id, value] of Object.entries(labels)) { const node = $(id); if (node) node.textContent = value; }
+    if (stateLabel) stateLabel.textContent = rule.stateLabel;
+    if (stateHelp) stateHelp.textContent = rule.stateHelp;
+    if (zipLabel) zipLabel.textContent = rule.zipLabel;
+    if (zipHelp) zipHelp.textContent = rule.zipHelp;
+    const phoneHelp = $('coPhoneHelp');
+    if (phoneHelp) phoneHelp.textContent = 'Use a phone number that can receive delivery updates.';
+  }
+  if (!azLanguage && stateLabel) stateLabel.textContent = rule.stateLabel;
   if (stateInput) {
     stateInput.placeholder = rule.statePlaceholder;
     stateInput.required = rule.stateRequired;
     stateInput.setAttribute('aria-required', String(rule.stateRequired));
   }
-  if (stateHelp) stateHelp.textContent = rule.stateHelp;
-  if (zipLabel) zipLabel.textContent = rule.zipLabel;
   if (zipInput) {
     zipInput.placeholder = rule.zipPlaceholder;
-    zipInput.required = true;
-    zipInput.setAttribute('aria-required', 'true');
+    zipInput.required = rule.zipRequired !== false;
+    zipInput.setAttribute('aria-required', String(zipInput.required));
     zipInput.autocapitalize = 'characters';
   }
-  if (zipHelp) zipHelp.textContent = rule.zipHelp;
-  if (phoneInput) phoneInput.placeholder = rule.phonePlaceholder;
+  if (!azLanguage && zipHelp) zipHelp.textContent = rule.zipHelp;
+  if (phoneInput) {
+    phoneInput.placeholder = rule.phonePlaceholder;
+    if (country === 'Azerbaijan') phoneInput.pattern = '(\\+?994|0)[0-9 ()-]{9,16}';
+    else phoneInput.removeAttribute('pattern');
+  }
 }
 
 function handleCheckoutCountryChange() {
@@ -1004,12 +1097,23 @@ function handleCheckoutCountryChange() {
   }
 
   select.dataset.lastCountry = nextCountry;
-  const countryCodes = { 'United States': 'US', 'Canada': 'CA', 'United Kingdom': 'UK' };
+  const countryCodes = { 'United States': 'US', 'Canada': 'CA', 'United Kingdom': 'UK', 'Azerbaijan': 'AZ' };
   localStorage.setItem('dg_country', countryCodes[nextCountry] || 'US');
   syncCountryPicker();
   renderProducts();
   updateCheckoutAddressFields();
   const code = countryCodes[nextCountry] || 'US';
+  const checkoutButton = $('coSubmitButton');
+  const isAzLocked = code === 'AZ' && !storeConfig.azerbaijanCheckoutEnabled;
+  if (checkoutButton) {
+    checkoutButton.disabled = isAzLocked;
+    checkoutButton.textContent = isAzLocked ? (localStorage.getItem('dg_language') === 'az' ? 'Sifariş qəbulu tezliklə açılacaq' : 'Orders opening soon') : 'Continue to secure payment';
+  }
+  if (code === 'AZ' && $('checkoutCountryMessage')) {
+    $('checkoutCountryMessage').textContent = localStorage.getItem('dg_language') === 'az'
+      ? 'Azərbaycan üzrə sifariş qəbulu hələ açılmayıb. Çatdırılma və gömrük şərtləri təsdiqlənəndən sonra aktivləşdiriləcək.'
+      : 'Azerbaijan orders are not open yet. Checkout will be enabled after delivery and customs arrangements are confirmed.';
+  }
   const checkoutItems = (pendingCheckoutItems?.length ? pendingCheckoutItems : state.cart);
   const unavailable = checkoutItems.some(item => {
     const product = products.find(p => Number(p.id) === Number(item.id));
@@ -1046,6 +1150,11 @@ function handleCheckoutCountryChange() {
     showToast('Your cart is empty');
     return;
   }
+  await refreshStoreConfig();
+  if ($('coCountry')?.value === 'Azerbaijan' && !storeConfig.azerbaijanCheckoutEnabled) {
+    showToast(localStorage.getItem('dg_language') === 'az' ? 'Azərbaycan üzrə sifariş qəbulu hələ açılmayıb.' : 'Azerbaijan checkout is not open yet.');
+    return;
+  }
 
   if (submitButton) {
     submitButton.disabled = true;
@@ -1062,6 +1171,8 @@ function handleCheckoutCountryChange() {
         email: $('coEmail').value.trim(),
         phone: $('coPhone').value.trim(),
         address: $('coAddress').value.trim(),
+        addressLine2: $('coAddressLine2')?.value.trim() || '',
+        deliveryNotes: $('coDeliveryNotes')?.value.trim() || '',
         city: $('coCity').value.trim(),
         state: $('coState').value.trim(),
         zip: $('coZip').value.trim(),
@@ -1126,7 +1237,7 @@ function handleCheckoutCountryChange() {
       title: 'Shipping Policy',
       html: `
         <h3>Shipping destinations</h3>
-        <p>DreamGrind currently accepts orders for customers in the United States, Canada and the United Kingdom.</p>
+        <p>DreamGrind currently accepts orders for customers in the United States, Canada and the United Kingdom. Azerbaijan is being prepared as an additional destination; orders for Azerbaijan are not accepted until delivery arrangements and charges have been confirmed.</p>
 
         <h3>Shipping cost</h3>
         <p>Shipping is currently free for customers.</p>
@@ -1172,7 +1283,7 @@ function handleCheckoutCountryChange() {
         <p>Online payments are processed through our payment provider, Epoint. DreamGrind does not intentionally store customers' full payment card details on its own website servers.</p>
 
         <h3>4. Service providers</h3>
-        <p>We may use trusted third-party service providers for payment processing, website hosting, database infrastructure, delivery and other services necessary to operate the store.</p>
+        <p>We may use trusted third-party service providers for payment processing, website hosting, database infrastructure, delivery and other services necessary to operate the store. When an order is fulfilled by an overseas supplier or logistics partner, we may share the customer's name, phone number, delivery address and relevant order details with that provider only to arrange fulfilment, customs processing and delivery. This may involve transferring information to service providers outside the customer's country, subject to applicable legal requirements.</p>
 
         <h3>5. Cookies and local storage</h3>
         <p>The website may use essential cookies and browser local storage to support account sessions, shopping cart preferences, country selection and language preferences.</p>
@@ -1279,5 +1390,6 @@ if (paymentStatus === 'error') {
 
     syncCountryPicker();
     saveAll();
+    refreshStoreConfig();
     loadProducts();
     initLanguage();

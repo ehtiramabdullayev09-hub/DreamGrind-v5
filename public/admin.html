@@ -55,7 +55,7 @@
       <div><label>Stock</label><input id="productStock" type="number" min="0" step="1" value="0"></div>
       <div class="full market-pricing-panel">
         <h3 style="margin:0 0 6px">Country availability &amp; prices</h3>
-        <p class="muted" style="margin:0 0 12px">Untick a country to hide this product there and block checkout. Canada and UK prices are optional: leave them blank to use the site's automatic currency conversion.</p>
+        <p class="muted" style="margin:0 0 12px">Untick a country to hide this product there and block checkout. Canada and UK prices may be auto-converted. Azerbaijan requires a separate AZN price and is disabled by default until delivery terms are confirmed.</p>
         <div class="market-pricing-grid">
           <div class="market-pricing-card">
             <label class="market-availability"><input id="productAvailableUS" type="checkbox" checked> Available in United States</label>
@@ -70,6 +70,12 @@
             <label class="market-availability"><input id="productAvailableUK" type="checkbox" checked> Available in United Kingdom</label>
             <label for="productPriceUK">United Kingdom price (GBP)</label>
             <input id="productPriceUK" type="number" min="0.01" step="0.01" placeholder="Auto-convert from USD">
+          </div>
+          <div class="market-pricing-card">
+            <label class="market-availability"><input id="productAvailableAZ" type="checkbox"> Available in Azerbaijan</label>
+            <label for="productPriceAZ">Azerbaijan price (AZN)</label>
+            <input id="productPriceAZ" type="number" min="0.01" step="0.01" placeholder="Enter AZN price">
+            <small class="muted">A valid AZN price is required. Keep this market disabled until the DDP shipping quote is confirmed and shipping-cost handling is configured.</small>
           </div>
         </div>
       </div>
@@ -141,7 +147,7 @@ let state={orders:[],products:[],users:[],messages:[]};
 async function api(url,opts={}){const r=await fetch(url,{credentials:'include',...opts,headers:{'Content-Type':'application/json',...(opts.headers||{})}});const d=await r.json().catch(()=>({}));if(!r.ok)throw new Error(d.error||`Request failed (${r.status})`);return d;}
 function flash(msg,ok=true){$('flash').textContent=msg;$('flash').className=`notice ${ok?'ok':'error'}`;setTimeout(()=>$('flash').classList.add('hidden'),3500)}
 async function checkAuth(){const d=await api('/api/auth/me');if(d.user?.role==='admin'){$('loginView').classList.add('hidden');$('appView').classList.remove('hidden');$('me').textContent=d.user.email;await loadAll()}else{$('loginView').classList.remove('hidden');$('appView').classList.add('hidden')}}
-async function loadAll(){try{const [s,o,p,u,m]=await Promise.all([api('/api/admin/summary'),api('/api/admin/orders'),api('/api/products'),api('/api/admin/users'),api('/api/admin/messages')]);state={orders:o.orders,products:p.products,users:u.users,messages:m.messages};$('summary').innerHTML=[['Users',s.users],['Orders',s.orders],['Revenue',`$${Number(s.revenue||0).toFixed(2)}`],['Messages',s.messages]].map(x=>`<div class="metric"><span>${x[0]}</span><strong>${x[1]}</strong></div>`).join('');renderOrders();renderProducts();renderUsers();renderMessages()}catch(e){flash(e.message,false);if(/Admin access|Authentication/.test(e.message))checkAuth()}}
+async function loadAll(){try{const [s,o,p,u,m]=await Promise.all([api('/api/admin/summary'),api('/api/admin/orders'),api('/api/products'),api('/api/admin/users'),api('/api/admin/messages')]);state={orders:o.orders,products:p.products,users:u.users,messages:m.messages};$('summary').innerHTML=[['Users',s.users],['Orders',s.orders],['Revenue (AZN)',`${Number(s.revenue||0).toFixed(2)} AZN`],['Messages',s.messages]].map(x=>`<div class="metric"><span>${x[0]}</span><strong>${x[1]}</strong></div>`).join('');renderOrders();renderProducts();renderUsers();renderMessages()}catch(e){flash(e.message,false);if(/Admin access|Authentication/.test(e.message))checkAuth()}}
 function renderOrders() {
   if (!state.orders.length) {
     $('orders').innerHTML = '<p class="muted">No orders yet.</p>';
@@ -192,12 +198,14 @@ function renderOrders() {
 
               <td>
                 ${esc(o.address || 'Not saved')}<br>
+                ${o.addressLine2 ? `${esc(o.addressLine2)}<br>` : ''}
                 ${esc(o.city || '')}${region ? ', ' + esc(region) : ''}<br>
-                ZIP: ${esc(zip || 'Not saved')}<br>
+                ZIP / postal code: ${esc(zip || 'Not provided')}<br>
                 ${esc(o.country || '')}
+                ${o.deliveryNotes ? `<div class="muted">Delivery notes: ${esc(o.deliveryNotes)}</div>` : ''}
               </td>
 
-              <td>$${Number(o.total || 0).toFixed(2)}</td>
+              <td><strong>${Number(o.total || 0).toFixed(2)} AZN</strong>${o.marketCurrency && o.marketCurrency !== 'AZN' && Number.isFinite(Number(o.marketTotal)) ? `<div class="muted">Customer price: ${Number(o.marketTotal).toFixed(2)} ${esc(o.marketCurrency)}</div>` : ''}</td>
 
               <td>
                 <select id="st-${esc(o.id)}">
@@ -228,7 +236,7 @@ function renderOrders() {
   `;
 }
 async function saveOrder(id){try{const status=$('st-'+id).value;const tracking=$('tr-'+id).value.trim();await api('/api/admin/orders/'+encodeURIComponent(id),{method:'PATCH',body:JSON.stringify({status,trackingNumber:tracking||null})});flash('Order updated.');await loadAll()}catch(e){flash(e.message,false)}}
-function renderProducts(){if(!state.products.length){$('products').innerHTML='<p class="muted">No products.</p>';return}$('products').innerHTML=`<table><thead><tr><th>ID</th><th>Product</th><th>US price</th><th>Category</th><th>Markets</th><th>Stock</th><th>Actions</th></tr></thead><tbody>${state.products.map(p=>{const m=p.availabilityByCountry||{};const markets=[['US',m.US!==false],['CA',m.CA!==false],['UK',m.UK!==false]].map(([c,on])=>`<span style="color:${on?'#166534':'#b91c1c'}">${c} ${on?'✓':'×'}</span>`).join(' · ');return `<tr><td>${p.id}</td><td><strong>${esc(p.title)}</strong>${p.image?`<div class="muted">Image set</div>`:''}</td><td>$${Number(p.price||0).toFixed(2)}</td><td>${esc(p.category||'General')}</td><td>${markets}</td><td>${Number.isFinite(Number(p.stock))?p.stock:'—'}</td><td class="row-actions"><button onclick="editProduct(${p.id})">Edit</button><button class="danger" onclick="deleteProduct(${p.id})">Delete</button></td></tr>`}).join('')}</tbody></table>`}
+function renderProducts(){if(!state.products.length){$('products').innerHTML='<p class="muted">No products.</p>';return}$('products').innerHTML=`<table><thead><tr><th>ID</th><th>Product</th><th>US price</th><th>AZ price</th><th>Category</th><th>Markets</th><th>Stock</th><th>Actions</th></tr></thead><tbody>${state.products.map(p=>{const m=p.availabilityByCountry||{};const markets=[['US',m.US!==false],['CA',m.CA!==false],['UK',m.UK!==false],['AZ',m.AZ===true]].map(([c,on])=>`<span style="color:${on?'#166534':'#b91c1c'}">${c} ${on?'✓':'×'}</span>`).join(' · ');return `<tr><td>${p.id}</td><td><strong>${esc(p.title)}</strong>${p.image?`<div class="muted">Image set</div>`:''}</td><td>$${Number(p.price||0).toFixed(2)}</td><td>${Number(p.countryPrices?.AZ)>0?`${Number(p.countryPrices.AZ).toFixed(2)} AZN`:'—'}</td><td>${esc(p.category||'General')}</td><td>${markets}</td><td>${Number.isFinite(Number(p.stock))?p.stock:'—'}</td><td class="row-actions"><button onclick="editProduct(${p.id})">Edit</button><button class="danger" onclick="deleteProduct(${p.id})">Delete</button></td></tr>`}).join('')}</tbody></table>`}
 function toLocalDateTimeInput(value){
   if(!value)return '';
   const d=new Date(value);
@@ -250,8 +258,10 @@ function editProduct(id){
   $('productAvailableUS').checked=p.availabilityByCountry?.US!==false;
   $('productAvailableCA').checked=p.availabilityByCountry?.CA!==false;
   $('productAvailableUK').checked=p.availabilityByCountry?.UK!==false;
+  $('productAvailableAZ').checked=p.availabilityByCountry?.AZ===true;
   $('productPriceCA').value=p.countryPrices?.CA ?? '';
   $('productPriceUK').value=p.countryPrices?.UK ?? '';
+  $('productPriceAZ').value=p.countryPrices?.AZ ?? '';
   $('productDescription').value=p.description||'';
   $('productVariantCombinations').value=(p.variantCombinations||[]).map(v=>`${v.color||'—'} | ${v.size||'—'} | ${Number(v.price||0).toFixed(2)}`).join('\n');
 
@@ -269,11 +279,12 @@ function editProduct(id){
 }
 
 function resetProductForm(){
-  ['productId','productTitle','productPrice','productOldPrice','productSaleEndsAt','productCategory','productDescription','productVariantCombinations','productPriceCA','productPriceUK'].forEach(id=>$(id).value='');
+  ['productId','productTitle','productPrice','productOldPrice','productSaleEndsAt','productCategory','productDescription','productVariantCombinations','productPriceCA','productPriceUK','productPriceAZ'].forEach(id=>$(id).value='');
 
   $('productAvailableUS').checked=true;
   $('productAvailableCA').checked=true;
   $('productAvailableUK').checked=true;
+  $('productAvailableAZ').checked=false;
   $('productStock').value=0;
 
   for(let i=1;i<=8;i++){
@@ -348,7 +359,12 @@ $('productForm').addEventListener('submit',async e=>{
     const variantCombinations=parseVariantCombinations($('productVariantCombinations').value);
     const caPriceValue=$('productPriceCA').value.trim();
     const ukPriceValue=$('productPriceUK').value.trim();
-    const countryPrices={US:price,CA:caPriceValue?Number(caPriceValue):null,UK:ukPriceValue?Number(ukPriceValue):null};
+    const azPriceValue=$('productPriceAZ').value.trim();
+    const countryPrices={US:price,CA:caPriceValue?Number(caPriceValue):null,UK:ukPriceValue?Number(ukPriceValue):null,AZ:azPriceValue?Number(azPriceValue):null};
+    if($('productAvailableAZ').checked && !countryPrices.AZ){
+      flash('Enter an Azerbaijan price in AZN before enabling this market.',false);
+      return;
+    }
     for(const [countryCode,countryPrice] of Object.entries(countryPrices)){
       if(countryPrice!==null && (!Number.isFinite(countryPrice) || countryPrice<=0 || countryPrice>100000)){
         flash(`Enter a valid price for ${countryCode}, or leave it blank for automatic conversion.`,false);
@@ -365,7 +381,7 @@ $('productForm').addEventListener('submit',async e=>{
       description:$('productDescription').value.trim(),
       variantCombinations,
       countryPrices,
-      availabilityByCountry:{US:$('productAvailableUS').checked,CA:$('productAvailableCA').checked,UK:$('productAvailableUK').checked},
+      availabilityByCountry:{US:$('productAvailableUS').checked,CA:$('productAvailableCA').checked,UK:$('productAvailableUK').checked,AZ:$('productAvailableAZ').checked},
       images:images,
       video:$('productVideo').value.trim()||null
     };

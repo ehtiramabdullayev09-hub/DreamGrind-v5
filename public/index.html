@@ -3,26 +3,27 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="DreamGrind — a modern storefront for customers in the USA, Canada and the UK.">
+  <meta name="description" content="DreamGrind — a modern storefront for customers in the USA, Canada and the UK, with Azerbaijan coming soon.">
   <meta name="theme-color" content="#111111">
   <title>DreamGrind — Smart Shopping Starts Here</title>
   <link rel="preconnect" href="https://images.unsplash.com">
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <div class="announcement"><div class="container announcement-inner"><span>Free shipping on selected orders</span><button class="link-btn" onclick="showPolicy('shipping')">Shipping info</button></div></div>
+  <div class="announcement"><div class="container announcement-inner"><span id="announcementText">Free shipping on selected orders</span><button class="link-btn" onclick="showPolicy('shipping')">Shipping info</button></div></div>
 <div class="locale-bar">
   <div class="container locale-inner">
-    <span>Shipping to:</span>
+    <span data-i18n="shippingTo">Shipping to:</span>
 
     <select id="countryPicker" onchange="setCountry(this.value)" aria-label="Shipping country">
       <option value="US">🇺🇸 United States</option>
       <option value="CA">🇨🇦 Canada</option>
       <option value="UK">🇬🇧 United Kingdom</option>
+      <option value="AZ">🇦🇿 Azerbaijan</option>
     </select>
 
     <span class="currency-badge" id="currencyLabel">USD</span>
-<span class="currency-note">Prices shown in your selected currency</span>
+<span class="currency-note" data-i18n="currencyNote">Prices shown in your selected currency</span>
     <div class="language-switcher">
   <button type="button" onclick="setLanguage('en')">EN</button>
   <span>|</span>
@@ -58,7 +59,7 @@
     <section class="hero-section">
   <div class="container hero-grid">
     <div class="hero-copy">
-      <p class="eyebrow hero-market-label" data-i18n="markets">USA • CANADA • UK</p>
+      <p class="eyebrow hero-market-label" data-i18n="markets">USA • CANADA • UK • AZERBAIJAN SOON</p>
       <h1>Good finds for a better <span>everyday.</span></h1>
       <p class="hero-lede">Discover useful gadgets, home essentials and pet favorites for the little things that make life better.</p>
       <div class="hero-actions">
