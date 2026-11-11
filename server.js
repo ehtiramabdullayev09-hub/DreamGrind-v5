@@ -23,6 +23,8 @@ const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || '';
 const EPOINT_PUBLIC_KEY = process.env.EPOINT_PUBLIC_KEY || '';
 const EPOINT_PRIVATE_KEY = process.env.EPOINT_PRIVATE_KEY || '';
 const PAYMENT_BASE_URL = process.env.PAYMENT_BASE_URL || `http://localhost:${PORT}`;
+// Keep Azerbaijan orders closed until DDP and shipping prices are verified.
+const AZERBAIJAN_CHECKOUT_ENABLED = process.env.AZERBAIJAN_CHECKOUT_ENABLED === 'true';
 const USD_TO_AZN = 1.70;
 function effectiveProductPrice(product, now = Date.now()) {
   const current = Number(product?.price || 0);
@@ -54,14 +56,16 @@ function effectiveVariantPrice(product, variant, now = Date.now()) {
 }
 
 // Market prices are stored in their local currencies. Epoint checkout settles in AZN.
-const CURRENCY_TO_AZN = { US: USD_TO_AZN, CA: USD_TO_AZN / 1.36, UK: USD_TO_AZN / 0.75 };
+const CURRENCY_TO_AZN = { US: USD_TO_AZN, CA: USD_TO_AZN / 1.36, UK: USD_TO_AZN / 0.75, AZ: 1 };
 function countryCodeFromName(country) {
   if (country === 'Canada') return 'CA';
   if (country === 'United Kingdom') return 'UK';
+  if (country === 'Azerbaijan') return 'AZ';
   return 'US';
 }
 function isProductAvailableForCountry(product, country) {
   const code = countryCodeFromName(country);
+  if (code === 'AZ') return product?.availabilityByCountry?.AZ === true && Number(product?.countryPrices?.AZ) > 0;
   return product?.availabilityByCountry?.[code] !== false;
 }
 function effectiveProductPriceForCountry(product, country, now = Date.now()) {
@@ -71,6 +75,7 @@ function effectiveProductPriceForCountry(product, country, now = Date.now()) {
   const configured = Number(product?.countryPrices?.[code]);
   const baseUsd = Number(product?.price || 0);
   if (Number.isFinite(configured) && configured > 0 && baseUsd > 0) return Number((configured * usdAmount / baseUsd).toFixed(2));
+  if (code === 'AZ') return 0;
   const rate = code === 'CA' ? 1.36 : 0.75;
   return Number((usdAmount * rate).toFixed(2));
 }
@@ -81,6 +86,7 @@ function effectiveVariantPriceForCountry(product, variant, country, now = Date.n
   const configured = Number(product?.countryPrices?.[code]);
   const baseUsd = Number(product?.price || 0);
   if (Number.isFinite(configured) && configured > 0 && baseUsd > 0) return Number((configured * usdAmount / baseUsd).toFixed(2));
+  if (code === 'AZ') return 0;
   const rate = code === 'CA' ? 1.36 : 0.75;
   return Number((usdAmount * rate).toFixed(2));
 }
@@ -148,7 +154,9 @@ zip: z.string().trim().max(30).optional(),
 zipCode: z.string().trim().max(30).optional(),
 postalCode: z.string().trim().max(30).optional(),
 postal_code: z.string().trim().max(30).optional(),
-  country: z.enum(['United States', 'Canada', 'United Kingdom']),
+  addressLine2: z.string().trim().max(180).optional(),
+  deliveryNotes: z.string().trim().max(500).optional(),
+  country: z.enum(['United States', 'Canada', 'United Kingdom', 'Azerbaijan']),
   items: z.array(z.object({ id: z.coerce.number().int().positive(), qty: z.coerce.number().int().min(1).max(20), variant: z.string().max(180).nullable().optional(), variantColor: z.string().trim().max(60).nullable().optional(), variantSize: z.string().trim().max(60).nullable().optional() })).min(1).max(50)
 });
 const messageSchema = z.object({ text: z.string().trim().min(1).max(2000) });
@@ -277,6 +285,7 @@ await ensureProducts();
 await ensureAdmin();
 
 app.get('/api/health', (_req, res) => res.json({ ok: true, service: 'dreamgrind-api' }));
+app.get('/api/store-config', (_req, res) => res.json({ azerbaijanCheckoutEnabled: AZERBAIJAN_CHECKOUT_ENABLED }));
 
 app.post('/api/auth/register', authLimiter, async (req, res) => {
   const parsed = registerSchema.safeParse(req.body);
@@ -340,8 +349,28 @@ app.post('/api/orders', orderLimiter, async (req, res) => {
   zipCode,
   postalCode,
   postal_code,
-  items
+  items,
+  addressLine2,
+  deliveryNotes
 } = parsed.data;
+  if (country === 'Azerbaijan' && !AZERBAIJAN_CHECKOUT_ENABLED) {
+    return res.status(403).json({ error: 'Azerbaijan orders are not open yet. Please check back soon.' });
+  }
+  let normalizedCustomerPhone = phone;
+  if (country === 'Azerbaijan') {
+    const phoneDigits = String(phone).replace(/\D/g, '');
+    const normalizedDigits = phoneDigits.startsWith('0') && phoneDigits.length === 10
+      ? `994${phoneDigits.slice(1)}`
+      : phoneDigits;
+    if (!normalizedDigits.startsWith('994') || normalizedDigits.length !== 12) {
+      return res.status(400).json({ error: 'Enter a valid Azerbaijan mobile number, for example +994501234567.' });
+    }
+    // Standardise local 0-prefixed entries and formatted +994 entries for the shipping partner.
+    normalizedCustomerPhone = `+${normalizedDigits}`;
+    if (!String(state || region || province || '').trim()) {
+      return res.status(400).json({ error: 'Enter the rayon or administrative area for the Azerbaijan delivery address.' });
+    }
+  }
   const currentUser = getSessionUser(req);
   const checkoutToken = randomBytes(32).toString('hex');
   const productMap = new Map(db.data.products.map(p => [p.id, p]));
@@ -373,7 +402,8 @@ app.post('/api/orders', orderLimiter, async (req, res) => {
     normalizedItems.push({
       id: p.id,
       title: p.title,
-      unitPrice: Number(unitPriceAzn.toFixed(2)),
+      unitPrice: Number(unitPriceAzn.toFixed(2)), // Epoint settlement amount, in AZN
+      marketUnitPrice: Number(unitPriceLocal.toFixed(2)),
       qty: item.qty,
       variant: variantLabel,
       variantColor: selectedCombination?.color ?? null,
@@ -381,6 +411,9 @@ app.post('/api/orders', orderLimiter, async (req, res) => {
     });
   }
   const subtotal = normalizedItems.reduce((s, x) => s + x.unitPrice * x.qty, 0);
+  const marketSubtotal = normalizedItems.reduce((s, x) => s + x.marketUnitPrice * x.qty, 0);
+  const orderCountryCode = countryCodeFromName(country);
+  const marketCurrency = ({ US: 'USD', CA: 'CAD', UK: 'GBP', AZ: 'AZN' })[orderCountryCode];
   const shipping = 0;
   const order = {
     id: nextId('DG', db.data.orders),
@@ -391,12 +424,18 @@ app.post('/api/orders', orderLimiter, async (req, res) => {
     trackingNumber: null,
     name,
 email: email.toLowerCase(),
-phone,
+phone: country === 'Azerbaijan' ? normalizedCustomerPhone : phone,
 address,
+addressLine2: addressLine2 || '',
+deliveryNotes: deliveryNotes || '',
 city,
 state: state || region || province || '',
 zip: zip || zipCode || postalCode || postal_code || '',
 country,
+marketCurrency,
+marketSubtotal: Number(marketSubtotal.toFixed(2)),
+marketTotal: Number((marketSubtotal + shipping).toFixed(2)),
+currency: 'AZN',
     items: normalizedItems,
     subtotal, shipping, total: subtotal + shipping
   };
@@ -601,10 +640,11 @@ const adminProductSchema = z.object({
   countryPrices: z.object({
     US: z.number().finite().positive().max(100000).nullable().optional(),
     CA: z.number().finite().positive().max(100000).nullable().optional(),
-    UK: z.number().finite().positive().max(100000).nullable().optional()
+    UK: z.number().finite().positive().max(100000).nullable().optional(),
+    AZ: z.number().finite().positive().max(100000).nullable().optional()
   }).optional(),
   availabilityByCountry: z.object({
-    US: z.boolean().optional(), CA: z.boolean().optional(), UK: z.boolean().optional()
+    US: z.boolean().optional(), CA: z.boolean().optional(), UK: z.boolean().optional(), AZ: z.boolean().optional()
   }).optional(),
   description: z.string().trim().max(10000).optional(),
   variantCombinations: z.array(z.object({
@@ -627,6 +667,7 @@ app.post('/api/admin/products', requireAdmin, async (req, res) => {
   if (!parsed.success) return res.status(400).json({ error: 'Invalid product details.' });
   if (parsed.data.oldPrice != null && parsed.data.oldPrice <= parsed.data.price) return res.status(400).json({ error: 'Compare-at price must be higher than the current price.' });
   if (parsed.data.saleEndsAt && parsed.data.oldPrice == null) return res.status(400).json({ error: 'A sale end time requires a compare-at price.' });
+  if (parsed.data.availabilityByCountry?.AZ === true && !(Number(parsed.data.countryPrices?.AZ) > 0)) return res.status(400).json({ error: 'Enter an AZN price before making this product available in Azerbaijan.' });
   const variantError = validateVariantCombinations(parsed.data.variantCombinations || []);
   if (variantError) return res.status(400).json({ error: variantError });
   const product = {
@@ -635,8 +676,8 @@ app.post('/api/admin/products', requireAdmin, async (req, res) => {
     price: Number(Number(parsed.data.price).toFixed(2)),
     oldPrice: parsed.data.oldPrice ?? null,
     saleEndsAt: parsed.data.saleEndsAt ?? null,
-    countryPrices: parsed.data.countryPrices || { US: Number(parsed.data.price), CA: null, UK: null },
-    availabilityByCountry: { US: true, CA: true, UK: true, ...(parsed.data.availabilityByCountry || {}) },
+    countryPrices: { US: Number(parsed.data.price), CA: null, UK: null, AZ: null, ...(parsed.data.countryPrices || {}) },
+    availabilityByCountry: { US: true, CA: true, UK: true, AZ: false, ...(parsed.data.availabilityByCountry || {}) },
     description: parsed.data.description ?? '',
     variantCombinations: parsed.data.variantCombinations || [],
     images: parsed.data.images || [],
@@ -661,14 +702,18 @@ app.patch('/api/admin/products/:id', requireAdmin, async (req, res) => {
   const nextSaleEndsAt = parsed.data.saleEndsAt !== undefined ? parsed.data.saleEndsAt : (product.saleEndsAt ?? null);
   if (nextOldPrice != null && nextOldPrice <= nextPrice) return res.status(400).json({ error: 'Compare-at price must be higher than the current price.' });
   if (nextSaleEndsAt && nextOldPrice == null) return res.status(400).json({ error: 'A sale end time requires a compare-at price.' });
+  const nextAzAvailable = parsed.data.availabilityByCountry?.AZ ?? product.availabilityByCountry?.AZ ?? false;
+  const hasAzPriceUpdate = parsed.data.countryPrices && Object.prototype.hasOwnProperty.call(parsed.data.countryPrices, 'AZ');
+  const nextAzPrice = hasAzPriceUpdate ? parsed.data.countryPrices.AZ : product.countryPrices?.AZ;
+  if (nextAzAvailable === true && !(Number(nextAzPrice) > 0)) return res.status(400).json({ error: 'Enter an AZN price before making this product available in Azerbaijan.' });
   const variantError = validateVariantCombinations(parsed.data.variantCombinations || product.variantCombinations || []);
   if (variantError) return res.status(400).json({ error: variantError });
   for (const [key, value] of Object.entries(parsed.data)) {
     if (value !== undefined) product[key] = value;
   }
-  if (parsed.data.countryPrices !== undefined) product.countryPrices = parsed.data.countryPrices;
+  if (parsed.data.countryPrices !== undefined) product.countryPrices = { ...(product.countryPrices || {}), ...parsed.data.countryPrices };
   if (parsed.data.availabilityByCountry !== undefined) {
-    product.availabilityByCountry = { US: true, CA: true, UK: true, ...(product.availabilityByCountry || {}), ...parsed.data.availabilityByCountry };
+    product.availabilityByCountry = { US: true, CA: true, UK: true, AZ: false, ...(product.availabilityByCountry || {}), ...parsed.data.availabilityByCountry };
   }
   if (parsed.data.price !== undefined) product.price = Number(Number(parsed.data.price).toFixed(2));
   await db.write();
