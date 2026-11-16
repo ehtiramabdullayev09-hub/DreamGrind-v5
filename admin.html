@@ -36,6 +36,7 @@
     <button class="tab" data-tab="products">Products</button>
     <button class="tab" data-tab="users">Customers</button>
     <button class="tab" data-tab="messages">Messages</button>
+    <button class="tab" data-tab="newsletter">Newsletter</button>
   </div>
 
   <section id="tab-orders" class="panel tab-panel">
@@ -139,15 +140,20 @@ What's included:
     <h2>Customer messages</h2>
     <div id="messages" class="table-wrap" style="margin-top:14px"></div>
   </section>
+
+  <section id="tab-newsletter" class="panel tab-panel hidden">
+    <div class="top"><div><h2>Newsletter subscribers</h2><div class="muted">Export collected email addresses for your newsletter platform.</div></div><button class="secondary" onclick="exportNewsletter()">Export CSV</button></div>
+    <div id="newsletter" class="table-wrap" style="margin-top:14px"></div>
+  </section>
 </div>
 
 <script>
 const $=id=>document.getElementById(id);
-let state={orders:[],products:[],users:[],messages:[]};
+let state={orders:[],products:[],users:[],messages:[],newsletter:[]};
 async function api(url,opts={}){const r=await fetch(url,{credentials:'include',...opts,headers:{'Content-Type':'application/json',...(opts.headers||{})}});const d=await r.json().catch(()=>({}));if(!r.ok)throw new Error(d.error||`Request failed (${r.status})`);return d;}
 function flash(msg,ok=true){$('flash').textContent=msg;$('flash').className=`notice ${ok?'ok':'error'}`;setTimeout(()=>$('flash').classList.add('hidden'),3500)}
 async function checkAuth(){const d=await api('/api/auth/me');if(d.user?.role==='admin'){$('loginView').classList.add('hidden');$('appView').classList.remove('hidden');$('me').textContent=d.user.email;await loadAll()}else{$('loginView').classList.remove('hidden');$('appView').classList.add('hidden')}}
-async function loadAll(){try{const [s,o,p,u,m]=await Promise.all([api('/api/admin/summary'),api('/api/admin/orders'),api('/api/products'),api('/api/admin/users'),api('/api/admin/messages')]);state={orders:o.orders,products:p.products,users:u.users,messages:m.messages};$('summary').innerHTML=[['Users',s.users],['Orders',s.orders],['Revenue (AZN)',`${Number(s.revenue||0).toFixed(2)} AZN`],['Messages',s.messages]].map(x=>`<div class="metric"><span>${x[0]}</span><strong>${x[1]}</strong></div>`).join('');renderOrders();renderProducts();renderUsers();renderMessages()}catch(e){flash(e.message,false);if(/Admin access|Authentication/.test(e.message))checkAuth()}}
+async function loadAll(){try{const [s,o,p,u,m,n]=await Promise.all([api('/api/admin/summary'),api('/api/admin/orders'),api('/api/products'),api('/api/admin/users'),api('/api/admin/messages'),api('/api/admin/newsletter')]);state={orders:o.orders,products:p.products,users:u.users,messages:m.messages,newsletter:n.subscribers||[]};$('summary').innerHTML=[['Users',s.users],['Orders',s.orders],['Revenue (AZN)',`${Number(s.revenue||0).toFixed(2)} AZN`],['Messages',s.messages],['Newsletter',s.newsletter||0]].map(x=>`<div class="metric"><span>${x[0]}</span><strong>${x[1]}</strong></div>`).join('');renderOrders();renderProducts();renderUsers();renderMessages();renderNewsletter()}catch(e){flash(e.message,false);if(/Admin access|Authentication/.test(e.message))checkAuth()}}
 function renderOrders() {
   if (!state.orders.length) {
     $('orders').innerHTML = '<p class="muted">No orders yet.</p>';
@@ -406,7 +412,9 @@ $('productForm').addEventListener('submit',async e=>{
 });
 async function deleteProduct(id){if(!confirm('Delete this product?'))return;try{await api('/api/admin/products/'+id,{method:'DELETE'});flash('Product deleted.');await loadAll()}catch(e){flash(e.message,false)}}
 function renderUsers(){if(!state.users.length){$('users').innerHTML='<p class="muted">No customers yet.</p>';return}$('users').innerHTML=`<table><thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Created</th></tr></thead><tbody>${state.users.map(u=>`<tr><td>${esc(u.name)}</td><td>${esc(u.email)}</td><td>${esc(u.role)}</td><td>${new Date(u.createdAt).toLocaleString()}</td></tr>`).join('')}</tbody></table>`}
-function renderMessages(){if(!state.messages.length){$('messages').innerHTML='<p class="muted">No messages.</p>';return}$('messages').innerHTML=`<table><thead><tr><th>Customer ID</th><th>From</th><th>Message</th><th>Date</th></tr></thead><tbody>${state.messages.map(m=>`<tr><td>${esc(m.userId)}</td><td>${esc(m.from)}</td><td>${esc(m.text)}</td><td>${new Date(m.createdAt).toLocaleString()}</td></tr>`).join('')}</tbody></table>`}
+function renderMessages(){if(!state.messages.length){$('messages').innerHTML='<p class="muted">No messages.</p>';return}$('messages').innerHTML=`<table><thead><tr><th>Customer</th><th>Email</th><th>Message</th><th>Date</th></tr></thead><tbody>${state.messages.map(m=>`<tr><td>${esc(m.name||m.userId||'Guest')}</td><td>${esc(m.email||'—')}</td><td>${esc(m.text)}</td><td>${new Date(m.createdAt).toLocaleString()}</td></tr>`).join('')}</tbody></table>`}
+function renderNewsletter(){if(!state.newsletter.length){$('newsletter').innerHTML='<p class="muted">No subscribers yet.</p>';return}$('newsletter').innerHTML=`<table><thead><tr><th>Email</th><th>Subscribed</th></tr></thead><tbody>${state.newsletter.map(x=>`<tr><td>${esc(x.email)}</td><td>${new Date(x.createdAt).toLocaleString()}</td></tr>`).join('')}</tbody></table>`}
+function exportNewsletter(){if(!state.newsletter.length){flash('No newsletter subscribers to export.',false);return}const rows=[['email','subscribed_at'],...state.newsletter.map(x=>[x.email,x.createdAt])];const csv=rows.map(row=>row.map(value=>'+String(value??).replace(/"/g,)+').join(',')).join('\r\n');const blob=new Blob([csv],{type:'text/csv;charset=utf-8'});const url=URL.createObjectURL(blob);const link=document.createElement('a');link.href=url;link.download='dreamgrind-newsletter-subscribers.csv';document.body.appendChild(link);link.click();link.remove();URL.revokeObjectURL(url)}
 function esc(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
 async function logout(){await fetch('/api/auth/logout',{method:'POST',credentials:'include'});location.reload()}
 $('loginForm').addEventListener('submit',async e=>{e.preventDefault();$('loginError').textContent='';try{await api('/api/auth/login',{method:'POST',body:JSON.stringify({email:$('adminEmail').value.trim(),password:$('adminPassword').value})});await checkAuth()}catch(err){$('loginError').textContent=err.message}});

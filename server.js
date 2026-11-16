@@ -9,8 +9,7 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { z } from 'zod';
 import { createDatabase } from './database.js';
-import { createHash, randomBytes } from 'node:crypto';
-import { mkdir } from 'node:fs/promises';
+import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
@@ -133,6 +132,7 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 const authLimiter = rateLimit({ windowMs: 15 * 60 * 1000, limit: 20, standardHeaders: 'draft-8', legacyHeaders: false });
 const orderLimiter = rateLimit({ windowMs: 15 * 60 * 1000, limit: 12, standardHeaders: 'draft-8', legacyHeaders: false, message: { error: 'Too many checkout attempts. Please try again shortly.' } });
+const contactLimiter = rateLimit({ windowMs: 15 * 60 * 1000, limit: 6, standardHeaders: 'draft-8', legacyHeaders: false, message: { error: 'Too many messages. Please try again later.' } });
 const emailSchema = z.string().trim().email().max(254);
 const registerSchema = z.object({
   name: z.string().trim().min(2).max(80),
@@ -159,7 +159,11 @@ postal_code: z.string().trim().max(30).optional(),
   country: z.enum(['United States', 'Canada', 'United Kingdom', 'Azerbaijan']),
   items: z.array(z.object({ id: z.coerce.number().int().positive(), qty: z.coerce.number().int().min(1).max(20), variant: z.string().max(180).nullable().optional(), variantColor: z.string().trim().max(60).nullable().optional(), variantSize: z.string().trim().max(60).nullable().optional() })).min(1).max(50)
 });
-const messageSchema = z.object({ text: z.string().trim().min(1).max(2000) });
+const messageSchema = z.object({
+  name: z.string().trim().min(2).max(80).optional(),
+  email: emailSchema.optional(),
+  text: z.string().trim().min(1).max(2000)
+});
 function createEpointSignature(data) {
   if (!EPOINT_PRIVATE_KEY) {
     throw new Error('EPOINT_PRIVATE_KEY is not configured.');
@@ -323,7 +327,7 @@ app.get('/api/auth/me', (req, res) => {
 
 app.get('/api/products', (_req, res) => res.json({ products: db.data.products }));
 
-app.post('/api/newsletter', async (req, res) => {
+app.post('/api/newsletter', contactLimiter, async (req, res) => {
   const parsed = z.object({ email: emailSchema }).safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: 'Enter a valid email.' });
   const email = parsed.data.email.toLowerCase();
@@ -505,53 +509,65 @@ app.post('/api/payment/callback', async (req, res) => {
 
   try {
     const expectedSignature = createEpointSignature(data);
+    const expectedBytes = Buffer.from(expectedSignature, 'utf8');
+    const receivedBytes = Buffer.from(String(signature), 'utf8');
 
-    if (signature !== expectedSignature) {
+    if (expectedBytes.length !== receivedBytes.length || !timingSafeEqual(expectedBytes, receivedBytes)) {
       console.error('EPOINT CALLBACK: invalid signature');
-      return res.status(400).json({
-        error: 'Invalid signature.'
-      });
+      return res.status(400).json({ error: 'Invalid signature.' });
     }
 
-    const decoded = JSON.parse(
-      Buffer.from(data, 'base64').toString('utf8')
-    );
+    const decoded = JSON.parse(Buffer.from(data, 'base64').toString('utf8'));
+    if (!decoded || typeof decoded.order_id !== 'string' || typeof decoded.status !== 'string') {
+      return res.status(400).json({ error: 'Invalid payment callback data.' });
+    }
 
-    const order = db.data.orders.find(
-      o => o.id === decoded.order_id
-    );
-
+    const order = db.data.orders.find(o => o.id === decoded.order_id);
     if (!order) {
       console.error('EPOINT CALLBACK: order not found:', decoded.order_id);
-      return res.status(404).json({
-        error: 'Order not found.'
-      });
+      return res.status(404).json({ error: 'Order not found.' });
     }
 
     if (decoded.status === 'success') {
-  order.status = 'Processing';
-  order.paymentStatus = 'Paid';
-  order.paymentTransaction = decoded.transaction || null;
-  order.paymentAmount = decoded.amount || null;
-  order.paymentUpdatedAt = new Date().toISOString();
-  if (db.data.checkoutTokens) delete db.data.checkoutTokens[order.id];
-} else {
-  order.paymentStatus = 'Failed';
-  order.status = 'Awaiting payment';
-  order.paymentTransaction = decoded.transaction || null;
-  order.paymentUpdatedAt = new Date().toISOString();
-  order.paymentError = decoded.message || decoded.bank_response || 'Payment failed.';
-}
+      const callbackAmount = Number(decoded.amount);
+      if (!Number.isFinite(callbackAmount) || Math.round(callbackAmount * 100) !== Math.round(Number(order.total) * 100)) {
+        console.error('EPOINT CALLBACK: amount mismatch for order:', order.id);
+        return res.status(400).json({ error: 'Payment amount does not match the order.' });
+      }
+      if (decoded.operation_code != null && String(decoded.operation_code) !== '100') {
+        console.error('EPOINT CALLBACK: unexpected operation code for order:', order.id);
+        return res.status(400).json({ error: 'Unexpected payment operation.' });
+      }
+      if (order.paymentStatus !== 'Refunded') {
+        order.status = 'Processing';
+        order.paymentStatus = 'Paid';
+        order.paymentTransaction = decoded.transaction || null;
+        order.paymentAmount = callbackAmount;
+        order.paymentUpdatedAt = new Date().toISOString();
+        if (db.data.checkoutTokens) delete db.data.checkoutTokens[order.id];
+      }
+    } else if (decoded.status === 'returned') {
+      order.status = 'Refunded';
+      order.paymentStatus = 'Refunded';
+      order.refundedAt = new Date().toISOString();
+      order.paymentTransaction = decoded.transaction || order.paymentTransaction || null;
+      order.paymentUpdatedAt = new Date().toISOString();
+      if (db.data.checkoutTokens) delete db.data.checkoutTokens[order.id];
+    } else if (['failed', 'error', 'server_error'].includes(decoded.status)) {
+      // A delayed failure callback must never overwrite an already confirmed payment.
+      if (!['Paid', 'Refunded'].includes(order.paymentStatus)) {
+        order.paymentStatus = 'Failed';
+        order.status = 'Awaiting payment';
+        order.paymentTransaction = decoded.transaction || null;
+        order.paymentUpdatedAt = new Date().toISOString();
+        order.paymentError = decoded.message || decoded.bank_response || 'Payment failed.';
+      }
+    } else if (decoded.status !== 'new') {
+      return res.status(400).json({ error: 'Unsupported payment status.' });
+    }
 
-await db.write();
-
-    console.log(
-      'EPOINT CALLBACK:',
-      order.id,
-      decoded.status,
-      decoded.transaction || ''
-    );
-
+    await db.write();
+    console.log('EPOINT CALLBACK:', order.id, decoded.status, decoded.transaction || '');
     return res.json({ ok: true });
   } catch (error) {
     console.error('EPOINT CALLBACK ERROR:', error);
@@ -581,13 +597,34 @@ app.get('/api/orders/me', requireAuth, (req, res) => {
 app.get('/api/orders/track/:code', (req, res) => {
   const order = db.data.orders.find(o => o.id === req.params.code.toUpperCase());
   if (!order) return res.status(404).json({ error: 'Order not found.' });
-  res.json({ order: { id: order.id, status: order.status, createdAt: order.createdAt, trackingNumber: order.trackingNumber } });
+  res.set('Cache-Control', 'no-store');
+  res.json({ order: {
+    id: order.id,
+    status: order.status,
+    paymentStatus: order.paymentStatus,
+    createdAt: order.createdAt,
+    trackingNumber: order.trackingNumber || null
+  } });
 });
 
-app.post('/api/messages', requireAuth, async (req, res) => {
+app.post('/api/messages', contactLimiter, async (req, res) => {
   const parsed = messageSchema.safeParse(req.body);
-  if (!parsed.success) return res.status(400).json({ error: 'Message is empty or too long.' });
-  const message = { id: nextId('MSG', db.data.messages), userId: req.user?.id ?? null, text: parsed.data.text, from: 'customer', createdAt: new Date().toISOString() };
+  if (!parsed.success) return res.status(400).json({ error: 'Please enter a valid name, email and message.' });
+  const user = getSessionUser(req);
+  const name = parsed.data.name || user?.name || '';
+  const email = (parsed.data.email || user?.email || '').toLowerCase();
+  if (!user && (name.length < 2 || !email)) {
+    return res.status(400).json({ error: 'Please enter your name and email address.' });
+  }
+  const message = {
+    id: nextId('MSG', db.data.messages),
+    userId: user?.id ?? null,
+    name,
+    email,
+    text: parsed.data.text,
+    from: 'customer',
+    createdAt: new Date().toISOString()
+  };
   db.data.messages.push(message);
   await db.write();
   res.status(201).json({ message: { id: message.id, text: message.text, createdAt: message.createdAt } });
@@ -615,6 +652,7 @@ app.get('/api/admin/orders', requireAdmin, (_req, res) =>
   })
 );
 app.get('/api/admin/messages', requireAdmin, (_req, res) => res.json({ messages: db.data.messages }));
+app.get('/api/admin/newsletter', requireAdmin, (_req, res) => res.json({ subscribers: db.data.newsletter || [] }));
 app.get('/api/admin/users', requireAdmin, (_req, res) => res.json({ users: db.data.users.map(sanitizeUser) }));
 
 const adminOrderUpdateSchema = z.object({
@@ -628,6 +666,10 @@ app.patch('/api/admin/orders/:id', requireAdmin, async (req, res) => {
   if (!order) return res.status(404).json({ error: 'Order not found.' });
   order.status = parsed.data.status;
   if (parsed.data.trackingNumber !== undefined) order.trackingNumber = parsed.data.trackingNumber || null;
+  if (parsed.data.status === 'Refunded') {
+    order.paymentStatus = 'Refunded';
+    order.refundedAt ||= new Date().toISOString();
+  }
   await db.write();
   res.json({ order });
 });

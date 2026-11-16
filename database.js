@@ -1,6 +1,7 @@
 import pg from 'pg';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { mkdir } from 'node:fs/promises';
 import { JSONFilePreset } from 'lowdb/node';
 
 const { Pool } = pg;
@@ -19,10 +20,9 @@ const emptyData = {
 export async function createDatabase() {
   // Local development: use the existing db.json
   if (!process.env.DATABASE_URL) {
-    return await JSONFilePreset(
-      path.join(__dirname, 'data', 'db.json'),
-      emptyData
-    );
+    const dataDirectory = path.join(__dirname, 'data');
+    await mkdir(dataDirectory, { recursive: true });
+    return await JSONFilePreset(path.join(dataDirectory, 'db.json'), emptyData);
   }
 
   // Render / production: use PostgreSQL

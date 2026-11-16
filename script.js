@@ -6,6 +6,7 @@ const translations = {
     shop: 'Shop', about: 'About', trackOrder: 'Track order', categories: 'Categories',
     search: 'Search', cart: 'Cart', markets: 'USA • CANADA • UK • AZERBAIJAN SOON',
     browse: 'Browse', whyDreamGrind: 'Why DreamGrind', orderStatus: 'Order status',
+    orderTrackingIntro: 'Enter your DreamGrind order number to see the latest order status. Carrier tracking details appear here once they are added to your order.',
     stayInLoop: 'Stay in the loop', azComingSoon: 'Azerbaijan orders are coming soon. Delivery arrangements are being finalised.'
   },
   az: {
@@ -13,6 +14,7 @@ const translations = {
     shop: 'Mağaza', about: 'Haqqımızda', trackOrder: 'Sifarişi izlə', categories: 'Kateqoriyalar',
     search: 'Axtarış', cart: 'Səbət', markets: 'ABŞ • KANADA • BK • AZƏRBAYCAN TEZLİKLƏ',
     browse: 'Kəşf et', whyDreamGrind: 'Niyə DreamGrind?', orderStatus: 'Sifarişin vəziyyəti',
+    orderTrackingIntro: 'Ən son sifariş statusunu görmək üçün DreamGrind sifariş nömrənizi daxil edin. Daşıyıcının izləmə məlumatı sifarişə əlavə edildikdən sonra burada görünəcək.',
     stayInLoop: 'Yeniliklərdən xəbərdar ol', azComingSoon: 'Azərbaycan üzrə sifariş qəbulu tezliklə açılacaq. Çatdırılma şərtləri dəqiqləşdirilir.'
   }
 };
@@ -48,19 +50,21 @@ const uiCopy = {
   'Price: low to high': 'Qiymət: aşağıdan yuxarıya', 'Price: high to low': 'Qiymət: yuxarıdan aşağıya',
   'Trending products': 'Populyar məhsullar', 'No products found': 'Məhsul tapılmadı',
   'Try another search or category.': 'Başqa axtarış sözü və ya kateqoriya sınayın.', 'Clear filters': 'Filtrləri sıfırla',
+  'Need a hand?': 'Köməyə ehtiyacınız var?', "Questions? We're here to help.": 'Suallarınız var? Kömək etməyə hazırıq.',
+  "Contact DreamGrind directly by WhatsApp or email. We're happy to help with product, order and delivery questions.": 'Məhsul, sifariş və çatdırılma ilə bağlı suallarınız üçün DreamGrind ilə WhatsApp və ya e-poçt vasitəsilə birbaşa əlaqə saxlaya bilərsiniz.',
+  'WhatsApp': 'WhatsApp', 'Email us': 'Bizə e-poçt göndərin',
   'A small store with a thoughtful shopping experience.': 'Düşünülmüş alış-veriş təcrübəsi təqdim edən kiçik mağaza.',
   'Curated': 'Diqqətlə seçilmiş', 'Products can be selected with usefulness and presentation in mind.': 'Məhsullar faydalılığı və təqdimatı nəzərə alınaraq seçilir.',
   'Transparent': 'Şəffaflıq', 'Shipping, order status and support information are designed to be visible.': 'Çatdırılma, sifariş vəziyyəti və dəstək məlumatları aydın şəkildə təqdim olunur.',
   'Human support': 'Canlı müştəri dəstəyi', 'Customers can contact the store directly rather than being left guessing.': 'Müştərilər sualları olduqda birbaşa mağaza ilə əlaqə saxlaya bilərlər.',
   'Track your order': 'Sifarişinizi izləyin',
-  'Enter your DreamGrind order number. The current version shows the interface; a real carrier API will be connected later.': 'DreamGrind sifariş nömrənizi daxil edin. Sifarişin izlənməsi üçün daşıyıcı sisteminin inteqrasiyası daha sonra həyata keçiriləcək.',
   'Track': 'İzlə', 'Example: DG10001': 'Məsələn: DG10001', 'Get new product drops in your inbox.': 'Yeni məhsullar haqqında xəbərləri e-poçtunuza alın.',
   'Subscribe': 'Abunə ol', 'A modern storefront foundation for international customers.': 'Beynəlxalq müştərilər üçün müasir onlayn mağaza.',
   'Business Information': 'Biznes məlumatları', 'Individual Entrepreneur: Ehtiram Abdullayev': 'Fərdi sahibkar: Ehtiram Abdullayev',
   'Legal address: Yukhari Laki, Agdash District, Azerbaijan': 'Hüquqi ünvan: Azərbaycan, Ağdaş rayonu, Yuxarı Ləki',
   'Business activity: E-commerce and retail sales': 'Fəaliyyət: Elektron ticarət və pərakəndə satış',
   'Customer': 'Müştəri', 'Wishlist': 'Seçilmişlər', 'Support': 'Dəstək', 'Shipping': 'Çatdırılma',
-  'Returns & refunds': 'Qaytarılma və geri ödənişlər', 'Contact us': 'Bizimlə əlaqə', 'Legal': 'Hüquqi məlumatlar',
+  'Returns & refunds': 'Qaytarılma və geri ödənişlər', 'Contact us': 'Bizimlə əlaqə', 'Contact': 'Əlaqə', 'Legal': 'Hüquqi məlumatlar',
   'Privacy': 'Məxfilik', 'Terms': 'Şərtlər', 'Cookies': 'Kukilər', 'Message the store': 'Mağazaya mesaj göndər',
   'Product options': 'Məhsul seçimləri', 'Color': 'Rəng', 'Size': 'Ölçü', 'Choose option': 'Seçim edin',
   'Product images': 'Məhsul şəkilləri', 'Product image coming soon': 'Məhsul şəkli tezliklə əlavə ediləcək',
@@ -92,7 +96,7 @@ const uiCopy = {
   'New': 'Yeni', 'Hot': 'Populyar', 'Best seller': 'Çox satılan',
   'Save': 'Qənaət:', 'From': 'Başlanğıc qiyməti:', 'Choose options': 'Seçimləri seç', 'Add': 'Əlavə et',
   'No image': 'Şəkil yoxdur', 'Toggle wishlist': 'Seçilmişlərə əlavə et/sil', 'View image': 'Şəkilə bax',
-  'Your cart': 'Səbətiniz', 'Shipping country': 'Çatdırılma ölkəsi', 'Coupon code (try SAVE10)': 'Kupon kodu (SAVE10 sınayın)',
+  'Your cart': 'Səbətiniz', 'Shipping country': 'Çatdırılma ölkəsi',
   'Subtotal': 'Ara cəm', 'Shipping': 'Çatdırılma', 'To be confirmed': 'Dəqiqləşdiriləcək',
   'Current subtotal': 'Cari ara cəm', 'Total': 'Yekun məbləğ', 'Checkout': 'Sifarişi rəsmiləşdir',
   'Orders opening soon': 'Sifariş qəbulu tezliklə açılacaq',
@@ -126,7 +130,10 @@ const uiCopy = {
   'My orders': 'Sifarişlərim', 'Message the store': 'Mağazaya mesaj göndər', 'Admin panel': 'İdarəetmə paneli', 'Log out': 'Çıxış et',
   'Please log in first': 'Əvvəlcə hesabınıza daxil olun', 'No orders yet.': 'Hələ sifariş yoxdur.',
   'Contact DreamGrind': 'DreamGrind ilə əlaqə', 'You': 'Siz', 'No messages yet.': 'Hələ mesaj yoxdur.',
-  'Your message': 'Mesajınız', 'How can we help?': 'Sizə necə kömək edə bilərik?', 'Send message': 'Mesajı göndər',
+  'Send us a message. You do not need to create an account.': 'Bizə mesaj göndərin. Bunun üçün hesab yaratmaq lazım deyil.',
+  'Your name': 'Adınız', 'Email address': 'E-poçt ünvanı', 'Your message': 'Mesajınız',
+  'How can we help?': 'Sizə necə kömək edə bilərik?', 'Send message': 'Mesajı göndər',
+  'Message sent. We will get back to you by email.': 'Mesajınız göndərildi. Sizinlə e-poçt vasitəsilə əlaqə saxlayacağıq.',
   'Message sent': 'Mesaj göndərildi', 'Account created': 'Hesab yaradıldı', 'Logged in': 'Hesaba daxil oldunuz',
   'Unable to create account': 'Hesab yaratmaq mümkün olmadı', 'Unable to sign in': 'Hesaba daxil olmaq mümkün olmadı',
   'Preparing secure payment…': 'Təhlükəsiz ödəniş hazırlanır…', 'Please check your details and try again.': 'Məlumatları yoxlayıb yenidən cəhd edin.',
@@ -1175,7 +1182,7 @@ function openCart() {
   const sub = cartSubtotal();
   const ship = state.cart.length ? shippingCost() : 0;
   const total = sub + ship;
-  $('modalRoot').innerHTML = `<div class="overlay" onclick="closeModal(event)"><aside class="drawer"><div class="drawer-head"><h2>Your cart</h2><button class="close-btn" onclick="closeModal()">✕</button></div>${lines}<div class="drawer-section"><label for="countrySelect">Shipping country</label><select id="countrySelect" onchange="setCountry(this.value)"><option value="US" ${c.country === 'US' ? 'selected' : ''}>United States</option><option value="CA" ${c.country === 'CA' ? 'selected' : ''}>Canada</option><option value="UK" ${c.country === 'UK' ? 'selected' : ''}>United Kingdom</option><option value="AZ" ${c.country === 'AZ' ? 'selected' : ''}>Azerbaijan</option></select></div><div class="drawer-section"><input id="couponInput" placeholder="Coupon code (try SAVE10)"></div><div class="summary-row"><span>Subtotal</span><span>${displayCountryPrice(sub)}</span></div><div class="summary-row"><span>Shipping</span><span>${c.country === 'AZ' ? 'To be confirmed' : (ship === 0 ? 'FREE' : displayCountryPrice(ship))}</span></div><div class="summary-row total"><span>${c.country === 'AZ' ? 'Current subtotal' : 'Total'}</span><span>${displayCountryPrice(total)}</span></div><button class="primary-button full" onclick="startCheckout()" ${state.cart.length ? '' : 'disabled'}>${c.country === 'AZ' && !storeConfig.azerbaijanCheckoutEnabled ? (localStorage.getItem('dg_language') === 'az' ? 'Sifariş qəbulu tezliklə açılacaq' : 'Orders opening soon') : 'Checkout'}</button><div class="note-box" style="margin-top:12px">${c.country === 'AZ' ? (localStorage.getItem('dg_language') === 'az' ? 'Azərbaycan üzrə sifariş qəbulu hələ açılmayıb. Çatdırılma qiyməti dəqiqləşdirilir.' : 'Azerbaijan orders are not open yet. Delivery pricing is being confirmed.') : 'You will be charged in AZN. Secure payment by Epoint.'}</div></aside></div>`;
+  $('modalRoot').innerHTML = `<div class="overlay" onclick="closeModal(event)"><aside class="drawer"><div class="drawer-head"><h2>Your cart</h2><button class="close-btn" onclick="closeModal()">✕</button></div>${lines}<div class="drawer-section"><label for="countrySelect">Shipping country</label><select id="countrySelect" onchange="setCountry(this.value)"><option value="US" ${c.country === 'US' ? 'selected' : ''}>United States</option><option value="CA" ${c.country === 'CA' ? 'selected' : ''}>Canada</option><option value="UK" ${c.country === 'UK' ? 'selected' : ''}>United Kingdom</option><option value="AZ" ${c.country === 'AZ' ? 'selected' : ''}>Azerbaijan</option></select></div><div class="summary-row"><span>Subtotal</span><span>${displayCountryPrice(sub)}</span></div><div class="summary-row"><span>Shipping</span><span>${c.country === 'AZ' ? 'To be confirmed' : (ship === 0 ? 'FREE' : displayCountryPrice(ship))}</span></div><div class="summary-row total"><span>${c.country === 'AZ' ? 'Current subtotal' : 'Total'}</span><span>${displayCountryPrice(total)}</span></div><button class="primary-button full" onclick="startCheckout()" ${state.cart.length ? '' : 'disabled'}>${c.country === 'AZ' && !storeConfig.azerbaijanCheckoutEnabled ? (localStorage.getItem('dg_language') === 'az' ? 'Sifariş qəbulu tezliklə açılacaq' : 'Orders opening soon') : 'Checkout'}</button><div class="note-box" style="margin-top:12px">${c.country === 'AZ' ? (localStorage.getItem('dg_language') === 'az' ? 'Azərbaycan üzrə sifariş qəbulu hələ açılmayıb. Çatdırılma qiyməti dəqiqləşdirilir.' : 'Azerbaijan orders are not open yet. Delivery pricing is being confirmed.') : 'You will be charged in AZN. Secure payment by Epoint.'}</div></aside></div>`;
 }
 function changeQty(id, variantKey, delta) {
   const variant = decodeURIComponent(variantKey);
@@ -1442,8 +1449,27 @@ function handleCheckoutCountryChange() {
     function accountHome(user) { return `<p>Welcome back, <strong>${escapeHtml(user.name)}</strong>.</p><div class="note-box">Email: ${escapeHtml(user.email)}<br>Account type: ${user.role === 'admin' ? 'Admin' : 'Customer'}</div><div style="display:grid;gap:8px;margin-top:14px"><button class="secondary-button" onclick="openOrderHistory()">My orders</button><button class="secondary-button" onclick="openSupport()">Message the store</button>${user.role === 'admin' ? '<button class="primary-button" onclick="window.location.href=\'/admin.html\'">Admin panel</button>' : ''}<button class="primary-button" onclick="logoutUser()">Log out</button></div>`; }
     async function logoutUser() { await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' }); openAccount(); }
     async function openOrderHistory() { const r = await fetch('/api/orders/me', { credentials: 'include' }); const d = await r.json(); if (!r.ok) { showToast('Please log in first'); return; } const orders = d.orders || []; $('modalRoot').innerHTML = `<div class="modal-overlay" onclick="closeModal(event)"><div class="modal"><div class="modal-head"><h2>My orders</h2><button class="close-btn" onclick="closeModal()">✕</button></div>${orders.length ? orders.map(o => `<div class="note-box" style="margin-bottom:9px"><strong>${escapeHtml(o.id)}</strong><br>${new Date(o.createdAt).toLocaleString()}<br>Status: ${escapeHtml(o.status)}<br>Total: ${money(o.total || 0, 'AZN')}<br><button class="text-button" onclick="closeModal();$('trackInput').value='${o.id}';trackOrder();location.hash='track'">Track order</button></div>`).join('') : '<p class="muted">No orders yet.</p>'}</div></div>`; }
-    async function openSupport() { const r = await fetch('/api/messages/me', { credentials: 'include' }); const d = await r.json(); if (!r.ok) { showToast('Please log in first'); return; } const old = d.messages || []; $('modalRoot').innerHTML = `<div class="modal-overlay" onclick="closeModal(event)"><div class="modal"><div class="modal-head"><h2>Contact DreamGrind</h2><button class="close-btn" onclick="closeModal()">✕</button></div><div class="message-list">${old.slice(-8).map(m => `<div class="message"><strong>${m.from === 'customer' ? 'You' : 'DreamGrind'}</strong><br>${escapeHtml(m.text)}<small>${new Date(m.createdAt).toLocaleString()}</small></div>`).join('') || '<p class="muted">No messages yet.</p>'}</div><form class="form-grid" onsubmit="sendMessage(event)"><label>Your message<textarea id="supportMessage" required placeholder="How can we help?"></textarea></label><button class="primary-button" type="submit">Send message</button></form></div></div>`; }
-    async function sendMessage(e) { e.preventDefault(); const r = await fetch('/api/messages', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify({ text: $('supportMessage').value.trim() }) }); const d = await r.json(); if (!r.ok) { showToast(d.error || 'Please log in first'); return; } showToast('Message sent'); openSupport(); }
+    async function openSupport() {
+      const user = await getCurrentUser();
+      let old = [];
+      if (user) {
+        const r = await fetch('/api/messages/me', { credentials: 'include' });
+        const d = await r.json();
+        if (r.ok) old = d.messages || [];
+      }
+      $('modalRoot').innerHTML = `<div class="modal-overlay" onclick="closeModal(event)"><div class="modal"><div class="modal-head"><h2>Contact DreamGrind</h2><button class="close-btn" onclick="closeModal()">✕</button></div>${user ? `<div class="message-list">${old.slice(-8).map(m => `<div class="message"><strong>You</strong><br>${escapeHtml(m.text)}<small>${new Date(m.createdAt).toLocaleString()}</small></div>`).join('') || '<p class="muted">No messages yet.</p>'}</div>` : '<p class="muted">Send us a message. You do not need to create an account.</p>'}<form class="form-grid" onsubmit="sendMessage(event)">${user ? '' : '<label>Your name<input id="supportName" required minlength="2" maxlength="80" autocomplete="name"></label><label>Email address<input id="supportEmail" type="email" required maxlength="254" autocomplete="email"></label>'}<label class="full">Your message<textarea id="supportMessage" required maxlength="2000" placeholder="How can we help?"></textarea></label><button class="primary-button full" type="submit">Send message</button></form></div></div>`;
+    }
+    async function sendMessage(e) {
+      e.preventDefault();
+      const payload = { text: $('supportMessage').value.trim() };
+      if ($('supportName')) payload.name = $('supportName').value.trim();
+      if ($('supportEmail')) payload.email = $('supportEmail').value.trim();
+      const r = await fetch('/api/messages', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify(payload) });
+      const d = await r.json();
+      if (!r.ok) { showToast(d.error || 'Unable to send your message.'); return; }
+      showToast('Message sent. We will get back to you by email.');
+      closeModal();
+    }
     async function submitDemoOrder(e) {
   e.preventDefault();
 
@@ -1538,7 +1564,19 @@ function handleCheckoutCountryChange() {
   }
 }
 
-    async function trackOrder() { const code = $('trackInput').value.trim().toUpperCase(); if (!code) { $('trackingResult').innerHTML = '<p class="muted">Enter an order number.</p>'; return; } const r = await fetch('/api/orders/track/' + encodeURIComponent(code)); const d = await r.json(); if (!r.ok) { $('trackingResult').innerHTML = '<p class="muted">Order not found.</p>'; return; } const order = d.order; $('trackingResult').innerHTML = `<div class="tracking-result"><div class="tracking-meta"><div><strong>Order ${escapeHtml(order.id)}</strong><div class="muted">Created ${new Date(order.createdAt).toLocaleString()}</div></div><div class="tracking-status">${escapeHtml(order.status)}</div></div><div class="timeline"><div class="step done"><div class="dot"></div><div><strong>Order placed</strong><br><small>Order received</small></div></div><div class="step done"><div class="dot"></div><div><strong>Processing</strong><br><small>Preparing your order</small></div></div><div class="step ${order.status === 'Shipped' || order.status === 'In transit' || order.status === 'Delivered' ? 'done' : ''}"><div class="dot"></div><div><strong>Shipped</strong><br><small>Tracking number assigned</small></div></div><div class="step ${order.status === 'In transit' || order.status === 'Delivered' ? 'done' : ''}"><div class="dot"></div><div><strong>In transit</strong><br><small>Package moving through carrier network</small></div></div><div class="step ${order.status === 'Delivered' ? 'done' : ''}"><div class="dot"></div><div><strong>Delivered</strong><br><small>Final carrier scan</small></div></div></div></div>`; }
+    async function trackOrder() {
+      const code = $('trackInput').value.trim().toUpperCase();
+      if (!code) { $('trackingResult').innerHTML = '<p class="muted">Enter an order number.</p>'; return; }
+      const r = await fetch('/api/orders/track/' + encodeURIComponent(code), { cache: 'no-store' });
+      const d = await r.json();
+      if (!r.ok) { $('trackingResult').innerHTML = '<p class="muted">Order not found. Check the order number and try again.</p>'; return; }
+      const order = d.order;
+      const paymentLabel = order.paymentStatus === 'Paid' ? 'Paid' : order.paymentStatus === 'Refunded' ? 'Refunded' : order.paymentStatus === 'Failed' ? 'Payment not completed' : 'Awaiting confirmation';
+      const trackingMarkup = order.trackingNumber
+        ? `<div class="note-box" style="margin-top:12px"><strong>Carrier tracking number</strong><br><span>${escapeHtml(order.trackingNumber)}</span></div>`
+        : '<p class="muted" style="margin-top:12px">Carrier tracking details will appear here after your order has been dispatched and the number has been added by our team.</p>';
+      $('trackingResult').innerHTML = `<div class="tracking-result"><div class="tracking-meta"><div><strong>Order ${escapeHtml(order.id)}</strong><div class="muted">Created ${new Date(order.createdAt).toLocaleString()}</div></div><div class="tracking-status">${escapeHtml(order.status)}</div></div><p><strong>Payment:</strong> ${escapeHtml(paymentLabel)}</p>${trackingMarkup}<p class="muted" style="margin-top:12px">Order statuses are updated by DreamGrind. Carrier movement updates are not live on this page.</p></div>`;
+    }
     function showPolicy(type) {
   const copy = {
     shipping: {
@@ -1664,28 +1702,49 @@ function handleCheckoutCountryChange() {
     async function subscribe(e) { e.preventDefault(); const email = $('newsletterEmail').value.trim(); const r = await fetch('/api/newsletter', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email }) }); const d = await r.json(); if (!r.ok) { showToast(d.error || 'Unable to subscribe'); return; } $('newsletterEmail').value = ''; showToast('Subscribed'); }
     function closeModal(e) { if (e && e.target !== e.currentTarget) return; $('modalRoot').innerHTML = ''; }
    const paymentParams = new URLSearchParams(window.location.search);
-const paymentStatus = paymentParams.get('payment');
+const paymentReturnStatus = paymentParams.get('payment');
 const returnedOrderId = paymentParams.get('order_id');
 
-if (paymentStatus === 'success') {
-  const checkoutMode = sessionStorage.getItem('dg_checkout_mode') || 'cart';
-  if (checkoutMode !== 'buy-now') {
-    state.cart = [];
-    saveAll();
+async function handlePaymentReturn() {
+  if (!['success', 'error'].includes(paymentReturnStatus)) return;
+  window.history.replaceState({}, '', '/');
+  if (!returnedOrderId) {
+    sessionStorage.removeItem('dg_checkout_mode');
+    showToast('We could not find the order number to verify this payment. Please contact support before trying again.');
+    return;
   }
-  sessionStorage.removeItem('dg_checkout_mode');
-  window.history.replaceState({}, '', '/');
-  showToast(returnedOrderId
-    ? `Payment successful. Order ${returnedOrderId}. Thank you!`
-    : 'Payment successful. Thank you for your order!');
-}
 
-if (paymentStatus === 'error') {
+  let order = null;
+  for (let attempt = 0; attempt < 6; attempt += 1) {
+    try {
+      const response = await fetch('/api/orders/track/' + encodeURIComponent(returnedOrderId), { cache: 'no-store' });
+      const data = await response.json();
+      if (response.ok && data.order) {
+        order = data.order;
+        if (['Paid', 'Failed', 'Refunded'].includes(order.paymentStatus)) break;
+      }
+    } catch (error) {
+      console.warn('Unable to verify Epoint payment status yet.', error);
+    }
+    await new Promise(resolve => setTimeout(resolve, 1500));
+  }
+
+  const checkoutMode = sessionStorage.getItem('dg_checkout_mode') || 'cart';
   sessionStorage.removeItem('dg_checkout_mode');
-  window.history.replaceState({}, '', '/');
-  showToast(returnedOrderId
-    ? `Payment was not completed for ${returnedOrderId}. Your cart is still saved.`
-    : 'Payment was not completed. Your cart is still saved.');
+
+  if (order?.paymentStatus === 'Paid') {
+    if (checkoutMode !== 'buy-now') {
+      state.cart = [];
+      saveAll();
+    }
+    showToast(`Payment confirmed. Order ${returnedOrderId}. Thank you!`);
+  } else if (order?.paymentStatus === 'Refunded') {
+    showToast(`Order ${returnedOrderId} has been refunded. Contact support if you need assistance.`);
+  } else if (order?.paymentStatus === 'Failed' || paymentReturnStatus === 'error') {
+    showToast(`Payment was not confirmed for ${returnedOrderId}. Your cart is still saved.`);
+  } else {
+    showToast(`Payment confirmation is still pending for order ${returnedOrderId}. Do not pay again yet. Your cart has been kept.`);
+  }
 }
     window.addEventListener('popstate', () => {
       const productId = new URLSearchParams(window.location.search).get('product');
@@ -1701,3 +1760,4 @@ if (paymentStatus === 'error') {
     refreshStoreConfig();
     loadProducts();
     initLanguage();
+    handlePaymentReturn();
