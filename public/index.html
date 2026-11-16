@@ -3,8 +3,15 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="DreamGrind — a modern storefront for customers in the USA, Canada and the UK, with Azerbaijan coming soon.">
+  <meta name="description" content="DreamGrind — a modern storefront for customers in the USA, Canada, the UK and Azerbaijan.">
   <meta name="theme-color" content="#111111">
+  <meta name="robots" content="index,follow">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="DreamGrind — Smart Shopping Starts Here">
+  <meta property="og:description" content="Discover useful gadgets, home essentials and pet favorites at DreamGrind.">
+  <meta property="og:url" content="https://dreamgrind-v5.onrender.com/">
+  <meta name="twitter:card" content="summary">
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
   <title>DreamGrind — Smart Shopping Starts Here</title>
   <link rel="preconnect" href="https://images.unsplash.com">
   <link rel="stylesheet" href="style.css">
@@ -36,7 +43,7 @@
       <button class="mobile-menu-btn icon-button" aria-label="Open menu" onclick="toggleMobileMenu()">☰</button>
       <a class="brand" href="#top" onclick="goTop(event)">DreamGrind</a>
       <nav id="mainNav" class="main-nav" aria-label="Main navigation">
-        <a href="#shop">Shop</a><a href="#categories">Categories</a><a href="#about">About</a><a href="#track">Track order</a>
+        <a href="#shop">Shop</a><a href="#categories">Categories</a><a href="#about">About</a><a href="#track">Track order</a><a href="#contact">Contact</a>
       </nav>
       <div class="header-actions">
         <button class="icon-button" data-i18n="search" onclick="toggleSearch()">⌕</button>
@@ -50,6 +57,7 @@
   <a href="#shop" data-i18n="shop">Shop</a>
 <a href="#about" data-i18n="about">About</a>
 <a href="#track" data-i18n="trackOrder">Track order</a>
+<a href="#contact">Contact</a>
 <a href="#categories" data-i18n="categories">Categories</a>
   <button type="button" onclick="closeMobileMenu();openAccount()">My account</button>
 </div>
@@ -59,7 +67,7 @@
     <section class="hero-section">
   <div class="container hero-grid">
     <div class="hero-copy">
-      <p class="eyebrow hero-market-label" data-i18n="markets">USA • CANADA • UK • AZERBAIJAN SOON</p>
+      <p class="eyebrow hero-market-label" data-i18n="markets">USA • CANADA • UK • AZERBAIJAN</p>
       <h1>Good finds for a better <span>everyday.</span></h1>
       <p class="hero-lede">Discover useful gadgets, home essentials and pet favorites for the little things that make life better.</p>
       <div class="hero-actions">
@@ -116,9 +124,31 @@
 
     <section id="about" class="about-section"><div class="container about-grid"><div><p class="eyebrow"data-i18n="whyDreamGrind">Why DreamGrind</p><h2>A small store with a thoughtful shopping experience.</h2></div><div class="about-points"><div><strong>Curated</strong><p>Products can be selected with usefulness and presentation in mind.</p></div><div><strong>Transparent</strong><p>Shipping, order status and support information are designed to be visible.</p></div><div><strong>Human support</strong><p>Customers can contact the store directly rather than being left guessing.</p></div></div></div></section>
 
-    <section id="track" class="track-section"><div class="container track-layout"><div><p class="eyebrow"data-i18n"orderStatus">Order status</p><h2>Track your order</h2><p class="muted">Enter your DreamGrind order number. The current version shows the interface; a real carrier API will be connected later.</p></div><div class="track-card"><div class="track-input-row"><input id="trackInput" placeholder="Example: DG10001" aria-label="Order number"><button class="primary-button" onclick="trackOrder()">Track</button></div><div id="trackingResult"></div></div></div></section>
+    <section id="track" class="track-section"><div class="container track-layout"><div><p class="eyebrow"data-i18n="orderStatus">Order status</p><h2>Track your order</h2><p class="muted" data-i18n="orderTrackingIntro">Enter your DreamGrind order number to see the latest order status. Carrier tracking details appear here once they are added to your order.</p></div><div class="track-card"><div class="track-input-row"><input id="trackInput" placeholder="Example: DG10001" aria-label="Order number"><button class="primary-button" onclick="trackOrder()">Track</button></div><div id="trackingResult"></div></div></div></section>
 
-    <section class="newsletter-section"><div class="container newsletter-card"><div><p class="eyebrow"data-i18n"stayInLoop">Stay in the loop</p><h2>Get new product drops in your inbox.</h2></div><form class="newsletter-form" onsubmit="subscribe(event)"><input id="newsletterEmail" type="email" placeholder="you@example.com" required><button class="primary-button">Subscribe</button></form></div></section>
+    <section id="contact" class="contact-section">
+      <div class="container contact-card">
+        <div class="contact-copy">
+          <p class="eyebrow">Need a hand?</p>
+          <h2>Questions? We're here to help.</h2>
+          <p class="muted">Contact DreamGrind directly by WhatsApp or email. We're happy to help with product, order and delivery questions.</p>
+        </div>
+        <div class="contact-options">
+          <a class="contact-option whatsapp-option" href="https://wa.me/994998998097?text=Hello%20DreamGrind%2C%20I%20have%20a%20question." target="_blank" rel="noopener noreferrer" aria-label="Chat with DreamGrind on WhatsApp at +994 99 899 80 97">
+            <span class="contact-option-icon" aria-hidden="true">◉</span>
+            <span class="contact-option-copy"><strong>WhatsApp</strong><small>+994 99 899 80 97</small></span>
+            <span class="contact-option-arrow" aria-hidden="true">↗</span>
+          </a>
+          <a class="contact-option email-option" href="mailto:dreamgrindstore@gmail.com?subject=DreamGrind%20Customer%20Question" aria-label="Email DreamGrind at dreamgrindstore@gmail.com">
+            <span class="contact-option-icon" aria-hidden="true">✉</span>
+            <span class="contact-option-copy"><strong>Email us</strong><small>dreamgrindstore@gmail.com</small></span>
+            <span class="contact-option-arrow" aria-hidden="true">↗</span>
+          </a>
+        </div>
+      </div>
+    </section>
+
+    <section class="newsletter-section"><div class="container newsletter-card"><div><p class="eyebrow"data-i18n="stayInLoop">Stay in the loop</p><h2>Get new product drops in your inbox.</h2></div><form class="newsletter-form" onsubmit="subscribe(event)"><input id="newsletterEmail" type="email" placeholder="you@example.com" required><button class="primary-button">Subscribe</button></form></div></section>
   </main>
 
   <footer class="site-footer"><div class="container footer-grid"><div class="footer-brand"><div class="brand">DreamGrind</div><p class="muted">A modern storefront foundation for international customers.</p><div class="footer-business">
@@ -127,7 +157,7 @@
   <p>Individual Entrepreneur: Ehtiram Abdullayev</p>
   <p>Legal address: Yukhari Laki, Agdash District, Azerbaijan</p>
   <p>Business activity: E-commerce and retail sales</p>
-</div></div><div><strong>Customer</strong><button onclick="openAccount()">My account</button><button onclick="openWishlist()">Wishlist</button><button onclick="openCart()">Cart</button></div><div><strong>Support</strong><button onclick="showPolicy('shipping')">Shipping</button><button onclick="showPolicy('returns')">Returns & refunds</button><button onclick="openSupport()">Contact us</button></div><div><strong>Legal</strong><button onclick="showPolicy('privacy')">Privacy</button><button onclick="showPolicy('terms')">Terms</button><button onclick="showPolicy('cookies')">Cookies</button></div></div><div class="container footer-bottom"><span>© 2026 DreamGrind</span><button onclick="openSupport()">Message the store</button></div></footer>
+</div></div><div><strong>Customer</strong><button onclick="openAccount()">My account</button><button onclick="openWishlist()">Wishlist</button><button onclick="openCart()">Cart</button></div><div><strong>Support</strong><button onclick="showPolicy('shipping')">Shipping</button><button onclick="showPolicy('returns')">Returns & refunds</button><button onclick="openSupport()">Contact us</button><a class="footer-contact-link" href="https://wa.me/994998998097?text=Hello%20DreamGrind%2C%20I%20have%20a%20question." target="_blank" rel="noopener noreferrer">WhatsApp</a><a class="footer-contact-link" href="mailto:dreamgrindstore@gmail.com">Email us</a></div><div><strong>Legal</strong><button onclick="showPolicy('privacy')">Privacy</button><button onclick="showPolicy('terms')">Terms</button><button onclick="showPolicy('cookies')">Cookies</button></div></div><div class="container footer-bottom"><span>© 2026 DreamGrind</span><button onclick="openSupport()">Message the store</button></div></footer>
 
   <div id="modalRoot"></div><div id="toast" class="toast hidden"></div>
   <script src="script.js"></script>

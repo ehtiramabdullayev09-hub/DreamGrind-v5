@@ -36,10 +36,11 @@
     <button class="tab" data-tab="products">Products</button>
     <button class="tab" data-tab="users">Customers</button>
     <button class="tab" data-tab="messages">Messages</button>
+    <button class="tab" data-tab="newsletter">Newsletter</button>
   </div>
 
   <section id="tab-orders" class="panel tab-panel">
-    <div class="top"><div><h2>Orders</h2><div class="muted">Update fulfilment status and tracking numbers.</div></div></div>
+    <div class="top"><div><h2>Orders</h2><div class="muted">Update fulfilment status and tracking numbers. For Azerbaijan requests, confirm the delivery fee in AZN and create an Epoint link before payment.</div></div></div>
     <div id="orders" class="table-wrap" style="margin-top:14px"></div>
   </section>
 
@@ -55,7 +56,7 @@
       <div><label>Stock</label><input id="productStock" type="number" min="0" step="1" value="0"></div>
       <div class="full market-pricing-panel">
         <h3 style="margin:0 0 6px">Country availability &amp; prices</h3>
-        <p class="muted" style="margin:0 0 12px">Untick a country to hide this product there and block checkout. Canada and UK prices may be auto-converted. Azerbaijan requires a separate AZN price and is disabled by default until delivery terms are confirmed.</p>
+        <p class="muted" style="margin:0 0 12px">Untick a country to hide this product there and block checkout. Canada and UK prices may be auto-converted. Azerbaijan is enabled by default; leave its price blank to convert the USD price at the store rate (1 USD = 1.70 AZN), or enter a custom AZN price.</p>
         <div class="market-pricing-grid">
           <div class="market-pricing-card">
             <label class="market-availability"><input id="productAvailableUS" type="checkbox" checked> Available in United States</label>
@@ -72,10 +73,10 @@
             <input id="productPriceUK" type="number" min="0.01" step="0.01" placeholder="Auto-convert from USD">
           </div>
           <div class="market-pricing-card">
-            <label class="market-availability"><input id="productAvailableAZ" type="checkbox"> Available in Azerbaijan</label>
-            <label for="productPriceAZ">Azerbaijan price (AZN)</label>
-            <input id="productPriceAZ" type="number" min="0.01" step="0.01" placeholder="Enter AZN price">
-            <small class="muted">A valid AZN price is required. Keep this market disabled until the DDP shipping quote is confirmed and shipping-cost handling is configured.</small>
+            <label class="market-availability"><input id="productAvailableAZ" type="checkbox" checked> Available in Azerbaijan</label>
+            <label for="productPriceAZ">Azerbaijan price (AZN, optional)</label>
+            <input id="productPriceAZ" type="number" min="0.01" step="0.01" placeholder="Auto-convert from USD × 1.70">
+            <small class="muted">Leave blank to use the current store conversion (1 USD = 1.70 AZN). Enter a value only when you want a different local selling price. Azerbaijan delivery charges are quoted separately before payment.</small>
           </div>
         </div>
       </div>
@@ -139,15 +140,20 @@ What's included:
     <h2>Customer messages</h2>
     <div id="messages" class="table-wrap" style="margin-top:14px"></div>
   </section>
+
+  <section id="tab-newsletter" class="panel tab-panel hidden">
+    <div class="top"><div><h2>Newsletter subscribers</h2><div class="muted">Export collected email addresses for your newsletter platform.</div></div><button class="secondary" onclick="exportNewsletter()">Export CSV</button></div>
+    <div id="newsletter" class="table-wrap" style="margin-top:14px"></div>
+  </section>
 </div>
 
 <script>
 const $=id=>document.getElementById(id);
-let state={orders:[],products:[],users:[],messages:[]};
+let state={orders:[],products:[],users:[],messages:[],newsletter:[]};
 async function api(url,opts={}){const r=await fetch(url,{credentials:'include',...opts,headers:{'Content-Type':'application/json',...(opts.headers||{})}});const d=await r.json().catch(()=>({}));if(!r.ok)throw new Error(d.error||`Request failed (${r.status})`);return d;}
 function flash(msg,ok=true){$('flash').textContent=msg;$('flash').className=`notice ${ok?'ok':'error'}`;setTimeout(()=>$('flash').classList.add('hidden'),3500)}
 async function checkAuth(){const d=await api('/api/auth/me');if(d.user?.role==='admin'){$('loginView').classList.add('hidden');$('appView').classList.remove('hidden');$('me').textContent=d.user.email;await loadAll()}else{$('loginView').classList.remove('hidden');$('appView').classList.add('hidden')}}
-async function loadAll(){try{const [s,o,p,u,m]=await Promise.all([api('/api/admin/summary'),api('/api/admin/orders'),api('/api/products'),api('/api/admin/users'),api('/api/admin/messages')]);state={orders:o.orders,products:p.products,users:u.users,messages:m.messages};$('summary').innerHTML=[['Users',s.users],['Orders',s.orders],['Revenue (AZN)',`${Number(s.revenue||0).toFixed(2)} AZN`],['Messages',s.messages]].map(x=>`<div class="metric"><span>${x[0]}</span><strong>${x[1]}</strong></div>`).join('');renderOrders();renderProducts();renderUsers();renderMessages()}catch(e){flash(e.message,false);if(/Admin access|Authentication/.test(e.message))checkAuth()}}
+async function loadAll(){try{const [s,o,p,u,m,n]=await Promise.all([api('/api/admin/summary'),api('/api/admin/orders'),api('/api/products'),api('/api/admin/users'),api('/api/admin/messages'),api('/api/admin/newsletter')]);state={orders:o.orders,products:p.products,users:u.users,messages:m.messages,newsletter:n.subscribers||[]};$('summary').innerHTML=[['Users',s.users],['Orders',s.orders],['Revenue (AZN)',`${Number(s.revenue||0).toFixed(2)} AZN`],['Messages',s.messages],['Newsletter',s.newsletter||0]].map(x=>`<div class="metric"><span>${x[0]}</span><strong>${x[1]}</strong></div>`).join('');renderOrders();renderProducts();renderUsers();renderMessages();renderNewsletter()}catch(e){flash(e.message,false);if(/Admin access|Authentication/.test(e.message))checkAuth()}}
 function renderOrders() {
   if (!state.orders.length) {
     $('orders').innerHTML = '<p class="muted">No orders yet.</p>';
@@ -155,6 +161,8 @@ function renderOrders() {
   }
 
   const statuses = [
+    'Awaiting shipping quote',
+    'Awaiting payment',
     'Processing',
     'Shipped',
     'In transit',
@@ -205,7 +213,12 @@ function renderOrders() {
                 ${o.deliveryNotes ? `<div class="muted">Delivery notes: ${esc(o.deliveryNotes)}</div>` : ''}
               </td>
 
-              <td><strong>${Number(o.total || 0).toFixed(2)} AZN</strong>${o.marketCurrency && o.marketCurrency !== 'AZN' && Number.isFinite(Number(o.marketTotal)) ? `<div class="muted">Customer price: ${Number(o.marketTotal).toFixed(2)} ${esc(o.marketCurrency)}</div>` : ''}</td>
+              <td>
+                <strong>${o.total == null ? 'Shipping quote pending' : `${Number(o.total).toFixed(2)} AZN`}</strong>
+                <div class="muted">Product subtotal: ${Number(o.subtotal || 0).toFixed(2)} AZN</div>
+                ${o.country === 'Azerbaijan' && !['Paid','Refunded'].includes(o.paymentStatus) && o.status !== 'Cancelled' ? `<div style="min-width:170px;margin-top:8px"><label for="azship-${esc(o.id)}">Delivery fee (AZN)</label><input id="azship-${esc(o.id)}" type="number" min="0" step="0.01" placeholder="Enter delivery fee" value="${o.shipping == null ? '' : Number(o.shipping).toFixed(2)}"><button style="margin-top:6px" onclick="createAzPaymentLink('${esc(o.id)}')">Create Epoint link</button></div>` : ''}
+                ${o.marketCurrency && o.marketCurrency !== 'AZN' && Number.isFinite(Number(o.marketTotal)) ? `<div class="muted">Customer price: ${Number(o.marketTotal).toFixed(2)} ${esc(o.marketCurrency)}</div>` : ''}
+              </td>
 
               <td>
                 <select id="st-${esc(o.id)}">
@@ -236,7 +249,22 @@ function renderOrders() {
   `;
 }
 async function saveOrder(id){try{const status=$('st-'+id).value;const tracking=$('tr-'+id).value.trim();await api('/api/admin/orders/'+encodeURIComponent(id),{method:'PATCH',body:JSON.stringify({status,trackingNumber:tracking||null})});flash('Order updated.');await loadAll()}catch(e){flash(e.message,false)}}
-function renderProducts(){if(!state.products.length){$('products').innerHTML='<p class="muted">No products.</p>';return}$('products').innerHTML=`<table><thead><tr><th>ID</th><th>Product</th><th>US price</th><th>AZ price</th><th>Category</th><th>Markets</th><th>Stock</th><th>Actions</th></tr></thead><tbody>${state.products.map(p=>{const m=p.availabilityByCountry||{};const markets=[['US',m.US!==false],['CA',m.CA!==false],['UK',m.UK!==false],['AZ',m.AZ===true]].map(([c,on])=>`<span style="color:${on?'#166534':'#b91c1c'}">${c} ${on?'✓':'×'}</span>`).join(' · ');return `<tr><td>${p.id}</td><td><strong>${esc(p.title)}</strong>${p.image?`<div class="muted">Image set</div>`:''}</td><td>$${Number(p.price||0).toFixed(2)}</td><td>${Number(p.countryPrices?.AZ)>0?`${Number(p.countryPrices.AZ).toFixed(2)} AZN`:'—'}</td><td>${esc(p.category||'General')}</td><td>${markets}</td><td>${Number.isFinite(Number(p.stock))?p.stock:'—'}</td><td class="row-actions"><button onclick="editProduct(${p.id})">Edit</button><button class="danger" onclick="deleteProduct(${p.id})">Delete</button></td></tr>`}).join('')}</tbody></table>`}
+async function createAzPaymentLink(id){
+  const field=$('azship-'+id);
+  if(!field?.value?.trim()){flash('Enter the confirmed delivery fee in AZN.',false);return;}
+  const fee=Number(field.value);
+  if(!Number.isFinite(fee)||fee<0){flash('Enter a valid delivery fee in AZN.',false);return;}
+  if(!confirm(`Confirm the Azerbaijan delivery fee as ${fee.toFixed(2)} AZN and create an Epoint payment link?`))return;
+  try{
+    const result=await api('/api/admin/orders/'+encodeURIComponent(id)+'/payment-link',{method:'POST',body:JSON.stringify({shippingFeeAzn:fee})});
+    let copied=false;
+    try{await navigator.clipboard.writeText(result.redirect_url);copied=true;}catch(_){ }
+    flash(`Payment link created. Final total: ${Number(result.total).toFixed(2)} AZN. ${copied?'Link copied to clipboard.':'Copy the link from the prompt.'}`);
+    window.prompt(`Send this secure Epoint payment link to the customer for order ${id}:`,result.redirect_url);
+    await loadAll();
+  }catch(e){flash(e.message,false);}
+}
+function renderProducts(){if(!state.products.length){$('products').innerHTML='<p class="muted">No products.</p>';return}$('products').innerHTML=`<table><thead><tr><th>ID</th><th>Product</th><th>US price</th><th>AZ price</th><th>Category</th><th>Markets</th><th>Stock</th><th>Actions</th></tr></thead><tbody>${state.products.map(p=>{const m=p.availabilityByCountry||{};const markets=[['US',m.US!==false],['CA',m.CA!==false],['UK',m.UK!==false],['AZ',m.AZ!==false]].map(([c,on])=>`<span style="color:${on?'#166534':'#b91c1c'}">${c} ${on?'✓':'×'}</span>`).join(' · ');return `<tr><td>${p.id}</td><td><strong>${esc(p.title)}</strong>${p.image?`<div class="muted">Image set</div>`:''}</td><td>$${Number(p.price||0).toFixed(2)}</td><td>${Number(p.countryPrices?.AZ)>0?`${Number(p.countryPrices.AZ).toFixed(2)} AZN`:`${(Number(p.price||0)*1.70).toFixed(2)} AZN (auto)`}</td><td>${esc(p.category||'General')}</td><td>${markets}</td><td>${Number.isFinite(Number(p.stock))?p.stock:'—'}</td><td class="row-actions"><button onclick="editProduct(${p.id})">Edit</button><button class="danger" onclick="deleteProduct(${p.id})">Delete</button></td></tr>`}).join('')}</tbody></table>`}
 function toLocalDateTimeInput(value){
   if(!value)return '';
   const d=new Date(value);
@@ -258,7 +286,7 @@ function editProduct(id){
   $('productAvailableUS').checked=p.availabilityByCountry?.US!==false;
   $('productAvailableCA').checked=p.availabilityByCountry?.CA!==false;
   $('productAvailableUK').checked=p.availabilityByCountry?.UK!==false;
-  $('productAvailableAZ').checked=p.availabilityByCountry?.AZ===true;
+  $('productAvailableAZ').checked=p.availabilityByCountry?.AZ!==false;
   $('productPriceCA').value=p.countryPrices?.CA ?? '';
   $('productPriceUK').value=p.countryPrices?.UK ?? '';
   $('productPriceAZ').value=p.countryPrices?.AZ ?? '';
@@ -284,7 +312,7 @@ function resetProductForm(){
   $('productAvailableUS').checked=true;
   $('productAvailableCA').checked=true;
   $('productAvailableUK').checked=true;
-  $('productAvailableAZ').checked=false;
+  $('productAvailableAZ').checked=true;
   $('productStock').value=0;
 
   for(let i=1;i<=8;i++){
@@ -361,10 +389,6 @@ $('productForm').addEventListener('submit',async e=>{
     const ukPriceValue=$('productPriceUK').value.trim();
     const azPriceValue=$('productPriceAZ').value.trim();
     const countryPrices={US:price,CA:caPriceValue?Number(caPriceValue):null,UK:ukPriceValue?Number(ukPriceValue):null,AZ:azPriceValue?Number(azPriceValue):null};
-    if($('productAvailableAZ').checked && !countryPrices.AZ){
-      flash('Enter an Azerbaijan price in AZN before enabling this market.',false);
-      return;
-    }
     for(const [countryCode,countryPrice] of Object.entries(countryPrices)){
       if(countryPrice!==null && (!Number.isFinite(countryPrice) || countryPrice<=0 || countryPrice>100000)){
         flash(`Enter a valid price for ${countryCode}, or leave it blank for automatic conversion.`,false);
@@ -406,7 +430,9 @@ $('productForm').addEventListener('submit',async e=>{
 });
 async function deleteProduct(id){if(!confirm('Delete this product?'))return;try{await api('/api/admin/products/'+id,{method:'DELETE'});flash('Product deleted.');await loadAll()}catch(e){flash(e.message,false)}}
 function renderUsers(){if(!state.users.length){$('users').innerHTML='<p class="muted">No customers yet.</p>';return}$('users').innerHTML=`<table><thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Created</th></tr></thead><tbody>${state.users.map(u=>`<tr><td>${esc(u.name)}</td><td>${esc(u.email)}</td><td>${esc(u.role)}</td><td>${new Date(u.createdAt).toLocaleString()}</td></tr>`).join('')}</tbody></table>`}
-function renderMessages(){if(!state.messages.length){$('messages').innerHTML='<p class="muted">No messages.</p>';return}$('messages').innerHTML=`<table><thead><tr><th>Customer ID</th><th>From</th><th>Message</th><th>Date</th></tr></thead><tbody>${state.messages.map(m=>`<tr><td>${esc(m.userId)}</td><td>${esc(m.from)}</td><td>${esc(m.text)}</td><td>${new Date(m.createdAt).toLocaleString()}</td></tr>`).join('')}</tbody></table>`}
+function renderMessages(){if(!state.messages.length){$('messages').innerHTML='<p class="muted">No messages.</p>';return}$('messages').innerHTML=`<table><thead><tr><th>Customer</th><th>Email</th><th>Message</th><th>Date</th></tr></thead><tbody>${state.messages.map(m=>`<tr><td>${esc(m.name||m.userId||'Guest')}</td><td>${esc(m.email||'—')}</td><td>${esc(m.text)}</td><td>${new Date(m.createdAt).toLocaleString()}</td></tr>`).join('')}</tbody></table>`}
+function renderNewsletter(){if(!state.newsletter.length){$('newsletter').innerHTML='<p class="muted">No subscribers yet.</p>';return}$('newsletter').innerHTML=`<table><thead><tr><th>Email</th><th>Subscribed</th></tr></thead><tbody>${state.newsletter.map(x=>`<tr><td>${esc(x.email)}</td><td>${new Date(x.createdAt).toLocaleString()}</td></tr>`).join('')}</tbody></table>`}
+function exportNewsletter(){if(!state.newsletter.length){flash('No newsletter subscribers to export.',false);return}const rows=[['email','subscribed_at'],...state.newsletter.map(x=>[x.email,x.createdAt])];const csv=rows.map(row=>row.map(value=>'+String(value??).replace(/"/g,)+').join(',')).join('\r\n');const blob=new Blob([csv],{type:'text/csv;charset=utf-8'});const url=URL.createObjectURL(blob);const link=document.createElement('a');link.href=url;link.download='dreamgrind-newsletter-subscribers.csv';document.body.appendChild(link);link.click();link.remove();URL.revokeObjectURL(url)}
 function esc(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
 async function logout(){await fetch('/api/auth/logout',{method:'POST',credentials:'include'});location.reload()}
 $('loginForm').addEventListener('submit',async e=>{e.preventDefault();$('loginError').textContent='';try{await api('/api/auth/login',{method:'POST',body:JSON.stringify({email:$('adminEmail').value.trim(),password:$('adminPassword').value})});await checkAuth()}catch(err){$('loginError').textContent=err.message}});
