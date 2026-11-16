@@ -231,7 +231,10 @@ const uiCopy = {
   'Rayon / district *': 'Rayon *',
   'Enter the rayon or administrative area for the delivery address.': 'Çatdırılma ünvanının rayonunu daxil edin.',
   'Postal code (optional)': 'Poçt indeksi (istəyə bağlı)',
+  'Postal code *': 'Poçt indeksi *',
   'Enter a postal code when available.': 'Mövcuddursa, poçt indeksini daxil edin.',
+  'Enter the Azerbaijan postal code for the delivery address.': 'Çatdırılma ünvanının poçt indeksini daxil edin.',
+  'e.g. AZ1000': 'məsələn, AZ1000',
   'e.g. California': 'məsələn, California', 'e.g. Ontario': 'məsələn, Ontario',
   'e.g. Yasamal': 'məsələn, Yasamal', 'e.g. SW1A 1AA': 'məsələn, SW1A 1AA',
   'e.g. K1A 0B1': 'məsələn, K1A 0B1', 'e.g. 90210': 'məsələn, 90210',
@@ -1308,9 +1311,9 @@ async function startCheckout(items = null) {
           </label>
 
           <label>
-            <span id="coZipLabel">${c.country === 'UK' ? 'Postcode *' : c.country === 'CA' ? 'Postal code *' : c.country === 'AZ' ? 'Postal code (optional)' : 'ZIP code *'}</span>
-            <input id="coZip" name="postal-code" autocomplete="postal-code" autocapitalize="characters" ${c.country === 'AZ' ? '' : 'required'} placeholder="${c.country === 'UK' ? 'e.g. SW1A 1AA' : c.country === 'CA' ? 'e.g. K1A 0B1' : c.country === 'AZ' ? 'Optional' : 'e.g. 90210'}">
-            <small class="checkout-field-help" id="coZipHelp">${c.country === 'UK' ? 'Enter the UK postcode as provided by the recipient.' : c.country === 'CA' ? 'Enter the Canadian postal code, including the space if shown.' : c.country === 'AZ' ? 'Enter a postal code when available.' : 'Enter the ZIP code for the delivery address.'}</small>
+            <span id="coZipLabel">${c.country === 'UK' ? 'Postcode *' : c.country === 'CA' ? 'Postal code *' : c.country === 'AZ' ? 'Postal code *' : 'ZIP code *'}</span>
+            <input id="coZip" name="postal-code" autocomplete="postal-code" autocapitalize="characters" required aria-required="true" placeholder="${c.country === 'UK' ? 'e.g. SW1A 1AA' : c.country === 'CA' ? 'e.g. K1A 0B1' : c.country === 'AZ' ? 'e.g. AZ1000' : 'e.g. 90210'}">
+            <small class="checkout-field-help" id="coZipHelp">${c.country === 'UK' ? 'Enter the UK postcode as provided by the recipient.' : c.country === 'CA' ? 'Enter the Canadian postal code, including the space if shown.' : c.country === 'AZ' ? 'Enter the Azerbaijan postal code for the delivery address.' : 'Enter the ZIP code for the delivery address.'}</small>
           </label>
 
           <label class="full">
@@ -1368,8 +1371,8 @@ function updateCheckoutAddressFields() {
     'Azerbaijan': {
       stateLabel: 'Rayon / district *', statePlaceholder: 'e.g. Yasamal', stateRequired: true,
       stateHelp: 'Enter the rayon or administrative area for the delivery address.',
-      zipLabel: 'Postal code (optional)', zipPlaceholder: 'Optional', zipRequired: false,
-      zipHelp: 'Enter a postal code when available.', phonePlaceholder: '+994501234567'
+      zipLabel: 'Postal code *', zipPlaceholder: 'e.g. AZ1000', zipRequired: true,
+      zipHelp: 'Enter the Azerbaijan postal code for the delivery address.', phonePlaceholder: '+994501234567'
     }
   };
 
