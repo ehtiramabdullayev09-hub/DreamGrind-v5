@@ -22,7 +22,7 @@ Set/verify these in the existing Render service:
 - `EPOINT_PUBLIC_KEY` = the merchant public key
 - `EPOINT_PRIVATE_KEY` = the merchant private key
 - `PAYMENT_BASE_URL=https://dreamgrind-v5.onrender.com`
-- `AZERBAIJAN_CHECKOUT_ENABLED=false`
+- `AZERBAIJAN_CHECKOUT_ENABLED=true` (or remove the variable; the app enables Azerbaijan order requests by default)
 
 Do not put the Epoint private key in frontend code, the repository, screenshots or customer messages.
 
@@ -37,22 +37,31 @@ In the Epoint merchant settings, verify the values registered with Epoint:
 
 The Result URL is essential. The backend confirms payment only from the verified server-to-server callback and checks that its amount matches the stored order total.
 
-## 4. Before advertising / taking live orders
+## 4. Azerbaijan order-request and payment workflow
+
+- Azerbaijan is enabled as an order-request market. Customers submit their name, email, +994 phone, and delivery address in AZN.
+- No Azerbaijan payment is taken at the initial submission because the delivery price is not yet a confirmed fixed amount.
+- The order appears in Admin → Orders with status “Awaiting shipping quote”.
+- Confirm the actual delivery charge in AZN from the selected supplier/carrier. Enter that charge in the order row and click “Create Epoint link”. The backend updates the final order total and creates an Epoint payment link.
+- Copy the link and send it to the customer via WhatsApp or email. The Epoint callback confirms payment and moves the order to Processing.
+- Do not claim that Azerbaijan shipments are DDP or that customs/VAT are prepaid unless the selected freight provider has confirmed this for the exact route and product.
+
+## 5. Before advertising / taking live orders
 
 - Open the storefront on a phone and a desktop browser.
-- Select United States, Canada and United Kingdom one by one; check currency, product availability, cart and checkout address fields.
+- Select United States, Canada, United Kingdom and Azerbaijan one by one; check currency, product availability, cart and checkout address fields.
 - Confirm each product's selling price covers supplier purchase cost, sourcing/service fees, inspection/packing and the relevant DDP shipping quotation.
-- The checkout currently shows free shipping. Keep this only while the full delivery cost is included in the product's selling price/margin.
-- Keep Azerbaijan checkout disabled until the service, price, taxes/customs handling and first test delivery are confirmed.
+- US/CA/UK checkout shipping offers must match the supplier quote and product margin. Azerbaijan delivery is quoted before payment and added by Admin.
+- Azerbaijan order requests can be accepted now. Confirm the supplier route, delivery charge and any applicable customs/tax terms before issuing the Epoint payment link for each order.
 - Submit one low-value test payment (or use an Epoint-approved test method). Verify the order changes to Paid only after the callback, that the cart clears only after confirmation, and that the order appears in Admin.
 - Add a tracking number in Admin and check that it appears on the public order-tracking page.
 - Send one guest contact message and check that it appears in Admin > Messages.
 - Subscribe with a test email and check Admin > Newsletter; remove the test email if it should not remain.
 - Confirm the customer-facing shipping, returns, privacy and terms text matches the actual fulfilment and refund arrangements.
 
-## 5. Current functional boundaries
+## 6. Current functional boundaries
 
-- Azerbaijan remains closed by default.
+- Azerbaijan order requests are enabled; payment is deferred until a delivery quote is confirmed by Admin.
 - The public tracking page shows the latest store-maintained order status and any tracking number entered in Admin. It does not yet display live scans from carrier APIs.
 - Lost/damaged parcel replacements depend on the supplier's written terms and actual cooperation; the website does not automatically enforce supplier compensation promises.
 - Newsletter emails are collected and can be exported from Admin as CSV. An email marketing provider is not integrated.

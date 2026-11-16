@@ -22,8 +22,8 @@ const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || '';
 const EPOINT_PUBLIC_KEY = process.env.EPOINT_PUBLIC_KEY || '';
 const EPOINT_PRIVATE_KEY = process.env.EPOINT_PRIVATE_KEY || '';
 const PAYMENT_BASE_URL = process.env.PAYMENT_BASE_URL || `http://localhost:${PORT}`;
-// Keep Azerbaijan orders closed until DDP and shipping prices are verified.
-const AZERBAIJAN_CHECKOUT_ENABLED = process.env.AZERBAIJAN_CHECKOUT_ENABLED === 'true';
+// Azerbaijan checkout is enabled by default. Set AZERBAIJAN_CHECKOUT_ENABLED=false only for an emergency pause.
+const AZERBAIJAN_CHECKOUT_ENABLED = process.env.AZERBAIJAN_CHECKOUT_ENABLED !== 'false';
 const USD_TO_AZN = 1.70;
 function effectiveProductPrice(product, now = Date.now()) {
   const current = Number(product?.price || 0);
@@ -64,7 +64,7 @@ function countryCodeFromName(country) {
 }
 function isProductAvailableForCountry(product, country) {
   const code = countryCodeFromName(country);
-  if (code === 'AZ') return product?.availabilityByCountry?.AZ === true && Number(product?.countryPrices?.AZ) > 0;
+  if (code === 'AZ') return product?.availabilityByCountry?.AZ !== false && Number(product?.countryPrices?.AZ || Number(product?.price || 0) * USD_TO_AZN) > 0;
   return product?.availabilityByCountry?.[code] !== false;
 }
 function effectiveProductPriceForCountry(product, country, now = Date.now()) {
@@ -74,7 +74,7 @@ function effectiveProductPriceForCountry(product, country, now = Date.now()) {
   const configured = Number(product?.countryPrices?.[code]);
   const baseUsd = Number(product?.price || 0);
   if (Number.isFinite(configured) && configured > 0 && baseUsd > 0) return Number((configured * usdAmount / baseUsd).toFixed(2));
-  if (code === 'AZ') return 0;
+  if (code === 'AZ') return Number((usdAmount * USD_TO_AZN).toFixed(2));
   const rate = code === 'CA' ? 1.36 : 0.75;
   return Number((usdAmount * rate).toFixed(2));
 }
@@ -85,7 +85,7 @@ function effectiveVariantPriceForCountry(product, variant, country, now = Date.n
   const configured = Number(product?.countryPrices?.[code]);
   const baseUsd = Number(product?.price || 0);
   if (Number.isFinite(configured) && configured > 0 && baseUsd > 0) return Number((configured * usdAmount / baseUsd).toFixed(2));
-  if (code === 'AZ') return 0;
+  if (code === 'AZ') return Number((usdAmount * USD_TO_AZN).toFixed(2));
   const rate = code === 'CA' ? 1.36 : 0.75;
   return Number((usdAmount * rate).toFixed(2));
 }
@@ -286,10 +286,22 @@ async function ensureAdmin() {
   }
 }
 await ensureProducts();
+// Activate the Azerbaijan market for the existing catalogue without replacing products or prices.
+let azMarketMigrationChanged = false;
+for (const product of db.data.products) {
+  product.availabilityByCountry ||= {};
+  if (product.availabilityByCountry.AZ !== true) {
+    product.availabilityByCountry.AZ = true;
+    azMarketMigrationChanged = true;
+  }
+  product.countryPrices ||= {};
+  if (!(Number(product.countryPrices.AZ) > 0)) product.countryPrices.AZ = null; // storefront uses USD→AZN auto-conversion
+}
+if (azMarketMigrationChanged) await db.write();
 await ensureAdmin();
 
 app.get('/api/health', (_req, res) => res.json({ ok: true, service: 'dreamgrind-api' }));
-app.get('/api/store-config', (_req, res) => res.json({ azerbaijanCheckoutEnabled: AZERBAIJAN_CHECKOUT_ENABLED }));
+app.get('/api/store-config', (_req, res) => res.set('Cache-Control', 'no-store').json({ azerbaijanCheckoutEnabled: AZERBAIJAN_CHECKOUT_ENABLED, azerbaijanShippingQuoteRequired: true }));
 
 app.post('/api/auth/register', authLimiter, async (req, res) => {
   const parsed = registerSchema.safeParse(req.body);
@@ -358,7 +370,7 @@ app.post('/api/orders', orderLimiter, async (req, res) => {
   deliveryNotes
 } = parsed.data;
   if (country === 'Azerbaijan' && !AZERBAIJAN_CHECKOUT_ENABLED) {
-    return res.status(403).json({ error: 'Azerbaijan orders are not open yet. Please check back soon.' });
+    return res.status(403).json({ error: 'Azerbaijan order requests are temporarily paused. Please contact DreamGrind.' });
   }
   let normalizedCustomerPhone = phone;
   if (country === 'Azerbaijan') {
@@ -414,44 +426,52 @@ app.post('/api/orders', orderLimiter, async (req, res) => {
       variantSize: selectedCombination?.size ?? null
     });
   }
-  const subtotal = normalizedItems.reduce((s, x) => s + x.unitPrice * x.qty, 0);
-  const marketSubtotal = normalizedItems.reduce((s, x) => s + x.marketUnitPrice * x.qty, 0);
+  const subtotal = Number(normalizedItems.reduce((s, x) => s + x.unitPrice * x.qty, 0).toFixed(2));
+  const marketSubtotal = Number(normalizedItems.reduce((s, x) => s + x.marketUnitPrice * x.qty, 0).toFixed(2));
   const orderCountryCode = countryCodeFromName(country);
   const marketCurrency = ({ US: 'USD', CA: 'CAD', UK: 'GBP', AZ: 'AZN' })[orderCountryCode];
-  const shipping = 0;
+  const isAzerbaijanOrder = country === 'Azerbaijan';
+  // Azerbaijan delivery cost is confirmed with the customer before payment; never guess or silently charge zero.
+  const shipping = isAzerbaijanOrder ? null : 0;
   const order = {
     id: nextId('DG', db.data.orders),
     userId: currentUser?.id ?? null,
     createdAt: new Date().toISOString(),
-    status: 'Awaiting payment',
-    paymentStatus: 'Pending',
+    status: isAzerbaijanOrder ? 'Awaiting shipping quote' : 'Awaiting payment',
+    paymentStatus: isAzerbaijanOrder ? 'Awaiting quote' : 'Pending',
     trackingNumber: null,
     name,
-email: email.toLowerCase(),
-phone: country === 'Azerbaijan' ? normalizedCustomerPhone : phone,
-address,
-addressLine2: addressLine2 || '',
-deliveryNotes: deliveryNotes || '',
-city,
-state: state || region || province || '',
-zip: zip || zipCode || postalCode || postal_code || '',
-country,
-marketCurrency,
-marketSubtotal: Number(marketSubtotal.toFixed(2)),
-marketTotal: Number((marketSubtotal + shipping).toFixed(2)),
-currency: 'AZN',
+    email: email.toLowerCase(),
+    phone: isAzerbaijanOrder ? normalizedCustomerPhone : phone,
+    address,
+    addressLine2: addressLine2 || '',
+    deliveryNotes: deliveryNotes || '',
+    city,
+    state: state || region || province || '',
+    zip: zip || zipCode || postalCode || postal_code || '',
+    country,
+    marketCurrency,
+    marketSubtotal,
+    marketTotal: isAzerbaijanOrder ? null : Number((marketSubtotal + shipping).toFixed(2)),
+    currency: 'AZN',
     items: normalizedItems,
-    subtotal, shipping, total: subtotal + shipping
+    subtotal,
+    shipping,
+    total: isAzerbaijanOrder ? null : Number((subtotal + shipping).toFixed(2)),
+    shippingQuoteRequired: isAzerbaijanOrder
   };
   db.data.orders.unshift(order);
-  db.data.checkoutTokens[order.id] = {
-    hash: createHash('sha256').update(checkoutToken).digest('hex'),
-    expiresAt: Date.now() + 30 * 60 * 1000
-  };
+  if (!isAzerbaijanOrder) {
+    db.data.checkoutTokens[order.id] = {
+      hash: createHash('sha256').update(checkoutToken).digest('hex'),
+      expiresAt: Date.now() + 30 * 60 * 1000
+    };
+  }
   await db.write();
   res.status(201).json({
-    order: { id: order.id, status: order.status, createdAt: order.createdAt, total: order.total },
-    checkoutToken
+    order: { id: order.id, status: order.status, createdAt: order.createdAt, total: order.total, subtotal: order.subtotal },
+    requiresShippingQuote: isAzerbaijanOrder,
+    ...(isAzerbaijanOrder ? {} : { checkoutToken })
   });
 });
 app.post('/api/payment/create', orderLimiter, async (req, res) => {
@@ -465,6 +485,9 @@ app.post('/api/payment/create', orderLimiter, async (req, res) => {
   }
 
   const order = db.data.orders.find(o => o.id === parsed.data.orderId);
+  if (order?.country === 'Azerbaijan' && !(Number.isFinite(Number(order.shipping)) && Number(order.total) > 0)) {
+    return res.status(409).json({ error: 'Azerbaijan delivery cost must be confirmed before payment.' });
+  }
   const tokenRecord = order ? db.data.checkoutTokens?.[order.id] : null;
   const submittedTokenHash = createHash('sha256').update(parsed.data.checkoutToken).digest('hex');
 
@@ -603,7 +626,12 @@ app.get('/api/orders/track/:code', (req, res) => {
     status: order.status,
     paymentStatus: order.paymentStatus,
     createdAt: order.createdAt,
-    trackingNumber: order.trackingNumber || null
+    trackingNumber: order.trackingNumber || null,
+    country: order.country,
+    subtotal: order.subtotal,
+    shipping: order.shipping,
+    total: order.total,
+    currency: order.currency || 'AZN'
   } });
 });
 
@@ -640,25 +668,58 @@ const revenue = orders.reduce((s, o) => s + o.total, 0);
 
 res.json({
   users: db.data.users.length,
-  orders: orders.length,
+  orders: db.data.orders.length,
   revenue,
   messages: db.data.messages.length,
   newsletter: db.data.newsletter?.length || 0
 });
 });
 app.get('/api/admin/orders', requireAdmin, (_req, res) =>
-  res.json({
-    orders: db.data.orders.filter(order => order.paymentStatus === 'Paid')
-  })
+  res.json({ orders: db.data.orders })
 );
 app.get('/api/admin/messages', requireAdmin, (_req, res) => res.json({ messages: db.data.messages }));
 app.get('/api/admin/newsletter', requireAdmin, (_req, res) => res.json({ subscribers: db.data.newsletter || [] }));
 app.get('/api/admin/users', requireAdmin, (_req, res) => res.json({ users: db.data.users.map(sanitizeUser) }));
 
 const adminOrderUpdateSchema = z.object({
-  status: z.enum(['Processing', 'Shipped', 'In transit', 'Delivered', 'Cancelled', 'Refunded']),
+  status: z.enum(['Awaiting shipping quote', 'Awaiting payment', 'Processing', 'Shipped', 'In transit', 'Delivered', 'Cancelled', 'Refunded']),
   trackingNumber: z.string().trim().max(120).nullable().optional()
 });
+const azShippingQuoteSchema = z.object({ shippingFeeAzn: z.number().finite().min(0).max(100000) });
+app.post('/api/admin/orders/:id/payment-link', requireAdmin, async (req, res) => {
+  const parsed = azShippingQuoteSchema.safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: 'Enter a valid Azerbaijan shipping fee in AZN.' });
+  const order = db.data.orders.find(o => o.id === req.params.id.toUpperCase());
+  if (!order) return res.status(404).json({ error: 'Order not found.' });
+  if (order.country !== 'Azerbaijan') return res.status(400).json({ error: 'This payment-link action is only for Azerbaijan orders.' });
+  if (['Paid', 'Refunded'].includes(order.paymentStatus) || order.status === 'Cancelled') return res.status(409).json({ error: 'This order has already been paid, refunded or cancelled.' });
+  if (!EPOINT_PUBLIC_KEY || !EPOINT_PRIVATE_KEY) return res.status(503).json({ error: 'Epoint payment keys are not configured.' });
+
+  const shippingFee = Number(parsed.data.shippingFeeAzn.toFixed(2));
+  const total = Number((Number(order.subtotal || 0) + shippingFee).toFixed(2));
+  if (!(total > 0)) return res.status(400).json({ error: 'The order total must be greater than zero.' });
+
+  try {
+    const payment = await createEpointPayment({ orderId: order.id, amount: total, description: `DreamGrind Azerbaijan order ${order.id}` });
+    order.shipping = shippingFee;
+    order.total = total;
+    order.marketTotal = total;
+    order.marketCurrency = 'AZN';
+    order.currency = 'AZN';
+    order.shippingQuoteRequired = false;
+    order.shippingQuoteConfirmedAt = new Date().toISOString();
+    order.paymentLinkCreatedAt = new Date().toISOString();
+    order.status = 'Awaiting payment';
+    order.paymentStatus = 'Pending';
+    order.paymentLink = payment.redirect_url;
+    await db.write();
+    res.json({ ok: true, redirect_url: payment.redirect_url, subtotal: order.subtotal, shipping: shippingFee, total });
+  } catch (error) {
+    console.error('AZERBAIJAN PAYMENT LINK ERROR:', error);
+    res.status(502).json({ error: 'Unable to create Epoint payment link.' });
+  }
+});
+
 app.patch('/api/admin/orders/:id', requireAdmin, async (req, res) => {
   const parsed = adminOrderUpdateSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: 'Invalid order update.' });
@@ -709,7 +770,6 @@ app.post('/api/admin/products', requireAdmin, async (req, res) => {
   if (!parsed.success) return res.status(400).json({ error: 'Invalid product details.' });
   if (parsed.data.oldPrice != null && parsed.data.oldPrice <= parsed.data.price) return res.status(400).json({ error: 'Compare-at price must be higher than the current price.' });
   if (parsed.data.saleEndsAt && parsed.data.oldPrice == null) return res.status(400).json({ error: 'A sale end time requires a compare-at price.' });
-  if (parsed.data.availabilityByCountry?.AZ === true && !(Number(parsed.data.countryPrices?.AZ) > 0)) return res.status(400).json({ error: 'Enter an AZN price before making this product available in Azerbaijan.' });
   const variantError = validateVariantCombinations(parsed.data.variantCombinations || []);
   if (variantError) return res.status(400).json({ error: variantError });
   const product = {
@@ -719,7 +779,7 @@ app.post('/api/admin/products', requireAdmin, async (req, res) => {
     oldPrice: parsed.data.oldPrice ?? null,
     saleEndsAt: parsed.data.saleEndsAt ?? null,
     countryPrices: { US: Number(parsed.data.price), CA: null, UK: null, AZ: null, ...(parsed.data.countryPrices || {}) },
-    availabilityByCountry: { US: true, CA: true, UK: true, AZ: false, ...(parsed.data.availabilityByCountry || {}) },
+    availabilityByCountry: { US: true, CA: true, UK: true, AZ: true, ...(parsed.data.availabilityByCountry || {}) },
     description: parsed.data.description ?? '',
     variantCombinations: parsed.data.variantCombinations || [],
     images: parsed.data.images || [],
@@ -744,10 +804,9 @@ app.patch('/api/admin/products/:id', requireAdmin, async (req, res) => {
   const nextSaleEndsAt = parsed.data.saleEndsAt !== undefined ? parsed.data.saleEndsAt : (product.saleEndsAt ?? null);
   if (nextOldPrice != null && nextOldPrice <= nextPrice) return res.status(400).json({ error: 'Compare-at price must be higher than the current price.' });
   if (nextSaleEndsAt && nextOldPrice == null) return res.status(400).json({ error: 'A sale end time requires a compare-at price.' });
-  const nextAzAvailable = parsed.data.availabilityByCountry?.AZ ?? product.availabilityByCountry?.AZ ?? false;
+  const nextAzAvailable = parsed.data.availabilityByCountry?.AZ ?? product.availabilityByCountry?.AZ ?? true;
   const hasAzPriceUpdate = parsed.data.countryPrices && Object.prototype.hasOwnProperty.call(parsed.data.countryPrices, 'AZ');
   const nextAzPrice = hasAzPriceUpdate ? parsed.data.countryPrices.AZ : product.countryPrices?.AZ;
-  if (nextAzAvailable === true && !(Number(nextAzPrice) > 0)) return res.status(400).json({ error: 'Enter an AZN price before making this product available in Azerbaijan.' });
   const variantError = validateVariantCombinations(parsed.data.variantCombinations || product.variantCombinations || []);
   if (variantError) return res.status(400).json({ error: variantError });
   for (const [key, value] of Object.entries(parsed.data)) {
@@ -755,7 +814,7 @@ app.patch('/api/admin/products/:id', requireAdmin, async (req, res) => {
   }
   if (parsed.data.countryPrices !== undefined) product.countryPrices = { ...(product.countryPrices || {}), ...parsed.data.countryPrices };
   if (parsed.data.availabilityByCountry !== undefined) {
-    product.availabilityByCountry = { US: true, CA: true, UK: true, AZ: false, ...(product.availabilityByCountry || {}), ...parsed.data.availabilityByCountry };
+    product.availabilityByCountry = { US: true, CA: true, UK: true, AZ: true, ...(product.availabilityByCountry || {}), ...parsed.data.availabilityByCountry };
   }
   if (parsed.data.price !== undefined) product.price = Number(Number(parsed.data.price).toFixed(2));
   await db.write();
