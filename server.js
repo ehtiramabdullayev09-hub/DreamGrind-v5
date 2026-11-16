@@ -158,6 +158,19 @@ postal_code: z.string().trim().max(30).optional(),
   deliveryNotes: z.string().trim().max(500).optional(),
   country: z.enum(['United States', 'Canada', 'United Kingdom', 'Azerbaijan']),
   items: z.array(z.object({ id: z.coerce.number().int().positive(), qty: z.coerce.number().int().min(1).max(20), variant: z.string().max(180).nullable().optional(), variantColor: z.string().trim().max(60).nullable().optional(), variantSize: z.string().trim().max(60).nullable().optional() })).min(1).max(50)
+}).superRefine((data, ctx) => {
+  // A postal/ZIP code is required for every destination. Accept legacy field aliases,
+  // but reject missing, whitespace-only, or implausibly short values server-side.
+  const postalCode = [data.zip, data.zipCode, data.postalCode, data.postal_code]
+    .map(value => String(value || '').trim())
+    .find(value => value.length >= 2);
+  if (!postalCode) {
+    ctx.addIssue({
+      code: 'custom',
+      path: ['zip'],
+      message: 'Postal code is required.'
+    });
+  }
 });
 const messageSchema = z.object({
   name: z.string().trim().min(2).max(80).optional(),
