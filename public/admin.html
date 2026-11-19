@@ -56,7 +56,7 @@
       <div><label>Stock</label><input id="productStock" type="number" min="0" step="1" value="0"></div>
       <div class="full market-pricing-panel">
         <h3 style="margin:0 0 6px">Country availability &amp; prices</h3>
-        <p class="muted" style="margin:0 0 12px">Untick a country to hide this product there and block checkout. Canada and UK prices may be auto-converted. For Azerbaijan, enter the final selling price in AZN, covering the product, sourcing/service costs, delivery, applicable customs/taxes confirmed for that offer, payment fees and DreamGrind's margin. Only then enable Azerbaijan.</p>
+        <p class="muted" style="margin:0 0 12px">Untick a country to hide this product there and block checkout. Enter Canada prices in CAD and United Kingdom prices in GBP; leave either field blank to auto-convert from USD. Azerbaijan's entered AZN amount is the exact final price customers pay and is not converted or adjusted by USD promotions. Include product cost, sourcing/service fees, delivery, applicable customs/taxes confirmed for that offer, payment fees and DreamGrind's margin before enabling Azerbaijan.</p>
         <div class="market-pricing-grid">
           <div class="market-pricing-card">
             <label class="market-availability"><input id="productAvailableUS" type="checkbox" checked> Available in United States</label>
@@ -65,12 +65,12 @@
           <div class="market-pricing-card">
             <label class="market-availability"><input id="productAvailableCA" type="checkbox" checked> Available in Canada</label>
             <label for="productPriceCA">Canada price (CAD)</label>
-            <input id="productPriceCA" type="number" min="0.01" step="0.01" placeholder="Auto-convert from USD">
+            <input id="productPriceCA" type="number" min="0.01" step="0.01" placeholder="Auto-convert USD to CAD">
           </div>
           <div class="market-pricing-card">
             <label class="market-availability"><input id="productAvailableUK" type="checkbox" checked> Available in United Kingdom</label>
             <label for="productPriceUK">United Kingdom price (GBP)</label>
-            <input id="productPriceUK" type="number" min="0.01" step="0.01" placeholder="Auto-convert from USD">
+            <input id="productPriceUK" type="number" min="0.01" step="0.01" placeholder="Auto-convert USD to GBP">
           </div>
           <div class="market-pricing-card">
             <label class="market-availability"><input id="productAvailableAZ" type="checkbox"> Available in Azerbaijan</label>
