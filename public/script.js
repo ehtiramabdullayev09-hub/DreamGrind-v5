@@ -1,5 +1,5 @@
 let products = [];
-let storeConfig = { azerbaijanCheckoutEnabled: true, azerbaijanShippingQuoteRequired: true };
+let storeConfig = { azerbaijanCheckoutEnabled: true, azerbaijanShippingQuoteRequired: false };
 const translations = {
   en: {
     shippingTo: 'Shipping to:', currencyNote: 'Prices shown in your selected currency',
