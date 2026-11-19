@@ -1,0 +1,19 @@
+DREAMGRIND CURRENCY FIX
+
+Upload/replace these exact paths in the GitHub repository:
+- server.js
+- public/script.js
+- public/admin.html
+- public/index.html
+- index.html (root mirror copy)
+- script.js (root mirror copy)
+
+Currency behavior:
+- United States: USD (unchanged)
+- Canada: CAD (manual CAD price or auto-converted from USD)
+- United Kingdom: GBP (manual GBP price or auto-converted from USD)
+- Azerbaijan: the exact final AZN amount entered in Admin is shown and charged; it is not multiplied by the USD/AZN rate or adjusted by USD sale ratios.
+
+The ZIP does not contain database.js, package.json, package-lock.json, .env, payment credentials, or Render settings. Do not change those.
+
+After upload and deploy, test one product with an Azerbaijan price of 19.99: the storefront and Epoint amount should both be 19.99 AZN. Test a UK product in GBP and a Canadian product in CAD before advertising.

@@ -97,9 +97,10 @@ function effectiveProductPriceForCountry(product, country, now = Date.now()) {
   const usdAmount = effectiveProductPrice(product, now);
   if (code === 'US') return usdAmount;
   const configured = Number(product?.countryPrices?.[code]);
+  // Azerbaijan's Admin-entered final AZN price is the exact customer price.
+  if (code === 'AZ') return Number.isFinite(configured) && configured > 0 ? Number(configured.toFixed(2)) : 0;
   const baseUsd = Number(product?.price || 0);
   if (Number.isFinite(configured) && configured > 0 && baseUsd > 0) return Number((configured * usdAmount / baseUsd).toFixed(2));
-  if (code === 'AZ') return 0; // AZN must be explicitly configured for this product.
   const rate = code === 'CA' ? 1.36 : 0.75;
   return Number((usdAmount * rate).toFixed(2));
 }
@@ -108,9 +109,10 @@ function effectiveVariantPriceForCountry(product, variant, country, now = Date.n
   const usdAmount = effectiveVariantPrice(product, variant, now);
   if (code === 'US') return usdAmount;
   const configured = Number(product?.countryPrices?.[code]);
+  // Azerbaijan variants use the exact Admin-entered all-in AZN price too.
+  if (code === 'AZ') return Number.isFinite(configured) && configured > 0 ? Number(configured.toFixed(2)) : 0;
   const baseUsd = Number(product?.price || 0);
   if (Number.isFinite(configured) && configured > 0 && baseUsd > 0) return Number((configured * usdAmount / baseUsd).toFixed(2));
-  if (code === 'AZ') return 0; // AZN must be explicitly configured for this product.
   const rate = code === 'CA' ? 1.36 : 0.75;
   return Number((usdAmount * rate).toFixed(2));
 }

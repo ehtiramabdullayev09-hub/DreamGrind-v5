@@ -507,9 +507,10 @@ function productPriceForCountry(product, now = Date.now()) {
   const usdPrice = effectiveProductPrice(product, now);
   if (country === 'US') return usdPrice;
   const customPrice = countryBasePrice(product, country);
+  // Azerbaijan's entered AZN price is final and is never scaled by the USD sale ratio.
+  if (country === 'AZ') return customPrice ?? 0;
   const baseUsd = Number(product?.price || 0);
   if (customPrice != null && baseUsd > 0) return Number((customPrice * usdPrice / baseUsd).toFixed(2));
-  if (country === 'AZ') return 0; // An explicit all-in AZN product/variant price is required.
   return Number((usdPrice * currencyConfig().rate).toFixed(2));
 }
 function variantPriceForCountry(product, combination, now = Date.now()) {
@@ -517,13 +518,16 @@ function variantPriceForCountry(product, combination, now = Date.now()) {
   const usdPrice = effectiveVariantPrice(product, combination, now);
   if (country === 'US') return usdPrice;
   const customPrice = countryBasePrice(product, country);
+  // Azerbaijan variants use the final AZN amount entered in Admin, unchanged.
+  if (country === 'AZ') return customPrice ?? 0;
   const baseUsd = Number(product?.price || 0);
   if (customPrice != null && baseUsd > 0) return Number((customPrice * usdPrice / baseUsd).toFixed(2));
-  if (country === 'AZ') return 0; // An explicit all-in AZN product/variant price is required.
   return Number((usdPrice * currencyConfig().rate).toFixed(2));
 }
 function compareAtPriceForCountry(product, combination = null, now = Date.now()) {
   const country = currencyConfig().country;
+  // Admin does not collect an AZN compare-at amount, so do not invent one from USD.
+  if (country === 'AZ') return null;
   const usdCompareAt = combination ? variantCompareAtPrice(product, combination, now) : variantCompareAtPrice(product, null, now);
   if (usdCompareAt == null) return null;
   if (country === 'US') return usdCompareAt;
@@ -546,6 +550,8 @@ function removeUnavailableCartItemsForCurrentCountry() {
 // A sale stays active only until its configured end time. After expiry, the
 // compare-at price becomes the amount shown and charged, both in the UI/server.
 function isProductSaleActive(product, now = Date.now()) {
+  // Azerbaijan uses a separately entered final AZN price, independent of USD promotions.
+  if (currencyConfig().country === 'AZ') return false;
   const current = Number(product?.price || 0);
   const compareAt = Number(product?.oldPrice || 0);
   if (!(compareAt > current && current > 0)) return false;
