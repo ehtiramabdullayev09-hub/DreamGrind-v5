@@ -314,7 +314,7 @@ if (azMarketMigrationChanged) await db.write();
 await ensureAdmin();
 
 app.get('/api/health', (_req, res) => res.json({ ok: true, service: 'dreamgrind-api' }));
-app.get('/api/store-config', (_req, res) => res.set('Cache-Control', 'no-store').json({ azerbaijanCheckoutEnabled: AZERBAIJAN_CHECKOUT_ENABLED, azerbaijanShippingQuoteRequired: true }));
+app.get('/api/store-config', (_req, res) => res.set('Cache-Control', 'no-store').json({ azerbaijanCheckoutEnabled: AZERBAIJAN_CHECKOUT_ENABLED, azerbaijanShippingQuoteRequired: false }));
 
 app.post('/api/auth/register', authLimiter, async (req, res) => {
   const parsed = registerSchema.safeParse(req.body);
