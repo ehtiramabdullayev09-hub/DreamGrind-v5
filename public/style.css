@@ -1008,3 +1008,40 @@
   line-height: 1.5;
 }
 .checkout-country-message:empty { display: none; }
+
+
+/* Fixed country calling-code badge with a numeric-only national phone input. */
+.phone-input-row {
+  display: flex;
+  align-items: stretch;
+  width: 100%;
+  min-width: 0;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  overflow: hidden;
+  background: #fff;
+}
+.phone-input-prefix {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 68px;
+  padding: 0 13px;
+  background: #f6f7f9;
+  border-right: 1px solid var(--line);
+  color: #111;
+  font-weight: 900;
+  white-space: nowrap;
+}
+.phone-input-row input {
+  flex: 1;
+  min-width: 0;
+  width: 100%;
+  border: 0 !important;
+  border-radius: 0 !important;
+  outline: 0;
+}
+.phone-input-row:focus-within {
+  border-color: #aeb4bd;
+  box-shadow: 0 0 0 2px rgba(17,17,17,.08);
+}
