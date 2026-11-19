@@ -1,21 +1,21 @@
 let products = [];
-let storeConfig = { azerbaijanCheckoutEnabled: false };
+let storeConfig = { azerbaijanCheckoutEnabled: true, azerbaijanShippingQuoteRequired: false };
 const translations = {
   en: {
     shippingTo: 'Shipping to:', currencyNote: 'Prices shown in your selected currency',
     shop: 'Shop', about: 'About', trackOrder: 'Track order', categories: 'Categories',
-    search: 'Search', cart: 'Cart', markets: 'USA • CANADA • UK • AZERBAIJAN SOON',
+    search: 'Search', cart: 'Cart', markets: 'USA • CANADA • UK • AZERBAIJAN',
     browse: 'Browse', whyDreamGrind: 'Why DreamGrind', orderStatus: 'Order status',
     orderTrackingIntro: 'Enter your DreamGrind order number to see the latest order status. Carrier tracking details appear here once they are added to your order.',
-    stayInLoop: 'Stay in the loop', azComingSoon: 'Azerbaijan orders are coming soon. Delivery arrangements are being finalised.'
+    stayInLoop: 'Stay in the loop', azComingSoon: 'Azerbaijan checkout is available. The displayed AZN price includes delivery and applicable charges confirmed for that product.'
   },
   az: {
     shippingTo: 'Çatdırılma ölkəsi:', currencyNote: 'Qiymətlər seçilmiş valyutada göstərilir',
     shop: 'Mağaza', about: 'Haqqımızda', trackOrder: 'Sifarişi izlə', categories: 'Kateqoriyalar',
-    search: 'Axtarış', cart: 'Səbət', markets: 'ABŞ • KANADA • BK • AZƏRBAYCAN TEZLİKLƏ',
+    search: 'Axtarış', cart: 'Səbət', markets: 'ABŞ • KANADA • BK • AZƏRBAYCAN',
     browse: 'Kəşf et', whyDreamGrind: 'Niyə DreamGrind?', orderStatus: 'Sifarişin vəziyyəti',
     orderTrackingIntro: 'Ən son sifariş statusunu görmək üçün DreamGrind sifariş nömrənizi daxil edin. Daşıyıcının izləmə məlumatı sifarişə əlavə edildikdən sonra burada görünəcək.',
-    stayInLoop: 'Yeniliklərdən xəbərdar ol', azComingSoon: 'Azərbaycan üzrə sifariş qəbulu tezliklə açılacaq. Çatdırılma şərtləri dəqiqləşdirilir.'
+    stayInLoop: 'Yeniliklərdən xəbərdar ol', azComingSoon: 'Azərbaycan üzrə onlayn sifariş aktivdir. Göstərilən AZN qiymətinə həmin məhsul üçün təsdiqlənmiş çatdırılma və müvafiq xərclər daxildir.'
   }
 };
 
@@ -76,16 +76,16 @@ const uiCopy = {
   'Main navigation': 'Əsas naviqasiya', 'Shopping benefits': 'Alış-veriş üstünlükləri',
   'DreamGrind brand artwork': 'DreamGrind brend təsviri', 'Sort products': 'Məhsulları çeşidlə',
   'Explore': 'Kəşf et', 'Delivery information': 'Çatdırılma barədə məlumat',
-  'Being finalised for Azerbaijan': 'Azərbaycan üzrə dəqiqləşdirilir',
-  'Azerbaijan delivery details coming soon': 'Azərbaycan üzrə çatdırılma məlumatları tezliklə açıqlanacaq',
+  'Being finalised for Azerbaijan': 'Azərbaycan üzrə onlayn checkout aktivdir',
+  'Azerbaijan delivery details coming soon': 'Çatdırılma xərci yekun AZN qiymətinə daxildir',
   'Free shipping': 'Pulsuz çatdırılma', 'Secure checkout by Epoint': 'Epoint vasitəsilə təhlükəsiz ödəniş',
   'Limited-time offer ends in': 'Məhdud müddətli təklifin bitməsinə', 'Quantity': 'Miqdar',
   'Add to cart': 'Səbətə əlavə et', 'Buy now': 'İndi al', 'Shop with confidence': 'Rahatlıqla alış-veriş edin',
-  'United States, Canada & UK': 'ABŞ, Kanada və Birləşmiş Krallıq', 'Secure payment': 'Təhlükəsiz ödəniş',
+  'United States, Canada & UK': 'ABŞ, Kanada, Birləşmiş Krallıq və Azərbaycan', 'Secure payment': 'Təhlükəsiz ödəniş',
   'Processed through Epoint': 'Epoint vasitəsilə həyata keçirilir', 'No account required': 'Hesab yaratmaq tələb olunmur',
   'Shipping and returns information is shown below.': 'Çatdırılma və qaytarılma məlumatları aşağıda göstərilib.',
   'Shipping & returns': 'Çatdırılma və qaytarılma',
-  'DreamGrind currently accepts orders for the United States, Canada and the United Kingdom. Azerbaijan is being prepared as an additional market; orders there are not open yet. Please contact DreamGrind before returning an item so return instructions can be provided.': 'DreamGrind hazırda ABŞ, Kanada və Birləşmiş Krallıq üzrə sifariş qəbul edir. Azərbaycan əlavə bazar kimi hazırlanır və hələ sifariş qəbuluna açıq deyil. Məhsulu qaytarmazdan əvvəl qaytarılma təlimatlarını almaq üçün DreamGrind ilə əlaqə saxlayın.',
+  'DreamGrind accepts orders for the United States, Canada, the United Kingdom and Azerbaijan. For Azerbaijan, only products with a confirmed final AZN price are available for normal checkout. The displayed price includes delivery and applicable import charges confirmed for that product and route. Please contact DreamGrind before returning an item so return instructions can be provided.': 'DreamGrind ABŞ, Kanada, Birləşmiş Krallıq və Azərbaycan üzrə sifariş qəbul edir. Azərbaycan üçün yalnız yekun AZN qiyməti təsdiqlənmiş məhsullar adi checkout vasitəsilə satışa açılır. Göstərilən qiymətə həmin məhsul və marşrut üçün təsdiqlənmiş çatdırılma və müvafiq idxal xərcləri daxildir. Məhsulu qaytarmazdan əvvəl təlimat üçün DreamGrind ilə əlaqə saxlayın.',
   'Wishlist': 'Seçilmişlər', 'Your wishlist is empty.': 'Seçilmişlər siyahınız boşdur.',
   'This product is not available in your shipping country.': 'Bu məhsul seçdiyiniz ölkəyə çatdırılmır.',
   'Added to wishlist': 'Seçilmişlərə əlavə edildi', 'Removed from wishlist': 'Seçilmişlərdən silindi',
@@ -100,7 +100,19 @@ const uiCopy = {
   'Subtotal': 'Ara cəm', 'Shipping': 'Çatdırılma', 'To be confirmed': 'Dəqiqləşdiriləcək',
   'Current subtotal': 'Cari ara cəm', 'Total': 'Yekun məbləğ', 'Checkout': 'Sifarişi rəsmiləşdir',
   'Orders opening soon': 'Sifariş qəbulu tezliklə açılacaq',
-  'Azerbaijan orders are not open yet. Delivery pricing is being confirmed.': 'Azərbaycan üzrə sifariş qəbulu hələ açılmayıb. Çatdırılma qiyməti dəqiqləşdirilir.',
+  'Azerbaijan orders are not open yet. Delivery pricing is being confirmed.': 'Azərbaycan üzrə adi onlayn sifariş aktivdir. Çatdırılma xərci məhsulun yekun AZN qiymətinə daxildir.',
+  'Orders are available in Azerbaijan. Delivery fees are confirmed before payment.': 'Azərbaycan üzrə onlayn checkout aktivdir. Məhsulun yekun AZN qiymətinə təsdiqlənmiş çatdırılma və müvafiq xərclər daxildir.',
+  'Orders available in Azerbaijan': 'Azərbaycan üzrə onlayn sifariş aktivdir',
+  'Delivery included': 'Çatdırılma daxildir',
+  'Included in displayed AZN price': 'Göstərilən AZN qiymətinə daxildir',
+  'Delivery & applicable taxes included': 'Çatdırılma və müvafiq vergilər daxildir',
+  'Included': 'Daxildir',
+  'The displayed AZN price includes delivery and applicable charges confirmed for this offer. Secure payment by Epoint.': 'Göstərilən AZN qiymətinə bu təklif üçün təsdiqlənmiş çatdırılma və müvafiq xərclər daxildir. Epoint vasitəsilə təhlükəsiz ödəniş.',
+  'Product subtotal': 'Məhsulların cəmi',
+  'Submit order request': 'Sifariş sorğusu göndər',
+  'Delivery fee awaiting confirmation': 'Çatdırılma haqqının təsdiqi gözlənilir',
+  'Awaiting payment confirmation': 'Ödəniş təsdiqi gözlənilir',
+  'Delivery quote pending': 'Çatdırılma qiyməti gözlənilir',
   'You will be charged in AZN. Secure payment by Epoint.': 'Ödəniş AZN ilə Epoint vasitəsilə təhlükəsiz həyata keçirilir.',
   'Please remove the outdated item from your cart and select its color/size again.': 'Köhnəlmiş məhsulu səbətdən silin və rəng/ölçü seçimini yenidən edin.',
   'Your cart is empty': 'Səbətiniz boşdur',
@@ -122,7 +134,7 @@ const uiCopy = {
   'Street address': 'Küçə və ev ünvanı', 'Apartment, building, entrance': 'Mənzil, bina, giriş',
   'Landmark or instructions for the courier': 'Yaxınlıqdakı tanınan yer və ya kuryer üçün təlimat',
   'Country changed. Please confirm the region and postal code for the new destination.': 'Ölkə dəyişdirildi. Yeni ünvan üçün rayon və poçt indeksini yoxlayın.',
-  'Azerbaijan orders are not open yet. Checkout will be enabled after delivery and customs arrangements are confirmed.': 'Azərbaycan üzrə sifariş qəbulu hələ açılmayıb. Çatdırılma və gömrük şərtləri təsdiqləndikdən sonra aktivləşdiriləcək.',
+  'Azerbaijan orders are not open yet. Checkout will be enabled after delivery and customs arrangements are confirmed.': 'Azərbaycan üzrə adi onlayn checkout aktivdir. Yalnız yekun AZN qiyməti təsdiqlənmiş məhsullar satışdadır.',
   'Continue to secure payment': 'Təhlükəsiz ödənişə keç',
   'My account': 'Hesabım', 'Login': 'Daxil ol', 'Create account': 'Hesab yarat', 'Password': 'Şifrə',
   'Your password is handled by the server and is not stored in your browser local storage.': 'Şifrəniz server tərəfindən təhlükəsiz şəkildə idarə olunur və brauzerinizin yaddaşında saxlanılmır.',
@@ -148,8 +160,8 @@ const uiCopy = {
   'Total:': 'Yekun məbləğ:', 'Track order': 'Sifarişi izlə', 'Payment successful. Thank you for your order!': 'Ödəniş uğurla tamamlandı. Sifarişiniz üçün təşəkkür edirik!',
   'Payment was not completed. Your cart is still saved.': 'Ödəniş tamamlanmadı. Səbətiniz saxlanılıb.',
   'Shipping Policy': 'Çatdırılma siyasəti', 'Shipping destinations': 'Çatdırılma ünvanları',
-  'DreamGrind currently accepts orders for customers in the United States, Canada and the United Kingdom. Azerbaijan is being prepared as an additional destination; orders for Azerbaijan are not accepted until delivery arrangements and charges have been confirmed.': 'DreamGrind hazırda ABŞ, Kanada və Birləşmiş Krallıq müştərilərindən sifariş qəbul edir. Azərbaycan əlavə çatdırılma istiqaməti kimi hazırlanır. Çatdırılma qaydaları və xərcləri təsdiqlənənədək Azərbaycana sifariş qəbul edilmir.',
-  'Shipping cost': 'Çatdırılma haqqı', 'Shipping is currently free for customers.': 'Hazırda müştərilər üçün çatdırılma pulsuzdur.',
+  'DreamGrind accepts orders from the United States, Canada, the United Kingdom and Azerbaijan. For Azerbaijan, only products with a confirmed final AZN price are available for normal checkout. The displayed price includes the product, delivery and applicable import charges confirmed for that specific offer.': 'DreamGrind ABŞ, Kanada, Birləşmiş Krallıq və Azərbaycan üzrə sifariş qəbul edir. Azərbaycan üçün yalnız yekun AZN qiyməti əvvəlcədən təsdiqlənmiş məhsullar adi checkout vasitəsilə satılır. Göstərilən qiymətə məhsul, çatdırılma və həmin təklif üçün təsdiqlənmiş müvafiq idxal xərcləri daxildir.',
+  'Shipping cost': 'Çatdırılma haqqı', 'For Azerbaijan, there is no separate shipping line at checkout because the confirmed delivery cost is included in the displayed AZN product price. For other destinations, the shipping amount shown at checkout applies.': 'Azərbaycan üçün checkout zamanı ayrıca çatdırılma haqqı göstərilmir, çünki təsdiqlənmiş çatdırılma xərci məhsulun AZN qiymətinə daxildir. Digər ölkələr üçün checkout-da göstərilən çatdırılma məbləği tətbiq olunur.',
   'Processing time': 'Sifarişin hazırlanma müddəti',
   'Orders are normally processed after successful payment confirmation. Processing and delivery times may vary depending on the destination, product availability and carrier.': 'Sifarişlər ödəniş uğurla təsdiqləndikdən sonra emal olunur. Hazırlanma və çatdırılma müddəti ünvandan, məhsulun mövcudluğundan və daşıyıcı şirkətdən asılı olaraq dəyişə bilər.',
   'Tracking': 'İzləmə', 'When tracking information is available, it may be provided to the customer after the order has been dispatched.': 'İzləmə məlumatı mövcud olduqda, sifariş göndərildikdən sonra müştəriyə təqdim edilir.',
@@ -201,8 +213,8 @@ const uiCopy = {
   'Not yet listed for Azerbaijan': 'Azərbaycan bazarı üçün hələ yerləşdirilməyib',
   'No products found': 'Məhsul tapılmadı',
   'Orders opening soon': 'Sifariş qəbulu tezliklə açılacaq',
-  'Azerbaijan orders opening soon': 'Azərbaycan üzrə sifariş qəbulu tezliklə açılacaq',
-  'Azerbaijan orders are coming soon. Delivery arrangements are being finalised.': 'Azərbaycan üzrə sifariş qəbulu tezliklə açılacaq. Çatdırılma şərtləri dəqiqləşdirilir.',
+  'Azerbaijan orders opening soon': 'Azərbaycan üzrə onlayn sifariş aktivdir',
+  'Azerbaijan orders are coming soon. Delivery arrangements are being finalised.': 'Azərbaycan üzrə adi checkout aktivdir. Məhsulun yekun AZN qiymətinə çatdırılma daxildir.',
   'SMART LITTLE UPGRADES': 'AĞILLI GÜNDƏLİK YENİLİKLƏR',
   'MAKE IT YOUR SPACE': 'ÖZ MƏKANINI YARAT',
   'FOR YOUR COMPANIONS': 'SEVİMLİ DOSTLARINIZ ÜÇÜN',
@@ -214,11 +226,14 @@ const uiCopy = {
   'each': 'ədəd', 'Option:': 'Seçim:', 'FREE': 'PULSUZ', 'Optional': 'İstəyə bağlı',
   'Some cart items were removed because they are not available in this country.': 'Bəzi məhsullar bu ölkəyə çatdırılmadığı üçün səbətdən silindi.',
   'Shipping country updated': 'Çatdırılma ölkəsi yeniləndi.', 'Email:': 'E-poçt:',
-  'Azerbaijan orders are not open yet. Checkout will be enabled after delivery and customs arrangements are confirmed.': 'Azərbaycan üzrə sifariş qəbulu hələ açılmayıb. Çatdırılma və gömrük şərtləri təsdiqləndikdən sonra aktivləşdiriləcək.',
+  'Azerbaijan orders are not open yet. Checkout will be enabled after delivery and customs arrangements are confirmed.': 'Azərbaycan üzrə adi onlayn checkout aktivdir. Yalnız yekun AZN qiyməti təsdiqlənmiş məhsullar satışdadır.',
   'Rayon / district *': 'Rayon *',
   'Enter the rayon or administrative area for the delivery address.': 'Çatdırılma ünvanının rayonunu daxil edin.',
   'Postal code (optional)': 'Poçt indeksi (istəyə bağlı)',
+  'Postal code *': 'Poçt indeksi *',
   'Enter a postal code when available.': 'Mövcuddursa, poçt indeksini daxil edin.',
+  'Enter the Azerbaijan postal code for the delivery address.': 'Çatdırılma ünvanının poçt indeksini daxil edin.',
+  'e.g. AZ1000': 'məsələn, AZ1000',
   'e.g. California': 'məsələn, California', 'e.g. Ontario': 'məsələn, Ontario',
   'e.g. Yasamal': 'məsələn, Yasamal', 'e.g. SW1A 1AA': 'məsələn, SW1A 1AA',
   'e.g. K1A 0B1': 'məsələn, K1A 0B1', 'e.g. 90210': 'məsələn, 90210',
@@ -236,7 +251,7 @@ const uiCopy = {
   'Payment successful. Thank you!': 'Ödəniş uğurla tamamlandı. Təşəkkür edirik!',
   'Payment was not completed. Your cart is still saved.': 'Ödəniş tamamlanmadı. Səbətiniz saxlanılıb.',
   'Not available for this destination': 'Bu ünvana çatdırılmır',
-  'Azerbaijan checkout is not open yet.': 'Azərbaycan üzrə sifariş qəbulu hələ açılmayıb.',
+  'Azerbaijan checkout is not open yet.': 'Azərbaycan üzrə sifarişlər müvəqqəti dayandırılıb.',
   'Orders opening soon': 'Sifariş qəbulu tezliklə açılacaq',
   'Product options': 'Məhsul seçimləri', 'Choose option': 'Seçim edin',
   'How to use': 'İstifadə qaydası', 'Specifications': 'Texniki xüsusiyyətlər',
@@ -339,11 +354,8 @@ function applyLanguage(lang) {
     updateCheckoutAddressFields();
     const checkoutButton = $('coSubmitButton');
     if (checkoutButton) {
-      const isAzLocked = $('coCountry').value === 'Azerbaijan' && !storeConfig.azerbaijanCheckoutEnabled;
-      checkoutButton.disabled = isAzLocked;
-      checkoutButton.textContent = isAzLocked
-        ? (lang === 'az' ? 'Sifariş qəbulu tezliklə açılacaq' : 'Orders opening soon')
-        : (lang === 'az' ? 'Təhlükəsiz ödənişə keç' : 'Continue to secure payment');
+      checkoutButton.disabled = false;
+      checkoutButton.textContent = lang === 'az' ? 'Təhlükəsiz ödənişə keç' : 'Continue to secure payment';
     }
   }
   const activeProduct = productPageOpen ? products.find(p => String(p.id) === new URLSearchParams(window.location.search).get('product')) : null;
@@ -458,15 +470,14 @@ function syncCountryPicker() {
   if (announcement) {
     const az = localStorage.getItem('dg_language') === 'az';
     announcement.textContent = c.country === 'AZ'
-      ? (az ? 'Azərbaycan üzrə sifariş qəbulu tezliklə açılacaq' : 'Azerbaijan orders opening soon')
+      ? (az ? 'Azərbaycan üzrə onlayn ödəniş aktivdir' : 'Azerbaijan online checkout is available')
       : (az ? 'Seçilmiş sifarişlərdə pulsuz çatdırılma' : 'Free shipping on selected orders');
   }
 }
 function setCountry(country) {
   localStorage.setItem('dg_country', country);
   syncCountryPicker();
-  // Keep the existing cart intact while the Azerbaijan market is in preparation.
-  const removedUnavailable = country === 'AZ' ? false : removeUnavailableCartItemsForCurrentCountry();
+  const removedUnavailable = removeUnavailableCartItemsForCurrentCountry();
   renderProducts();
 
   if ($('modalRoot')?.querySelector('.drawer')) {
@@ -498,7 +509,7 @@ function productPriceForCountry(product, now = Date.now()) {
   const customPrice = countryBasePrice(product, country);
   const baseUsd = Number(product?.price || 0);
   if (customPrice != null && baseUsd > 0) return Number((customPrice * usdPrice / baseUsd).toFixed(2));
-  if (country === 'AZ') return 0;
+  if (country === 'AZ') return 0; // An explicit all-in AZN product/variant price is required.
   return Number((usdPrice * currencyConfig().rate).toFixed(2));
 }
 function variantPriceForCountry(product, combination, now = Date.now()) {
@@ -508,7 +519,7 @@ function variantPriceForCountry(product, combination, now = Date.now()) {
   const customPrice = countryBasePrice(product, country);
   const baseUsd = Number(product?.price || 0);
   if (customPrice != null && baseUsd > 0) return Number((customPrice * usdPrice / baseUsd).toFixed(2));
-  if (country === 'AZ') return 0;
+  if (country === 'AZ') return 0; // An explicit all-in AZN product/variant price is required.
   return Number((usdPrice * currencyConfig().rate).toFixed(2));
 }
 function compareAtPriceForCountry(product, combination = null, now = Date.now()) {
@@ -519,7 +530,7 @@ function compareAtPriceForCountry(product, combination = null, now = Date.now())
   const customPrice = countryBasePrice(product, country);
   const baseUsd = Number(product?.price || 0);
   if (customPrice != null && baseUsd > 0) return Number((customPrice * usdCompareAt / baseUsd).toFixed(2));
-  if (country === 'AZ') return 0;
+  if (country === 'AZ') return 0; // Do not invent an AZN compare-at price.
   return Number((usdCompareAt * currencyConfig().rate).toFixed(2));
 }
 function removeUnavailableCartItemsForCurrentCountry() {
@@ -677,7 +688,7 @@ function updateProductVariantUI(productId) {
   const priceElement = $('productCurrentPrice');
   if (priceElement) priceElement.textContent = isProductAvailableInCountry(product)
     ? displayCountryPrice(selected ? variantPriceForCountry(product, selected) : productPriceForCountry(product))
-    : (currencyConfig().country === 'AZ' ? 'Not yet listed for Azerbaijan' : 'Not available in this market');
+    : (currencyConfig().country === 'AZ' ? 'Not available for Azerbaijan' : 'Not available in this market');
   const compareElement = $('productComparePrice');
   const compareAt = compareAtPriceForCountry(product, selected);
   if (compareElement) compareElement.textContent = isProductAvailableInCountry(product) && compareAt != null ? displayCountryPrice(compareAt) : '';
@@ -1011,7 +1022,7 @@ function renderProductPage(id) {
   const shippingAccordion = hasCustomShipping ? '' : `
     <details class="product-page-accordion">
       <summary>Shipping &amp; returns</summary>
-      <div class="product-page-accordion-content"><p>DreamGrind currently accepts orders for the United States, Canada and the United Kingdom. Azerbaijan is being prepared as an additional market; orders there are not open yet. Please contact DreamGrind before returning an item so return instructions can be provided.</p></div>
+      <div class="product-page-accordion-content"><p>DreamGrind accepts orders for the United States, Canada, the United Kingdom and Azerbaijan. For Azerbaijan, only products with a confirmed final AZN price are available for normal checkout. The displayed price includes delivery and applicable import charges confirmed for that product and route. Please contact DreamGrind before returning an item so return instructions can be provided.</p></div>
     </details>`;
   const saleActive = isProductSaleActive(p);
   const discount = saleActive ? productDiscountPercent(p) : 0;
@@ -1055,7 +1066,7 @@ function renderProductPage(id) {
             <div class="product-page-price" id="productPriceBlock"><span id="productCurrentPrice">${availableInMarket ? displayCountryPrice(currentPrice) : (currencyConfig().country === 'AZ' ? 'Not yet listed for Azerbaijan' : 'Not available in this market')}</span>${availableInMarket ? saleMarkup : ''}</div>
             ${availableInMarket ? '' : `<div class="note-box" role="status">This product is not available for delivery to ${escapeHtml(currencyConfig().country === 'CA' ? 'Canada' : currencyConfig().country === 'UK' ? 'the United Kingdom' : currencyConfig().country === 'AZ' ? 'Azerbaijan' : 'the United States')}.</div>`}
             ${showCountdown ? `<div class="product-page-sale-offer" id="productSaleOffer"><span>Limited-time offer ends in</span><strong id="productSaleCountdown" aria-live="off"></strong></div>` : ''}
-            <div class="product-page-shipping"><span aria-hidden="true">✓</span> ${currencyConfig().country === 'AZ' ? 'Azerbaijan delivery details coming soon' : 'Free shipping'} <span class="product-page-dot">·</span> Secure checkout by Epoint</div>
+            <div class="product-page-shipping"><span aria-hidden="true">✓</span> ${currencyConfig().country === 'AZ' ? 'Delivery & applicable taxes included' : 'Free shipping'} <span class="product-page-dot">·</span> Secure checkout by Epoint</div>
 
             ${featureMarkup}
             ${variants}
@@ -1070,7 +1081,7 @@ function renderProductPage(id) {
             <section class="product-page-confidence" aria-label="Shopping information">
               <div class="product-page-confidence-heading"><span class="product-page-confidence-mark" aria-hidden="true">✓</span><strong>Shop with confidence</strong></div>
               <div class="product-page-confidence-grid">
-                <div class="product-page-confidence-item"><span class="product-page-confidence-icon" aria-hidden="true">↗</span><div><strong>${currencyConfig().country === 'AZ' ? 'Delivery information' : 'Free shipping'}</strong><small>${currencyConfig().country === 'AZ' ? 'Being finalised for Azerbaijan' : 'United States, Canada &amp; UK'}</small></div></div>
+                <div class="product-page-confidence-item"><span class="product-page-confidence-icon" aria-hidden="true">↗</span><div><strong>${currencyConfig().country === 'AZ' ? 'Delivery included' : 'Free shipping'}</strong><small>${currencyConfig().country === 'AZ' ? 'Included in displayed AZN price' : 'United States, Canada &amp; UK'}</small></div></div>
                 <div class="product-page-confidence-item"><span class="product-page-confidence-icon" aria-hidden="true">▣</span><div><strong>Secure payment</strong><small>Processed through Epoint</small></div></div>
                 <div class="product-page-confidence-item"><span class="product-page-confidence-icon" aria-hidden="true">✓</span><div><strong>Guest checkout</strong><small>No account required</small></div></div>
               </div>
@@ -1182,7 +1193,9 @@ function openCart() {
   const sub = cartSubtotal();
   const ship = state.cart.length ? shippingCost() : 0;
   const total = sub + ship;
-  $('modalRoot').innerHTML = `<div class="overlay" onclick="closeModal(event)"><aside class="drawer"><div class="drawer-head"><h2>Your cart</h2><button class="close-btn" onclick="closeModal()">✕</button></div>${lines}<div class="drawer-section"><label for="countrySelect">Shipping country</label><select id="countrySelect" onchange="setCountry(this.value)"><option value="US" ${c.country === 'US' ? 'selected' : ''}>United States</option><option value="CA" ${c.country === 'CA' ? 'selected' : ''}>Canada</option><option value="UK" ${c.country === 'UK' ? 'selected' : ''}>United Kingdom</option><option value="AZ" ${c.country === 'AZ' ? 'selected' : ''}>Azerbaijan</option></select></div><div class="summary-row"><span>Subtotal</span><span>${displayCountryPrice(sub)}</span></div><div class="summary-row"><span>Shipping</span><span>${c.country === 'AZ' ? 'To be confirmed' : (ship === 0 ? 'FREE' : displayCountryPrice(ship))}</span></div><div class="summary-row total"><span>${c.country === 'AZ' ? 'Current subtotal' : 'Total'}</span><span>${displayCountryPrice(total)}</span></div><button class="primary-button full" onclick="startCheckout()" ${state.cart.length ? '' : 'disabled'}>${c.country === 'AZ' && !storeConfig.azerbaijanCheckoutEnabled ? (localStorage.getItem('dg_language') === 'az' ? 'Sifariş qəbulu tezliklə açılacaq' : 'Orders opening soon') : 'Checkout'}</button><div class="note-box" style="margin-top:12px">${c.country === 'AZ' ? (localStorage.getItem('dg_language') === 'az' ? 'Azərbaycan üzrə sifariş qəbulu hələ açılmayıb. Çatdırılma qiyməti dəqiqləşdirilir.' : 'Azerbaijan orders are not open yet. Delivery pricing is being confirmed.') : 'You will be charged in AZN. Secure payment by Epoint.'}</div></aside></div>`;
+  const isAz = c.country === 'AZ';
+  const langAz = localStorage.getItem('dg_language') === 'az';
+  $('modalRoot').innerHTML = `<div class="overlay" onclick="closeModal(event)"><aside class="drawer"><div class="drawer-head"><h2>Your cart</h2><button class="close-btn" onclick="closeModal()">✕</button></div>${lines}<div class="drawer-section"><label for="countrySelect">Shipping country</label><select id="countrySelect" onchange="setCountry(this.value)"><option value="US" ${c.country === 'US' ? 'selected' : ''}>United States</option><option value="CA" ${c.country === 'CA' ? 'selected' : ''}>Canada</option><option value="UK" ${c.country === 'UK' ? 'selected' : ''}>United Kingdom</option><option value="AZ" ${c.country === 'AZ' ? 'selected' : ''}>Azerbaijan</option></select></div><div class="summary-row"><span>Subtotal</span><span>${displayCountryPrice(sub)}</span></div><div class="summary-row"><span>Shipping</span><span>${isAz ? (langAz ? 'Daxildir' : 'Included') : (ship === 0 ? 'FREE' : displayCountryPrice(ship))}</span></div><div class="summary-row total"><span>Total</span><span>${displayCountryPrice(total)}</span></div><button class="primary-button full" onclick="startCheckout()" ${state.cart.length ? '' : 'disabled'}>Checkout</button><div class="note-box" style="margin-top:12px">${isAz ? (langAz ? 'Göstərilən AZN qiymətinə çatdırılma və həmin təklif üçün təsdiqlənmiş müvafiq xərclər daxildir. Epoint ilə təhlükəsiz ödəniş.' : 'The displayed AZN price includes delivery and applicable charges confirmed for this offer. Secure payment by Epoint.') : 'You will be charged in AZN. Secure payment by Epoint.'}</div></aside></div>`;
 }
 function changeQty(id, variantKey, delta) {
   const variant = decodeURIComponent(variantKey);
@@ -1257,8 +1270,11 @@ async function startCheckout(items = null) {
 
           <label>
             <span id="coPhoneLabel">Mobile number</span>
-            <input id="coPhone" name="tel" type="tel" autocomplete="tel" required placeholder="${c.country === 'AZ' ? '+994501234567' : c.country === 'UK' ? '+44 7700 900123' : c.country === 'CA' ? '+1 416 555 0123' : '+1 555 123 4567'}">
-            <small class="checkout-field-help" id="coPhoneHelp">Use a phone number that can receive delivery updates.</small>
+            <div class="phone-input-row">
+              <span class="phone-input-prefix" id="coPhonePrefix" aria-label="Country calling code">${c.country === 'AZ' ? '+994' : c.country === 'UK' ? '+44' : '+1'}</span>
+              <input id="coPhone" name="tel-national" type="tel" inputmode="numeric" autocomplete="tel-national" maxlength="18" required placeholder="${c.country === 'AZ' ? '50 123 45 67' : c.country === 'UK' ? '7700 900123' : c.country === 'CA' ? '416 555 0123' : '202 555 0123'}" oninput="this.value=this.value.replace(/[^0-9]/g,'')">
+            </div>
+            <small class="checkout-field-help" id="coPhoneHelp">The country code is added automatically.</small>
           </label>
 
           <label>
@@ -1294,9 +1310,9 @@ async function startCheckout(items = null) {
           </label>
 
           <label>
-            <span id="coZipLabel">${c.country === 'UK' ? 'Postcode *' : c.country === 'CA' ? 'Postal code *' : c.country === 'AZ' ? 'Postal code (optional)' : 'ZIP code *'}</span>
-            <input id="coZip" name="postal-code" autocomplete="postal-code" autocapitalize="characters" ${c.country === 'AZ' ? '' : 'required'} placeholder="${c.country === 'UK' ? 'e.g. SW1A 1AA' : c.country === 'CA' ? 'e.g. K1A 0B1' : c.country === 'AZ' ? 'Optional' : 'e.g. 90210'}">
-            <small class="checkout-field-help" id="coZipHelp">${c.country === 'UK' ? 'Enter the UK postcode as provided by the recipient.' : c.country === 'CA' ? 'Enter the Canadian postal code, including the space if shown.' : c.country === 'AZ' ? 'Enter a postal code when available.' : 'Enter the ZIP code for the delivery address.'}</small>
+            <span id="coZipLabel">${c.country === 'UK' ? 'Postcode *' : c.country === 'CA' ? 'Postal code *' : c.country === 'AZ' ? 'Postal code *' : 'ZIP code *'}</span>
+            <input id="coZip" name="postal-code" autocomplete="postal-code" autocapitalize="characters" required aria-required="true" placeholder="${c.country === 'UK' ? 'e.g. SW1A 1AA' : c.country === 'CA' ? 'e.g. K1A 0B1' : c.country === 'AZ' ? 'e.g. AZ1000' : 'e.g. 90210'}">
+            <small class="checkout-field-help" id="coZipHelp">${c.country === 'UK' ? 'Enter the UK postcode as provided by the recipient.' : c.country === 'CA' ? 'Enter the Canadian postal code, including the space if shown.' : c.country === 'AZ' ? 'Enter the Azerbaijan postal code for the delivery address.' : 'Enter the ZIP code for the delivery address.'}</small>
           </label>
 
           <label class="full">
@@ -1304,8 +1320,8 @@ async function startCheckout(items = null) {
             <textarea id="coDeliveryNotes" name="delivery-notes" maxlength="500" placeholder="Landmark or instructions for the courier"></textarea>
           </label>
           <p class="checkout-country-message full" id="checkoutCountryMessage" role="status" aria-live="polite"></p>
-          <div class="note-box full">You will be charged in AZN. Secure payment by Epoint.</div>
-          <button id="coSubmitButton" class="primary-button full" type="submit" ${c.country === 'AZ' && !storeConfig.azerbaijanCheckoutEnabled ? 'disabled' : ''}>${c.country === 'AZ' && !storeConfig.azerbaijanCheckoutEnabled ? (localStorage.getItem('dg_language') === 'az' ? 'Sifariş qəbulu tezliklə açılacaq' : 'Orders opening soon') : 'Continue to secure payment'}</button>
+          <div class="note-box full" id="checkoutPaymentNote">${c.country === 'AZ' ? (localStorage.getItem('dg_language') === 'az' ? 'Göstərilən AZN qiymətinə çatdırılma və həmin təklif üçün təsdiqlənmiş müvafiq xərclər daxildir. Ödəniş Epoint vasitəsilə təhlükəsiz həyata keçirilir.' : 'The displayed AZN price includes delivery and applicable charges confirmed for this offer. Payment is processed securely through Epoint.') : 'You will be charged in AZN. Secure payment by Epoint.'}</div>
+          <button id="coSubmitButton" class="primary-button full" type="submit">${localStorage.getItem('dg_language') === 'az' ? 'Təhlükəsiz ödənişə keç' : 'Continue to secure payment'}</button>
         </form>
       </div>
     </div>`;
@@ -1314,8 +1330,8 @@ async function startCheckout(items = null) {
   updateCheckoutAddressFields();
   if (c.country === 'AZ' && $('checkoutCountryMessage')) {
     $('checkoutCountryMessage').textContent = localStorage.getItem('dg_language') === 'az'
-      ? 'Azərbaycan üzrə sifariş qəbulu hələ açılmayıb. Çatdırılma və gömrük şərtləri təsdiqləndikdən sonra aktivləşdiriləcək.'
-      : 'Azerbaijan orders are not open yet. Checkout will be enabled after delivery and customs arrangements are confirmed.';
+      ? 'Bu məhsul üçün yekun AZN qiymətinə çatdırılma və təsdiqlənmiş müvafiq xərclər daxildir. Ödənişi Epoint vasitəsilə saytda tamamlayacaqsınız.'
+      : 'The final AZN price for this product includes delivery and confirmed applicable charges. Complete payment on the website through Epoint.';
   }
 }
 
@@ -1328,6 +1344,8 @@ function updateCheckoutAddressFields() {
   const zipInput = $('coZip');
   const zipHelp = $('coZipHelp');
   const phoneInput = $('coPhone');
+  const phonePrefix = $('coPhonePrefix');
+  const phoneHelp = $('coPhoneHelp');
   const isAzLanguage = localStorage.getItem('dg_language') === 'az';
   const fieldLabelTranslations = { 'ZIP code *': 'Poçt indeksi *', 'Postal code *': 'Poçt indeksi *', 'Postcode *': 'Poçt indeksi *' };
   const localize = value => isAzLanguage ? (fieldLabelTranslations[value] || translateUiText(value, 'az')) : value;
@@ -1337,29 +1355,37 @@ function updateCheckoutAddressFields() {
       stateLabel: 'State *', statePlaceholder: 'e.g. California', stateRequired: true,
       stateHelp: 'Enter the state for the delivery address.',
       zipLabel: 'ZIP code *', zipPlaceholder: 'e.g. 90210', zipRequired: true,
-      zipHelp: 'Enter the ZIP code for the delivery address.', phonePlaceholder: '+1 555 123 4567'
+      zipHelp: 'Enter the ZIP code for the delivery address.'
     },
     'Canada': {
       stateLabel: 'Province / Territory *', statePlaceholder: 'e.g. Ontario', stateRequired: true,
       stateHelp: 'Enter the province or territory for the delivery address.',
       zipLabel: 'Postal code *', zipPlaceholder: 'e.g. K1A 0B1', zipRequired: true,
-      zipHelp: 'Enter the Canadian postal code, including the space if shown.', phonePlaceholder: '+1 416 555 0123'
+      zipHelp: 'Enter the Canadian postal code, including the space if shown.'
     },
     'United Kingdom': {
       stateLabel: 'County (optional)', statePlaceholder: 'County, if applicable', stateRequired: false,
       stateHelp: 'County is optional for most UK delivery addresses.',
       zipLabel: 'Postcode *', zipPlaceholder: 'e.g. SW1A 1AA', zipRequired: true,
-      zipHelp: 'Enter the UK postcode as provided by the recipient.', phonePlaceholder: '+44 7700 900123'
+      zipHelp: 'Enter the UK postcode as provided by the recipient.'
     },
     'Azerbaijan': {
       stateLabel: 'Rayon / district *', statePlaceholder: 'e.g. Yasamal', stateRequired: true,
       stateHelp: 'Enter the rayon or administrative area for the delivery address.',
-      zipLabel: 'Postal code (optional)', zipPlaceholder: 'Optional', zipRequired: false,
-      zipHelp: 'Enter a postal code when available.', phonePlaceholder: '+994501234567'
+      zipLabel: 'Postal code *', zipPlaceholder: 'e.g. AZ1000', zipRequired: true,
+      zipHelp: 'Enter the Azerbaijan postal code for the delivery address.'
     }
   };
 
+  const phoneRules = {
+    'United States': { prefix: '+1', placeholder: '202 555 0123', en: 'Enter the 10-digit number. +1 is added automatically.', az: '10 rəqəmli nömrəni daxil edin. +1 avtomatik əlavə olunur.' },
+    'Canada': { prefix: '+1', placeholder: '416 555 0123', en: 'Enter the 10-digit number. +1 is added automatically.', az: '10 rəqəmli nömrəni daxil edin. +1 avtomatik əlavə olunur.' },
+    'United Kingdom': { prefix: '+44', placeholder: '7700 900123', en: 'Enter 9–10 digits. You may include the first 0; +44 is added automatically.', az: '9–10 rəqəm daxil edin. İlk 0 rəqəmini yaza bilərsiniz; +44 avtomatik əlavə olunur.' },
+    'Azerbaijan': { prefix: '+994', placeholder: '50 123 45 67', en: 'Enter 9 digits. You may include the first 0; +994 is added automatically.', az: '9 rəqəm daxil edin. İlk 0 rəqəmini yaza bilərsiniz; +994 avtomatik əlavə olunur.' }
+  };
+
   const rule = rules[country] || rules['United States'];
+  const phoneRule = phoneRules[country] || phoneRules['United States'];
   const labels = {
     coNameLabel: 'Full name', coEmailLabel: 'Email', coPhoneLabel: 'Mobile number',
     coCountryLabel: 'Country', coAddressLabel: 'Address',
@@ -1388,15 +1414,52 @@ function updateCheckoutAddressFields() {
   }
   if (zipHelp) zipHelp.textContent = localize(rule.zipHelp);
 
-  const phoneHelp = $('coPhoneHelp');
-  if (phoneHelp) phoneHelp.textContent = localize('Use a phone number that can receive delivery updates.');
+  if (phonePrefix) phonePrefix.textContent = phoneRule.prefix;
   if (phoneInput) {
-    phoneInput.placeholder = rule.phonePlaceholder;
-    if (country === 'Azerbaijan') phoneInput.pattern = '(\\+?994|0)[0-9 ()-]{9,16}';
-    else phoneInput.removeAttribute('pattern');
+    phoneInput.placeholder = phoneRule.placeholder;
+    phoneInput.inputMode = 'numeric';
+    phoneInput.autocomplete = 'tel-national';
+    phoneInput.maxLength = 18;
+    phoneInput.setAttribute('pattern', '[0-9]{7,18}');
   }
+  if (phoneHelp) phoneHelp.textContent = isAzLanguage ? phoneRule.az : phoneRule.en;
 }
 
+function normalizeCheckoutPhone(country, value) {
+  let digits = String(value ?? '').replace(/\D/g, '');
+  if (digits.startsWith('00')) digits = digits.slice(2);
+
+  if (country === 'Azerbaijan') {
+    if (digits.startsWith('994')) digits = digits.slice(3);
+    if (digits.startsWith('0')) digits = digits.slice(1);
+    return /^\d{9}$/.test(digits) ? `+994${digits}` : null;
+  }
+
+  if (country === 'United States' || country === 'Canada') {
+    if (digits.startsWith('1') && digits.length === 11) digits = digits.slice(1);
+    return /^\d{10}$/.test(digits) ? `+1${digits}` : null;
+  }
+
+  if (country === 'United Kingdom') {
+    if (digits.startsWith('44')) digits = digits.slice(2);
+    if (digits.startsWith('0')) digits = digits.slice(1);
+    return /^\d{9,10}$/.test(digits) ? `+44${digits}` : null;
+  }
+
+  return null;
+}
+
+function checkoutPhoneError(country, isAzLanguage) {
+  if (country === 'Azerbaijan') return isAzLanguage
+    ? '9 rəqəmli Azərbaycan mobil nömrəsi daxil edin. +994 avtomatik əlavə olunur.'
+    : 'Enter 9 Azerbaijan mobile digits. A leading 0 is optional; +994 is added automatically.';
+  if (country === 'United Kingdom') return isAzLanguage
+    ? '9–10 rəqəmli Britaniya nömrəsi daxil edin. +44 avtomatik əlavə olunur.'
+    : 'Enter 9 or 10 UK phone digits. A leading 0 is optional; +44 is added automatically.';
+  return isAzLanguage
+    ? '10 rəqəmli ABŞ/Kanada nömrəsi daxil edin. +1 avtomatik əlavə olunur.'
+    : 'Enter a 10-digit US or Canadian phone number. +1 is added automatically.';
+}
 function handleCheckoutCountryChange() {
   const select = $('coCountry');
   if (!select) return;
@@ -1407,8 +1470,11 @@ function handleCheckoutCountryChange() {
   if (previousCountry !== nextCountry) {
     if ($('coState')) $('coState').value = '';
     if ($('coZip')) $('coZip').value = '';
+    if ($('coPhone')) $('coPhone').value = '';
     const message = $('checkoutCountryMessage');
-    if (message) message.textContent = 'Country changed. Please confirm the region and postal code for the new destination.';
+    if (message) message.textContent = localStorage.getItem('dg_language') === 'az'
+      ? 'Ölkə dəyişdirildi. Rayon və poçt indeksini yenidən yoxlayın.'
+      : 'Country changed. Please confirm the region and postal code for the new destination.';
   }
 
   select.dataset.lastCountry = nextCountry;
@@ -1419,15 +1485,18 @@ function handleCheckoutCountryChange() {
   updateCheckoutAddressFields();
   const code = countryCodes[nextCountry] || 'US';
   const checkoutButton = $('coSubmitButton');
-  const isAzLocked = code === 'AZ' && !storeConfig.azerbaijanCheckoutEnabled;
   if (checkoutButton) {
-    checkoutButton.disabled = isAzLocked;
-    checkoutButton.textContent = isAzLocked ? (localStorage.getItem('dg_language') === 'az' ? 'Sifariş qəbulu tezliklə açılacaq' : 'Orders opening soon') : 'Continue to secure payment';
+    checkoutButton.disabled = false;
+    checkoutButton.textContent = localStorage.getItem('dg_language') === 'az' ? 'Təhlükəsiz ödənişə keç' : 'Continue to secure payment';
   }
+  const paymentNote = $('checkoutPaymentNote');
+  if (paymentNote) paymentNote.textContent = code === 'AZ'
+    ? (localStorage.getItem('dg_language') === 'az' ? 'Göstərilən AZN qiymətinə çatdırılma və həmin təklif üçün təsdiqlənmiş müvafiq xərclər daxildir. Ödəniş Epoint vasitəsilə təhlükəsiz həyata keçirilir.' : 'The displayed AZN price includes delivery and applicable charges confirmed for this offer. Payment is processed securely through Epoint.')
+    : 'You will be charged in AZN. Secure payment by Epoint.';
   if (code === 'AZ' && $('checkoutCountryMessage')) {
     $('checkoutCountryMessage').textContent = localStorage.getItem('dg_language') === 'az'
-      ? 'Azərbaycan üzrə sifariş qəbulu hələ açılmayıb. Çatdırılma və gömrük şərtləri təsdiqləndikdən sonra aktivləşdiriləcək.'
-      : 'Azerbaijan orders are not open yet. Checkout will be enabled after delivery and customs arrangements are confirmed.';
+      ? 'Məhsulun göstərilən yekun AZN qiymətinə çatdırılma və təsdiqlənmiş müvafiq xərclər daxildir. Ödənişi Epoint vasitəsilə saytda tamamlayın.'
+      : 'The displayed final AZN product price includes delivery and confirmed applicable charges. Complete your payment on the website through Epoint.';
   }
   const checkoutItems = (pendingCheckoutItems?.length ? pendingCheckoutItems : state.cart);
   const unavailable = checkoutItems.some(item => {
@@ -1448,7 +1517,7 @@ function handleCheckoutCountryChange() {
     async function loginUser(e) { e.preventDefault(); const r = await fetch('/api/auth/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify({ email: $('loginEmail').value.trim(), password: $('loginPassword').value }) }); const d = await r.json(); if (!r.ok) { showToast(d.error || 'Unable to sign in'); return; } showToast('Logged in'); openAccount(); }
     function accountHome(user) { return `<p>Welcome back, <strong>${escapeHtml(user.name)}</strong>.</p><div class="note-box">Email: ${escapeHtml(user.email)}<br>Account type: ${user.role === 'admin' ? 'Admin' : 'Customer'}</div><div style="display:grid;gap:8px;margin-top:14px"><button class="secondary-button" onclick="openOrderHistory()">My orders</button><button class="secondary-button" onclick="openSupport()">Message the store</button>${user.role === 'admin' ? '<button class="primary-button" onclick="window.location.href=\'/admin.html\'">Admin panel</button>' : ''}<button class="primary-button" onclick="logoutUser()">Log out</button></div>`; }
     async function logoutUser() { await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' }); openAccount(); }
-    async function openOrderHistory() { const r = await fetch('/api/orders/me', { credentials: 'include' }); const d = await r.json(); if (!r.ok) { showToast('Please log in first'); return; } const orders = d.orders || []; $('modalRoot').innerHTML = `<div class="modal-overlay" onclick="closeModal(event)"><div class="modal"><div class="modal-head"><h2>My orders</h2><button class="close-btn" onclick="closeModal()">✕</button></div>${orders.length ? orders.map(o => `<div class="note-box" style="margin-bottom:9px"><strong>${escapeHtml(o.id)}</strong><br>${new Date(o.createdAt).toLocaleString()}<br>Status: ${escapeHtml(o.status)}<br>Total: ${money(o.total || 0, 'AZN')}<br><button class="text-button" onclick="closeModal();$('trackInput').value='${o.id}';trackOrder();location.hash='track'">Track order</button></div>`).join('') : '<p class="muted">No orders yet.</p>'}</div></div>`; }
+    async function openOrderHistory() { const r = await fetch('/api/orders/me', { credentials: 'include' }); const d = await r.json(); if (!r.ok) { showToast('Please log in first'); return; } const orders = d.orders || []; $('modalRoot').innerHTML = `<div class="modal-overlay" onclick="closeModal(event)"><div class="modal"><div class="modal-head"><h2>My orders</h2><button class="close-btn" onclick="closeModal()">✕</button></div>${orders.length ? orders.map(o => `<div class="note-box" style="margin-bottom:9px"><strong>${escapeHtml(o.id)}</strong><br>${new Date(o.createdAt).toLocaleString()}<br>Status: ${escapeHtml(o.status)}<br>Total: ${o.total == null ? 'Delivery quote pending' : money(o.total, 'AZN')}<br><button class="text-button" onclick="closeModal();$('trackInput').value='${o.id}';trackOrder();location.hash='track'">Track order</button></div>`).join('') : '<p class="muted">No orders yet.</p>'}</div></div>`; }
     async function openSupport() {
       const user = await getCurrentUser();
       let old = [];
@@ -1485,8 +1554,16 @@ function handleCheckoutCountryChange() {
     return;
   }
   await refreshStoreConfig();
-  if ($('coCountry')?.value === 'Azerbaijan' && !storeConfig.azerbaijanCheckoutEnabled) {
-    showToast(localStorage.getItem('dg_language') === 'az' ? 'Azərbaycan üzrə sifariş qəbulu hələ açılmayıb.' : 'Azerbaijan checkout is not open yet.');
+  const checkoutCountry = $('coCountry')?.value || 'United States';
+  if (checkoutCountry === 'Azerbaijan' && !storeConfig.azerbaijanCheckoutEnabled) {
+    showToast(localStorage.getItem('dg_language') === 'az' ? 'Azərbaycan üzrə checkout müvəqqəti dayandırılıb.' : 'Azerbaijan checkout is temporarily paused.');
+    return;
+  }
+
+  const normalizedPhone = normalizeCheckoutPhone(checkoutCountry, $('coPhone')?.value || '');
+  if (!normalizedPhone) {
+    showToast(checkoutPhoneError(checkoutCountry, localStorage.getItem('dg_language') === 'az'));
+    $('coPhone')?.focus();
     return;
   }
 
@@ -1503,7 +1580,7 @@ function handleCheckoutCountryChange() {
       body: JSON.stringify({
         name: $('coName').value.trim(),
         email: $('coEmail').value.trim(),
-        phone: $('coPhone').value.trim(),
+        phone: normalizedPhone,
         address: $('coAddress').value.trim(),
         addressLine2: $('coAddressLine2')?.value.trim() || '',
         deliveryNotes: $('coDeliveryNotes')?.value.trim() || '',
@@ -1522,6 +1599,19 @@ function handleCheckoutCountryChange() {
         submitButton.disabled = false;
         submitButton.textContent = 'Continue to secure payment';
       }
+      return;
+    }
+
+    if (d.requiresShippingQuote && d.order?.id) {
+      if (sessionStorage.getItem('dg_checkout_mode') !== 'buy-now') {
+        state.cart = [];
+        saveAll();
+      }
+      sessionStorage.removeItem('dg_checkout_mode');
+      const orderId = d.order.id;
+      const langAz = localStorage.getItem('dg_language') === 'az';
+      const waText = encodeURIComponent(`Hello DreamGrind, I submitted order request ${orderId}. Please confirm the delivery fee and payment details.`);
+      $('modalRoot').innerHTML = `<div class="modal-overlay"><div class="modal"><div class="modal-head"><h2>${langAz ? 'Sifariş sorğunuz qəbul edildi' : 'Your order request was received'}</h2><button class="close-btn" onclick="closeModal()">✕</button></div><div class="note-box"><strong>${langAz ? 'Sifariş nömrəsi' : 'Order number'}: ${escapeHtml(orderId)}</strong><p>${langAz ? 'Məhsul məbləği: ' : 'Product subtotal: '}${money(Number(d.order.subtotal || 0), 'AZN')}</p><p>${langAz ? 'Çatdırılma haqqını yoxlayıb təsdiq etdikdən sonra sizə yekun məbləğ və təhlükəsiz Epoint ödəniş linki göndərəcəyik. Bu mərhələdə ödəniş tutulmayıb.' : 'We will confirm the delivery fee, send you the final total and provide a secure Epoint payment link. No payment has been taken yet.'}</p></div><p class="muted">${langAz ? 'Sifarişinizlə bağlı WhatsApp vasitəsilə də əlaqə saxlaya bilərsiniz.' : 'You can also contact us on WhatsApp about your order.'}</p><a class="primary-button full" style="display:block;text-align:center;text-decoration:none" target="_blank" rel="noopener" href="https://wa.me/994998998097?text=${waText}">${langAz ? 'WhatsApp ilə əlaqə saxla' : 'Contact us on WhatsApp'}</a><a class="secondary-button full" style="display:block;text-align:center;text-decoration:none;margin-top:10px" href="mailto:dreamgrindstore@gmail.com?subject=${encodeURIComponent(`DreamGrind order ${orderId}`)}">${langAz ? 'E-poçt göndər' : 'Email us'}</a><button class="secondary-button full" style="margin-top:10px" onclick="closeModal()">${langAz ? 'Mağazaya qayıt' : 'Continue shopping'}</button></div></div>`;
       return;
     }
 
@@ -1571,7 +1661,7 @@ function handleCheckoutCountryChange() {
       const d = await r.json();
       if (!r.ok) { $('trackingResult').innerHTML = '<p class="muted">Order not found. Check the order number and try again.</p>'; return; }
       const order = d.order;
-      const paymentLabel = order.paymentStatus === 'Paid' ? 'Paid' : order.paymentStatus === 'Refunded' ? 'Refunded' : order.paymentStatus === 'Failed' ? 'Payment not completed' : 'Awaiting confirmation';
+      const paymentLabel = order.paymentStatus === 'Paid' ? 'Paid' : order.paymentStatus === 'Refunded' ? 'Refunded' : order.paymentStatus === 'Failed' ? 'Payment not completed' : order.paymentStatus === 'Awaiting quote' ? 'Delivery fee awaiting confirmation' : 'Awaiting payment confirmation';
       const trackingMarkup = order.trackingNumber
         ? `<div class="note-box" style="margin-top:12px"><strong>Carrier tracking number</strong><br><span>${escapeHtml(order.trackingNumber)}</span></div>`
         : '<p class="muted" style="margin-top:12px">Carrier tracking details will appear here after your order has been dispatched and the number has been added by our team.</p>';
@@ -1583,10 +1673,10 @@ function handleCheckoutCountryChange() {
       title: 'Shipping Policy',
       html: `
         <h3>Shipping destinations</h3>
-        <p>DreamGrind currently accepts orders for customers in the United States, Canada and the United Kingdom. Azerbaijan is being prepared as an additional destination; orders for Azerbaijan are not accepted until delivery arrangements and charges have been confirmed.</p>
+        <p>DreamGrind accepts orders for customers in the United States, Canada, the United Kingdom and Azerbaijan. For Azerbaijan, only products with a confirmed final AZN price are available for normal checkout. The displayed price includes the product, delivery and applicable import charges confirmed for that specific offer.</p>
 
         <h3>Shipping cost</h3>
-        <p>Shipping is currently free for customers.</p>
+        <p>For Azerbaijan, there is no separate shipping line at checkout because the confirmed delivery cost is included in the displayed AZN product price. For other destinations, the shipping amount shown at checkout applies.</p>
 
         <h3>Processing time</h3>
         <p>Orders are normally processed after successful payment confirmation. Processing and delivery times may vary depending on the destination, product availability and carrier.</p>

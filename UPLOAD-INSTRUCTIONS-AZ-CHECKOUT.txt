@@ -1,0 +1,22 @@
+DreamGrind AZ direct checkout + phone field release (20261120-az-direct-checkout-phone-v3)
+
+Replace these paths in the existing DreamGrind-v5 repository (do not upload the ZIP itself):
+1. server.js
+2. public/script.js
+3. public/style.css
+4. public/index.html
+5. public/admin.html
+6. index.html (root mirror)
+7. script.js (root mirror)
+8. style.css (root mirror)
+
+The active storefront is served from the public/ folder. The root script.js and style.css files are duplicate mirrors only.
+
+Do not delete or reset the database. Do not replace database.js, package.json or package-lock.json. Do not change Render Environment variables, DATABASE_URL, JWT_SECRET, ADMIN_EMAIL, ADMIN_PASSWORD, or either Epoint key. Keep AZERBAIJAN_CHECKOUT_ENABLED=true.
+
+After Render deploy:
+- GET /api/store-config should return azerbaijanCheckoutEnabled:true and azerbaijanShippingQuoteRequired:false.
+- In Admin, set a confirmed final AZN price and enable Azerbaijan for each product you intend to sell there. The AZN price should include the supplier delivery and any import/customs costs DreamGrind has chosen to cover. Do not enable unpriced products.
+- In checkout, the phone prefix should be +994 / +1 / +44 automatically. The customer types only the national digits (AZ: 9 digits; US/CA: 10 digits; UK: 9–10 digits, optional leading 0).
+- Check the exact order total before a controlled low-value payment test. Do not run a paid test with an unverified supplier price.
+- Confirm a successful Epoint callback marks the order Paid in Admin. A code/syntax check does not substitute for a real payment callback test.
