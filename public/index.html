@@ -6,16 +6,18 @@
   <meta name="description" content="DreamGrind — a modern storefront for customers in the USA, Canada, the UK and Azerbaijan.">
   <meta name="theme-color" content="#071a2c">
   <meta name="robots" content="index,follow">
+  <link rel="canonical" href="https://dreamgrind.store/">
   <meta property="og:type" content="website">
   <meta property="og:title" content="DreamGrind — Smart Shopping Starts Here">
   <meta property="og:description" content="Discover useful gadgets, home essentials and pet favorites at DreamGrind.">
-  <meta property="og:url" content="https://dreamgrind-v5.onrender.com/">
+  <meta property="og:url" content="https://dreamgrind.store/">
   <meta name="twitter:card" content="summary">
   <link rel="icon" type="image/svg+xml" href="/favicon.svg">
   <title>DreamGrind — Smart Shopping Starts Here</title>
   <link rel="preconnect" href="https://images.unsplash.com">
   <link rel="stylesheet" href="style.css?v=20261120-az-direct-checkout-phone-v3">
   <link rel="stylesheet" href="dreamgrind-premium.css?v=20261125-v1">
+  <link rel="stylesheet" href="growth.css?v=20261125-growth-v2">
 </head>
 <body>
   <div class="announcement"><div class="container announcement-inner"><span id="announcementText">Free shipping on selected orders</span><button class="link-btn" onclick="showPolicy('shipping')">Shipping info</button></div></div>
@@ -123,7 +125,40 @@
 
     <section id="shop" class="section container"><div class="section-heading shop-heading"><div><p class="eyebrow"data-i18n="shop">Shop</p><h2 id="shopTitle">Trending products</h2></div><div class="shop-controls"><div id="categoryChips" class="chip-row"><button class="chip active" onclick="setCategory('All')">All</button><button class="chip" onclick="setCategory('Gadgets')">Gadgets</button><button class="chip" onclick="setCategory('Home')">Home</button><button class="chip" onclick="setCategory('Pet')">Pet</button><button class="chip" onclick="setCategory('Lifestyle')">Lifestyle</button><button class="chip" onclick="setCategory('General')">General</button></div><select id="sortSelect" aria-label="Sort products" onchange="renderProducts()"><option value="featured">Featured</option><option value="rating">Top rated</option><option value="low">Price: low to high</option><option value="high">Price: high to low</option></select></div></div><div id="productGrid" class="product-grid" aria-live="polite"></div><div id="emptyResults" class="empty-state hidden"><div class="empty-icon">⌕</div><h3>No products found</h3><p>Try another search or category.</p><button class="secondary-button" onclick="clearFilters()">Clear filters</button></div></section>
 
+    <section id="dg-discover" class="dg-growth-section">
+      <div class="container">
+        <div class="section-heading"><div><p class="eyebrow">THE DREAMGRIND EDIT</p><h2>Find something useful.</h2><p class="muted">Explore products currently available for your selected delivery country.</p></div></div>
+        <div id="dgDiscoverGrid" class="product-grid" aria-live="polite"></div>
+      </div>
+    </section>
+
+    <section id="dg-finder" class="dg-growth-section dg-finder-section">
+      <div class="container">
+        <div class="dg-finder-card">
+          <div class="dg-finder-intro"><p class="eyebrow">A BETTER WAY TO BROWSE</p><h2>DreamGrind Finder</h2><p class="muted">Choose what you need and your budget. We will narrow the catalogue to products available in your selected market.</p></div>
+          <div class="dg-finder-controls">
+            <label>Category<select id="dgFinderCategory"><option value="All">All categories</option></select></label>
+            <label>Maximum budget<select id="dgFinderBudget"><option value="0">Any budget</option><option value="25">Under 25</option><option value="50">Under 50</option><option value="100">Under 100</option><option value="200">Under 200</option></select></label>
+            <label class="dg-finder-keyword">What are you looking for?<input id="dgFinderKeyword" type="search" maxlength="80" placeholder="e.g. pet, home, travel"></label>
+            <button class="primary-button" id="dgRunFinder" type="button">Find products</button>
+          </div>
+          <div id="dgFinderResults" class="dg-finder-results" aria-live="polite"></div>
+        </div>
+      </div>
+    </section>
+
+    <section id="dg-recent-section" class="dg-growth-section" hidden>
+      <div class="container"><div class="section-heading"><div><p class="eyebrow">PICK UP WHERE YOU LEFT OFF</p><h2>Recently viewed</h2></div></div><div id="dgRecentGrid" class="product-grid"></div></div>
+    </section>
+
     <section id="about" class="about-section"><div class="container about-grid"><div><p class="eyebrow"data-i18n="whyDreamGrind">Why DreamGrind</p><h2>A small store with a thoughtful shopping experience.</h2></div><div class="about-points"><div><strong>Curated</strong><p>Products can be selected with usefulness and presentation in mind.</p></div><div><strong>Transparent</strong><p>Shipping, order status and support information are designed to be visible.</p></div><div><strong>Human support</strong><p>Customers can contact the store directly rather than being left guessing.</p></div></div></div></section>
+
+    <section id="dg-faq" class="dg-growth-section dg-faq-section">
+      <div class="container dg-faq-layout">
+        <div><p class="eyebrow">HERE TO HELP</p><h2>Good questions. Clear answers.</h2><p class="muted">A few useful details before you place an order.</p><button class="secondary-button" type="button" onclick="openSupport()">Contact DreamGrind</button></div>
+        <div id="dgFaqList" class="dg-faq-list"></div>
+      </div>
+    </section>
 
     <section id="track" class="track-section"><div class="container track-layout"><div><p class="eyebrow"data-i18n="orderStatus">Order status</p><h2>Track your order</h2><p class="muted" data-i18n="orderTrackingIntro">Enter your DreamGrind order number to see the latest order status. Carrier tracking details appear here once they are added to your order.</p></div><div class="track-card"><div class="track-input-row"><input id="trackInput" placeholder="Example: DG10001" aria-label="Order number"><button class="primary-button" onclick="trackOrder()">Track</button></div><div id="trackingResult"></div></div></div></section>
 
@@ -158,9 +193,11 @@
   <p>Individual Entrepreneur: Ehtiram Abdullayev</p>
   <p>Legal address: Yukhari Laki, Agdash District, Azerbaijan</p>
   <p>Business activity: E-commerce and retail sales</p>
-</div></div><div><strong>Customer</strong><button onclick="openAccount()">My account</button><button onclick="openWishlist()">Wishlist</button><button onclick="openCart()">Cart</button></div><div><strong>Support</strong><button onclick="showPolicy('shipping')">Shipping</button><button onclick="showPolicy('returns')">Returns & refunds</button><button onclick="openSupport()">Contact us</button><a class="footer-contact-link" href="https://wa.me/994998998097?text=Hello%20DreamGrind%2C%20I%20have%20a%20question." target="_blank" rel="noopener noreferrer">WhatsApp</a><a class="footer-contact-link" href="mailto:dreamgrindstore@gmail.com">Email us</a></div><div><strong>Legal</strong><button onclick="showPolicy('privacy')">Privacy</button><button onclick="showPolicy('terms')">Terms</button><button onclick="showPolicy('cookies')">Cookies</button></div></div><div class="container footer-bottom"><span>© 2026 DreamGrind</span><button onclick="openSupport()">Message the store</button></div></footer>
+</div></div><div><strong>Customer</strong><button onclick="openAccount()">My account</button><button onclick="openWishlist()">Wishlist</button><button onclick="openCart()">Cart</button></div><div><strong>Support</strong><button onclick="showPolicy('shipping')">Shipping</button><button onclick="showPolicy('returns')">Returns & refunds</button><button onclick="openSupport()">Contact us</button><a class="footer-contact-link" href="https://wa.me/994998998097?text=Hello%20DreamGrind%2C%20I%20have%20a%20question." target="_blank" rel="noopener noreferrer">WhatsApp</a><a class="footer-contact-link" href="mailto:dreamgrindstore@gmail.com">Email us</a></div><div><strong>Legal</strong><button onclick="showPolicy('privacy')">Privacy</button><button onclick="showPolicy('terms')">Terms</button><button onclick="showPolicy('cookies')">Cookies</button><button type="button" id="dgCookieSettingsButton" hidden onclick="window.DGAnalytics?.openSettings()">Cookie settings</button></div></div><div class="container footer-bottom"><span>© 2026 DreamGrind</span><button onclick="openSupport()">Message the store</button></div></footer>
 
   <div id="modalRoot"></div><div id="toast" class="toast hidden"></div>
-  <script src="script.js?v=20261120-azn-cad-gbp-fix-v4"></script>
+  <script src="script.js?v=20261125-growth-v2"></script>
+  <script src="analytics.js?v=20261125-growth-v2" defer></script>
+  <script src="growth.js?v=20261125-growth-v2" defer></script>
 </body>
 </html>

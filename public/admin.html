@@ -54,6 +54,10 @@
       <div><label>Sale ends at (optional)</label><input id="productSaleEndsAt" type="datetime-local"><small class="muted">A countdown appears only while this real offer is active. The date uses this device's time zone.</small></div>
       <div><label>Category</label><input id="productCategory" placeholder="Gadgets"></div>
       <div><label>Stock</label><input id="productStock" type="number" min="0" step="1" value="0"></div>
+      <div><label>Brand (Merchant Center)</label><input id="productBrand" maxlength="100" placeholder="Actual product brand"></div>
+      <div><label>GTIN (8, 12, 13 or 14 digits)</label><input id="productGtin" inputmode="numeric" pattern="[0-9]{8}|[0-9]{12}|[0-9]{13}|[0-9]{14}" maxlength="14" placeholder="Barcode"></div>
+      <div><label>MPN (if no GTIN)</label><input id="productMpn" maxlength="100" placeholder="Manufacturer part number"></div>
+      <div class="full muted">For Google Merchant Center, use the manufacturer's real brand and barcode/part number. Do not enter DreamGrind as the brand unless DreamGrind is genuinely the product brand.</div>
       <div class="full market-pricing-panel">
         <h3 style="margin:0 0 6px">Country availability &amp; prices</h3>
         <p class="muted" style="margin:0 0 12px">Untick a country to hide this product there and block checkout. Enter Canada prices in CAD and United Kingdom prices in GBP; leave either field blank to auto-convert from USD. Azerbaijan's entered AZN amount is the exact final price customers pay and is not converted or adjusted by USD promotions. Include product cost, sourcing/service fees, delivery, applicable customs/taxes confirmed for that offer, payment fees and DreamGrind's margin before enabling Azerbaijan.</p>
@@ -283,6 +287,9 @@ function editProduct(id){
   $('productSaleEndsAt').value=toLocalDateTimeInput(p.saleEndsAt);
   $('productCategory').value=p.category||'';
   $('productStock').value=p.stock??0;
+  $('productBrand').value=p.brand||'';
+  $('productGtin').value=p.gtin||'';
+  $('productMpn').value=p.mpn||'';
   $('productAvailableUS').checked=p.availabilityByCountry?.US!==false;
   $('productAvailableCA').checked=p.availabilityByCountry?.CA!==false;
   $('productAvailableUK').checked=p.availabilityByCountry?.UK!==false;
@@ -307,7 +314,7 @@ function editProduct(id){
 }
 
 function resetProductForm(){
-  ['productId','productTitle','productPrice','productOldPrice','productSaleEndsAt','productCategory','productDescription','productVariantCombinations','productPriceCA','productPriceUK','productPriceAZ'].forEach(id=>$(id).value='');
+  ['productId','productTitle','productPrice','productOldPrice','productSaleEndsAt','productCategory','productDescription','productVariantCombinations','productPriceCA','productPriceUK','productPriceAZ','productBrand','productGtin','productMpn'].forEach(id=>$(id).value='');
 
   $('productAvailableUS').checked=true;
   $('productAvailableCA').checked=true;
@@ -406,6 +413,9 @@ $('productForm').addEventListener('submit',async e=>{
       saleEndsAt,
       category:$('productCategory').value.trim()||'General',
       stock:Number($('productStock').value||0),
+      brand:$('productBrand').value.trim()||null,
+      gtin:$('productGtin').value.trim()||null,
+      mpn:$('productMpn').value.trim()||null,
       description:$('productDescription').value.trim(),
       variantCombinations,
       countryPrices,

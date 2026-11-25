@@ -1,3 +1,5 @@
 User-agent: *
 Allow: /
-Sitemap: https://dreamgrind-v5.onrender.com/sitemap.xml
+Disallow: /admin.html
+Disallow: /api/
+Sitemap: https://dreamgrind.store/sitemap.xml

@@ -51,6 +51,17 @@
     return configPromise;
   }
 
+  function safeCampaignQuery() {
+    const source = new URLSearchParams(window.location.search);
+    const safe = new URLSearchParams();
+    for (const key of ['utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content']) {
+      const value = String(source.get(key) || '').trim().slice(0, 100);
+      const digits = (value.match(/\d/g) || []).length;
+      if (value && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value) && digits < 7 && !/[<>]/.test(value)) safe.set(key, value);
+    }
+    return safe.toString();
+  }
+
   async function ensureLoaded() {
     if (!consentGranted()) return false;
     if (initialized) return true;
@@ -87,10 +98,12 @@
     document.head.appendChild(script);
     initialized = true;
 
-    const safeLocation = window.location.origin + window.location.pathname + window.location.hash;
+    const campaignQuery = safeCampaignQuery();
+    const safePath = window.location.pathname + (campaignQuery ? `?${campaignQuery}` : '') + window.location.hash;
+    const safeLocation = window.location.origin + safePath;
     window.gtag('event', 'page_view', {
       page_location: safeLocation,
-      page_path: window.location.pathname + window.location.hash,
+      page_path: safePath,
       page_title: document.title
     });
     return true;
@@ -140,7 +153,9 @@
     if (allowAnalytics) ensureLoaded().then(() => flushPendingPurchase()).catch(() => {});
   }
 
-  function openSettings() {
+  async function openSettings() {
+    const config = await getConfig();
+    if (!/^G-[A-Z0-9]+$/.test(String(config?.analyticsMeasurementId || '').trim())) return;
     const c = t();
     document.getElementById('dgConsentBanner')?.remove();
     document.getElementById('dgConsentSettings')?.remove();
@@ -197,6 +212,10 @@
   };
 
   function boot() {
+    getConfig().then(config => {
+      const configured = /^G-[A-Z0-9]+$/.test(String(config?.analyticsMeasurementId || '').trim());
+      document.getElementById('dgCookieSettingsButton')?.toggleAttribute('hidden', !configured);
+    });
     renderBanner();
     if (consentGranted()) ensureLoaded().then(() => flushPendingPurchase()).catch(() => {});
   }
