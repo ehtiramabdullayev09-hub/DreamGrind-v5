@@ -1,0 +1,49 @@
+DREAMGRIND GROWTH 1.0 – ANALYTICS INSTALLER
+===========================================
+
+Bu paket hazırkı DreamGrind-v5 main versiyası üçün hazırlanıb. Məqsəd GA4 satış hunisini əlavə etməkdir. Mövcud ödəniş, səbət, checkout, valyuta, sifariş və admin məntiqi yenidən yazılmır.
+
+PAKETİN TƏRKİBİ
+---------------
+apply-dreamgrind-growth.js   Mövcud layihəyə dəqiq, yoxlanılan dəyişiklikləri tətbiq edən installer.
+public/analytics.js          Yeni, məxfilik seçimi ilə işləyən GA4 modulu.
+INSTALL-AZ.txt               Addım-addım Azərbaycan dilində təlimat.
+
+QURAŞDIRMA
+----------
+1. GitHub-dan DreamGrind-v5 layihəsinin ZIP versiyasını kompüterinə yüklə və çıxart. Layihə qovluğunda package.json, server.js və public qovluğu görünməlidir.
+2. Bu paketin içindəkiləri həmin DreamGrind-v5 əsas qovluğuna çıxart. public qovluğu soruşulsa, Merge/Replace seçərək analytics.js faylının public içində yerləşməsinə icazə ver.
+3. DreamGrind-v5 qovluğunun özünü aç. Ünvan sətrinə powershell yazıb Enter bas.
+4. Bu əmri icra et: node apply-dreamgrind-growth.js
+5. Installer əvvəlcə mövcud dörd faylın ehtiyat nüsxəsini .dreamgrind-growth-backup-* qovluğuna yazır. Sonra dəyişiklikləri tətbiq edir və Node sintaksis yoxlaması aparır. Yoxlama uğursuz olsa, dəyişdirdiyi faylları avtomatik əvvəlki vəziyyətə qaytarır.
+6. Uğurlu nəticədə terminalda beş faylın adları göstəriləcək. Yalnız bundan sonra aşağıdakı beş faylı GitHub main branch-ə yüklə:
+   - public/index.html
+   - public/script.js
+   - public/dreamgrind-premium.css
+   - public/analytics.js  (yeni fayl)
+   - server.js
+7. Render Dashboard > DreamGrind Web Service > Environment bölməsində yeni environment variable əlavə et:
+   Key: GA_MEASUREMENT_ID
+   Value: Google Analytics 4-də yaradılan G-XXXXXXXXXX Measurement ID
+8. Save Changes / Deploy tamamlandıqdan sonra saytı aç. GA Measurement ID düzgün daxil edilibsə, analytics razılıq paneli görünəcək. Analytics yalnız istifadəçi Allow analytics seçəndən sonra yüklənir. Reject optional seçilərsə, GA skripti çağırılmır.
+
+GA4 MEASUREMENT ID NECƏ TAPILIR
+-------------------------------
+1. Google Analytics hesabında DreamGrind üçün GA4 property yarat.
+2. Data Streams > Web seç, əsas müştəri domenini daxil et.
+3. G- ilə başlayan Measurement ID-ni köçür və Render-də GA_MEASUREMENT_ID kimi əlavə et.
+4. Bu ID gizli API açarı deyil, amma onu heç bir halda Epoint private key ilə qarışdırma.
+
+ÖLÇÜLƏN HADİSƏLƏR
+-----------------
+page_view, select_item, view_item, add_to_cart, add_to_wishlist, view_cart, begin_checkout, add_shipping_info, add_payment_info, purchase, generate_lead.
+
+purchase hadisəsi yalnız mövcud server yoxlaması order.paymentStatus === 'Paid' qaytardıqdan sonra hazırlanır. Epoint payment/create və payment/callback kodunun biznes məntiqi dəyişdirilmir. Müştərinin adı, e-poçtu, telefonu və ünvanı GA-ya göndərilmir. Order ID əməliyyat identifikatoru kimi transaction_id sahəsində işlədilir.
+
+VACİB QEYDLƏR
+-------------
+- Installer yalnız göstərilən əsas branch kodunun dəqiq sətirlərini tanıyır. Kod fərqlidirsə, qəsdən dayanacaq və faylları dəyişməyəcək.
+- Installer-i eyni layihəyə ikinci dəfə işlətmə; artıq quraşdırılıbsa, təkrar patch etməyəcək.
+- Render-də EPOINT_PUBLIC_KEY, EPOINT_PRIVATE_KEY, JWT_SECRET, DATABASE_URL və digər mövcud Environment dəyişənlərini silmə və dəyişmə.
+- İlk testləri real ödəniş etmədən et: sayt açılırmı, ölkə/valyuta seçimi işləyirmi, məhsul və səbət işləyirmi, checkout açılırmı. GA4-də DebugView/Realtime yoxla.
+- Bu paket canlı sifarişi test etmək üçün real Epoint ödənişini etmir.
