@@ -9,6 +9,7 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { z } from 'zod';
 import { createDatabase } from './database.js';
+import { isValidGtin } from './lib/gtin.js';
 import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -22,6 +23,12 @@ const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || '';
 const EPOINT_PUBLIC_KEY = process.env.EPOINT_PUBLIC_KEY || '';
 const EPOINT_PRIVATE_KEY = process.env.EPOINT_PRIVATE_KEY || '';
 const PAYMENT_BASE_URL = process.env.PAYMENT_BASE_URL || `http://localhost:${PORT}`;
+// Public identifiers and optional email delivery settings. Never expose provider secrets.
+const GA_MEASUREMENT_ID = (process.env.GA_MEASUREMENT_ID || '').trim();
+const PUBLIC_SITE_URL = (process.env.PUBLIC_SITE_URL || process.env.PAYMENT_BASE_URL || 'https://dreamgrind.store').replace(/\/+$/, '');
+const RESEND_API_KEY = process.env.RESEND_API_KEY || '';
+const RESEND_FROM_EMAIL = process.env.RESEND_FROM_EMAIL || '';
+const CART_RECOVERY_ENABLED = Boolean(RESEND_API_KEY && RESEND_FROM_EMAIL);
 // Azerbaijan checkout is enabled by default. Set AZERBAIJAN_CHECKOUT_ENABLED=false only for an emergency pause.
 const AZERBAIJAN_CHECKOUT_ENABLED = process.env.AZERBAIJAN_CHECKOUT_ENABLED !== 'false';
 const USD_TO_AZN = 1.70;
@@ -146,6 +153,8 @@ if (!ADMIN_EMAIL || !ADMIN_PASSWORD) {
 
 const db = await createDatabase();
 db.data.checkoutTokens ||= {};
+db.data.reviews ||= [];
+db.data.cartRecoveries ||= [];
 
 const app = express();
 app.set('trust proxy', 1);
@@ -155,11 +164,37 @@ app.use(express.json({ limit: '100kb' }));
 app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser());
 app.use(rateLimit({ windowMs: 15 * 60 * 1000, limit: 300, standardHeaders: 'draft-8', legacyHeaders: false }));
+
+function escapeXml(value) {
+  return String(value ?? '').replace(/[<>&"']/g, ch => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;', "'": '&apos;' }[ch]));
+}
+app.get('/robots.txt', (_req, res) => {
+  res.type('text/plain').send(`User-agent: *
+Allow: /
+Disallow: /admin.html
+Disallow: /api/
+Sitemap: ${PUBLIC_SITE_URL}/sitemap.xml
+`);
+});
+app.get('/sitemap.xml', (_req, res) => {
+  const urls = [`${PUBLIC_SITE_URL}/`];
+  const sitemapMarkets = ['United States', 'Canada', 'United Kingdom', 'Azerbaijan'];
+  for (const product of db.data.products) {
+    if (product && product.id != null && sitemapMarkets.some(country => isProductAvailableForCountry(product, country))) {
+      urls.push(`${PUBLIC_SITE_URL}/?product=${encodeURIComponent(product.id)}`);
+    }
+  }
+  const body = `<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${urls.map(url => `<url><loc>${escapeXml(url)}</loc></url>`).join('')}</urlset>`;
+  res.type('application/xml').set('Cache-Control', 'public, max-age=900').send(body);
+});
 app.use(express.static(path.join(__dirname, 'public')));
 
 const authLimiter = rateLimit({ windowMs: 15 * 60 * 1000, limit: 20, standardHeaders: 'draft-8', legacyHeaders: false });
 const orderLimiter = rateLimit({ windowMs: 15 * 60 * 1000, limit: 12, standardHeaders: 'draft-8', legacyHeaders: false, message: { error: 'Too many checkout attempts. Please try again shortly.' } });
 const contactLimiter = rateLimit({ windowMs: 15 * 60 * 1000, limit: 6, standardHeaders: 'draft-8', legacyHeaders: false, message: { error: 'Too many messages. Please try again later.' } });
+const reviewLimiter = rateLimit({ windowMs: 60 * 60 * 1000, limit: 5, standardHeaders: 'draft-8', legacyHeaders: false, message: { error: 'Too many review attempts. Please try again later.' } });
+const cartRecoveryLimiter = rateLimit({ windowMs: 60 * 60 * 1000, limit: 8, standardHeaders: 'draft-8', legacyHeaders: false, message: { error: 'Too many cart reminder requests. Please try again later.' } });
 const emailSchema = z.string().trim().email().max(254);
 const registerSchema = z.object({
   name: z.string().trim().min(2).max(80),
@@ -271,7 +306,7 @@ function setSession(res, user) {
   });
 }
 function sanitizeUser(user) {
-  return { id: user.id, name: user.name, email: user.email, role: user.role, createdAt: user.createdAt };
+  return { id: user.id, name: user.name, email: user.email, role: user.role, createdAt: user.createdAt, loyaltyPoints: Math.max(0, Number(user.loyaltyPoints) || 0) };
 }
 function getSessionUser(req) {
   const token = req.cookies.dg_session;
@@ -341,7 +376,13 @@ if (azMarketMigrationChanged) await db.write();
 await ensureAdmin();
 
 app.get('/api/health', (_req, res) => res.json({ ok: true, service: 'dreamgrind-api' }));
-app.get('/api/store-config', (_req, res) => res.set('Cache-Control', 'no-store').json({ azerbaijanCheckoutEnabled: AZERBAIJAN_CHECKOUT_ENABLED, azerbaijanShippingQuoteRequired: false }));
+app.get('/api/store-config', (_req, res) => res.set('Cache-Control', 'no-store').json({
+  azerbaijanCheckoutEnabled: AZERBAIJAN_CHECKOUT_ENABLED,
+  azerbaijanShippingQuoteRequired: false,
+  analyticsMeasurementId: GA_MEASUREMENT_ID,
+  cartRecoveryEnabled: CART_RECOVERY_ENABLED,
+  publicSiteUrl: PUBLIC_SITE_URL
+}));
 
 app.post('/api/auth/register', authLimiter, async (req, res) => {
   const parsed = registerSchema.safeParse(req.body);
@@ -350,7 +391,7 @@ app.post('/api/auth/register', authLimiter, async (req, res) => {
   const normalizedEmail = email.toLowerCase();
   if (db.data.users.some(u => u.email === normalizedEmail)) return res.status(409).json({ error: 'An account with this email already exists.' });
   const passwordHash = await bcrypt.hash(password, 12);
-  const user = { id: nextId('USR', db.data.users), name, email: normalizedEmail, passwordHash, role: 'customer', createdAt: new Date().toISOString() };
+  const user = { id: nextId('USR', db.data.users), name, email: normalizedEmail, passwordHash, role: 'customer', loyaltyPoints: 0, createdAt: new Date().toISOString() };
   db.data.users.push(user);
   await db.write();
   setSession(res, user);
@@ -377,7 +418,152 @@ app.get('/api/auth/me', (req, res) => {
   res.json({ user: user ? sanitizeUser(user) : null });
 });
 
-app.get('/api/products', (_req, res) => res.json({ products: db.data.products }));
+app.get('/api/products', (_req, res) => {
+  const paidOrders = db.data.orders.filter(order => order.paymentStatus === 'Paid');
+  const sold = new Map();
+  for (const order of paidOrders) {
+    for (const item of (Array.isArray(order.items) ? order.items : [])) {
+      const id = Number(item.id);
+      if (Number.isInteger(id)) sold.set(id, (sold.get(id) || 0) + Math.max(0, Number(item.qty) || 0));
+    }
+  }
+  const reviewStats = new Map();
+  for (const review of (db.data.reviews || []).filter(item => item.verifiedPurchase === true)) {
+    const bucket = reviewStats.get(Number(review.productId)) || { sum: 0, count: 0 };
+    bucket.sum += Number(review.rating) || 0;
+    bucket.count += 1;
+    reviewStats.set(Number(review.productId), bucket);
+  }
+  res.set('Cache-Control', 'no-store').json({ products: db.data.products.map(product => {
+    const stats = reviewStats.get(Number(product.id));
+    return {
+      ...product,
+      unitsSold: sold.get(Number(product.id)) || 0,
+      rating: stats?.count ? Number((stats.sum / stats.count).toFixed(1)) : null,
+      reviews: stats?.count || 0
+    };
+  }) });
+});
+
+app.get('/feed/google.xml', (req, res) => {
+  const code = String(req.query.country || 'US').toUpperCase();
+  const countries = { US: 'United States', CA: 'Canada', UK: 'United Kingdom', AZ: 'Azerbaijan' };
+  if (!Object.prototype.hasOwnProperty.call(countries, code)) return res.status(400).type('text/plain').send('Unsupported country.');
+  const currency = ({ US: 'USD', CA: 'CAD', UK: 'GBP', AZ: 'AZN' })[code];
+  const items = db.data.products.filter(product => isProductAvailableForCountry(product, countries[code])
+    && !(Array.isArray(product.variantCombinations) && product.variantCombinations.length)
+    && !(Array.isArray(product.variants) && product.variants.length))
+    .map(product => {
+      const images = (Array.isArray(product.images) ? product.images : []).concat(product.image || []).filter(url => /^https?:\/\//i.test(String(url || '')));
+      const validGtin = isValidGtin(product.gtin);
+      const hasIdentifier = validGtin || Boolean(String(product.mpn || '').trim());
+      if (!images.length || !String(product.brand || '').trim() || !hasIdentifier || !(Number(product.stock) > 0)) return null;
+      const price = effectiveProductPriceForCountry(product, countries[code]);
+      if (!(Number.isFinite(price) && price > 0)) return null;
+      const description = String(product.description || product.title || '').replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 4500);
+      const availability = 'in_stock';
+      const shippingCountry = code === 'UK' ? 'GB' : code;
+      return `<item><g:id>${escapeXml(product.id)}</g:id><g:title>${escapeXml(product.title)}</g:title><g:description>${escapeXml(description)}</g:description><g:link>${escapeXml(`${PUBLIC_SITE_URL}/?product=${encodeURIComponent(product.id)}`)}</g:link><g:image_link>${escapeXml(images[0])}</g:image_link>${images.slice(1, 10).map(url => `<g:additional_image_link>${escapeXml(url)}</g:additional_image_link>`).join('')}<g:availability>${availability}</g:availability><g:condition>new</g:condition><g:price>${price.toFixed(2)} ${currency}</g:price><g:brand>${escapeXml(product.brand)}</g:brand><g:product_type>${escapeXml(product.category || 'General')}</g:product_type>${validGtin ? `<g:gtin>${escapeXml(product.gtin)}</g:gtin>` : `<g:mpn>${escapeXml(product.mpn)}</g:mpn>`}<g:shipping><g:country>${shippingCountry}</g:country><g:service>Free shipping</g:service><g:price>0.00 ${currency}</g:price></g:shipping></item>`;
+    }).filter(Boolean);
+  const xml = `<?xml version="1.0" encoding="UTF-8"?><rss version="2.0" xmlns:g="http://base.google.com/ns/1.0"><channel><title>DreamGrind ${code}</title><link>${escapeXml(PUBLIC_SITE_URL)}</link><description>DreamGrind product feed for ${countries[code]}</description>${items.join('')}</channel></rss>`;
+  res.type('application/xml').set('Cache-Control', 'public, max-age=900').send(xml);
+});
+
+app.get('/api/reviews/:productId', (req, res) => {
+  const productId = Number(req.params.productId);
+  if (!Number.isInteger(productId) || productId < 1) return res.status(400).json({ error: 'Invalid product.' });
+  const reviews = (db.data.reviews || []).filter(review => Number(review.productId) === productId && review.verifiedPurchase === true)
+    .sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)))
+    .slice(0, 50)
+    .map(review => ({ id: review.id, rating: review.rating, title: review.title, text: review.text, customerName: review.customerName, verifiedPurchase: true, createdAt: review.createdAt }));
+  res.set('Cache-Control', 'no-store').json({ reviews });
+});
+
+app.post('/api/reviews', reviewLimiter, async (req, res) => {
+  const schema = z.object({
+    productId: z.coerce.number().int().positive(),
+    orderId: z.string().trim().min(5).max(40),
+    email: emailSchema,
+    rating: z.number().int().min(1).max(5),
+    title: z.string().trim().max(100).optional().default(''),
+    text: z.string().trim().min(10).max(1500)
+  });
+  const parsed = schema.safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: 'Enter your order number, checkout email, a 1–5 star rating and a review of at least 10 characters.' });
+  const { productId, orderId, email, rating, title, text: reviewText } = parsed.data;
+  const product = db.data.products.find(item => Number(item.id) === productId);
+  if (!product) return res.status(404).json({ error: 'Product not found.' });
+  const order = db.data.orders.find(item => String(item.id).toUpperCase() === orderId.toUpperCase() && String(item.email || '').toLowerCase() === email.toLowerCase() && item.paymentStatus === 'Paid');
+  if (!order || !(Array.isArray(order.items) ? order.items : []).some(item => Number(item.id) === productId)) {
+    return res.status(403).json({ error: 'We could not verify a paid purchase of this product with those order details.' });
+  }
+  if ((db.data.reviews || []).some(review => String(review.orderId).toUpperCase() === order.id.toUpperCase() && Number(review.productId) === productId)) {
+    return res.status(409).json({ error: 'A review for this product has already been submitted for this order.' });
+  }
+  const review = {
+    id: nextId('REV', db.data.reviews), productId, orderId: order.id, rating, title, text: reviewText,
+    customerName: String(order.name || 'Customer').trim().split(/\s+/)[0].slice(0, 40),
+    verifiedPurchase: true, createdAt: new Date().toISOString()
+  };
+  db.data.reviews.unshift(review);
+  await db.write();
+  res.status(201).json({ ok: true, review: { id: review.id, rating: review.rating, title: review.title, text: review.text, customerName: review.customerName, verifiedPurchase: true, createdAt: review.createdAt } });
+});
+
+app.post('/api/cart-recovery', cartRecoveryLimiter, async (req, res) => {
+  if (!CART_RECOVERY_ENABLED) return res.status(503).json({ error: 'Cart reminders are not configured yet.' });
+  const schema = z.object({
+    email: emailSchema, consent: z.literal(true),
+    country: z.enum(['United States', 'Canada', 'United Kingdom', 'Azerbaijan']),
+    items: z.array(z.object({ id: z.coerce.number().int().positive(), qty: z.coerce.number().int().min(1).max(20), variantColor: z.string().trim().max(60).nullable().optional(), variantSize: z.string().trim().max(60).nullable().optional() })).min(1).max(12)
+  });
+  const parsed = schema.safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: 'Please check the reminder details.' });
+  const { email, country, items } = parsed.data;
+  const summary = [];
+  for (const item of items) {
+    const product = db.data.products.find(p => Number(p.id) === item.id);
+    if (!product || !isProductAvailableForCountry(product, country)) continue;
+    const hasVariants = Array.isArray(product.variantCombinations) && product.variantCombinations.length > 0;
+    const variant = hasVariants ? findVariantCombination(product, item.variantColor, item.variantSize) : null;
+    if (hasVariants && !variant) continue;
+    const price = variant ? effectiveVariantPriceForCountry(product, variant, country) : effectiveProductPriceForCountry(product, country);
+    summary.push({ id: product.id, title: String(product.title || 'DreamGrind product').slice(0, 160), qty: item.qty, price: Number(price.toFixed(2)), url: `${PUBLIC_SITE_URL}/?product=${encodeURIComponent(product.id)}` });
+  }
+  if (!summary.length) return res.status(400).json({ error: 'No available products were found in this cart.' });
+  const token = randomBytes(24).toString('hex');
+  const normalizedEmail = email.toLowerCase();
+  let record = (db.data.cartRecoveries || []).find(item => item.email === normalizedEmail && item.status === 'pending');
+  if (!record) {
+    record = { id: nextId('CAR', db.data.cartRecoveries), email: normalizedEmail, createdAt: new Date().toISOString(), status: 'pending', attempts: 0 };
+    db.data.cartRecoveries.unshift(record);
+  }
+  record.country = country;
+  record.items = summary;
+  record.createdAt = new Date().toISOString();
+  record.unsubscribeTokenHash = createHash('sha256').update(token).digest('hex');
+  record.cancelTokenHash = createHash('sha256').update(token).digest('hex');
+  record.consentAt = new Date().toISOString();
+  record.lastAttemptAt = null;
+  await db.write();
+  res.status(202).json({ ok: true, cancelToken: token });
+});
+
+app.post('/api/cart-recovery/cancel', async (req, res) => {
+  const parsed = z.object({ email: emailSchema, token: z.string().length(48) }).safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: 'Invalid reminder preference.' });
+  const hash = createHash('sha256').update(parsed.data.token).digest('hex');
+  const record = (db.data.cartRecoveries || []).find(item => item.email === parsed.data.email.toLowerCase() && item.cancelTokenHash === hash && item.status === 'pending');
+  if (record) { record.status = 'cancelled'; record.cancelledAt = new Date().toISOString(); await db.write(); }
+  res.json({ ok: true });
+});
+
+app.get('/api/cart-recovery/unsubscribe/:token', async (req, res) => {
+  const tokenHash = createHash('sha256').update(String(req.params.token || '')).digest('hex');
+  const record = (db.data.cartRecoveries || []).find(item => item.unsubscribeTokenHash === tokenHash);
+  if (record) { record.status = 'unsubscribed'; record.unsubscribedAt = new Date().toISOString(); await db.write(); }
+  res.type('html').send('<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>DreamGrind email preferences</title><body style="font:16px system-ui;max-width:620px;margin:12vh auto;padding:24px;color:#17324a"><h1>Email reminders turned off</h1><p>You will not receive further DreamGrind abandoned-cart reminders at this address.</p><a href="/">Return to DreamGrind</a></body></html>');
+});
 
 app.post('/api/newsletter', contactLimiter, async (req, res) => {
   const parsed = z.object({ email: emailSchema }).safeParse(req.body);
@@ -598,11 +784,18 @@ app.post('/api/payment/callback', async (req, res) => {
         return res.status(400).json({ error: 'Unexpected payment operation.' });
       }
       if (order.paymentStatus !== 'Refunded') {
+        const wasAlreadyPaid = order.paymentStatus === 'Paid';
         order.status = 'Processing';
         order.paymentStatus = 'Paid';
         order.paymentTransaction = decoded.transaction || null;
         order.paymentAmount = callbackAmount;
         order.paymentUpdatedAt = new Date().toISOString();
+        if (!wasAlreadyPaid && order.userId && !order.loyaltyPointsAwardedAt) {
+          const customer = db.data.users.find(user => user.id === order.userId);
+          const points = Math.max(0, Math.floor((Number(order.marketTotal ?? order.total) || 0) * (CURRENCY_TO_AZN[countryCodeFromName(order.country)] || 1) / USD_TO_AZN));
+          if (customer && points > 0) { customer.loyaltyPoints = Math.max(0, Number(customer.loyaltyPoints) || 0) + points; order.loyaltyPointsEarned = points; order.loyaltyPointsAwardedAt = new Date().toISOString(); }
+        }
+        for (const recovery of (db.data.cartRecoveries || [])) { if (recovery.email === String(order.email || '').toLowerCase() && recovery.status === 'pending') recovery.status = 'recovered'; }
         if (db.data.checkoutTokens) delete db.data.checkoutTokens[order.id];
       }
     } else if (decoded.status === 'returned') {
@@ -611,6 +804,11 @@ app.post('/api/payment/callback', async (req, res) => {
       order.refundedAt = new Date().toISOString();
       order.paymentTransaction = decoded.transaction || order.paymentTransaction || null;
       order.paymentUpdatedAt = new Date().toISOString();
+      if (order.loyaltyPointsAwardedAt && !order.loyaltyPointsReversedAt && order.userId) {
+        const customer = db.data.users.find(user => user.id === order.userId);
+        if (customer) customer.loyaltyPoints = Math.max(0, (Number(customer.loyaltyPoints) || 0) - (Number(order.loyaltyPointsEarned) || 0));
+        order.loyaltyPointsReversedAt = new Date().toISOString();
+      }
       if (db.data.checkoutTokens) delete db.data.checkoutTokens[order.id];
     } else if (['failed', 'error', 'server_error'].includes(decoded.status)) {
       // A delayed failure callback must never overwrite an already confirmed payment.
@@ -766,6 +964,11 @@ app.patch('/api/admin/orders/:id', requireAdmin, async (req, res) => {
   if (parsed.data.status === 'Refunded') {
     order.paymentStatus = 'Refunded';
     order.refundedAt ||= new Date().toISOString();
+    if (order.loyaltyPointsAwardedAt && !order.loyaltyPointsReversedAt && order.userId) {
+      const customer = db.data.users.find(user => user.id === order.userId);
+      if (customer) customer.loyaltyPoints = Math.max(0, (Number(customer.loyaltyPoints) || 0) - (Number(order.loyaltyPointsEarned) || 0));
+      order.loyaltyPointsReversedAt = new Date().toISOString();
+    }
   }
   await db.write();
   res.json({ order });
@@ -799,7 +1002,10 @@ const adminProductSchema = z.object({
   video: z.string().trim().url().max(1000).nullable().optional(),
 
   stock: z.number().int().min(0).max(100000).optional(),
-  category: z.string().trim().min(2).max(80).optional()
+  category: z.string().trim().min(2).max(80).optional(),
+  brand: z.string().trim().max(100).nullable().optional(),
+  gtin: z.string().trim().refine(isValidGtin, 'Enter a valid GTIN with a correct check digit.').nullable().optional(),
+  mpn: z.string().trim().max(100).nullable().optional()
 });
 app.post('/api/admin/products', requireAdmin, async (req, res) => {
   const parsed = adminProductSchema.safeParse(req.body);
@@ -825,6 +1031,10 @@ app.post('/api/admin/products', requireAdmin, async (req, res) => {
 video: parsed.data.video || null,
     stock: parsed.data.stock ?? 0,
     category: parsed.data.category || 'General',
+    brand: parsed.data.brand || null,
+    gtin: parsed.data.gtin || null,
+    mpn: parsed.data.mpn || null,
+    createdAt: new Date().toISOString(),
     rating: 5,
     reviews: 0,
     badge: 'New'
@@ -876,5 +1086,51 @@ app.use((err, _req, res, _next) => {
   console.error(err);
   res.status(500).json({ error: 'Server error.' });
 });
+
+
+async function processCartRecoveryQueue() {
+  if (!CART_RECOVERY_ENABLED) return;
+  const now = Date.now();
+  const due = (db.data.cartRecoveries || []).filter(record => record.status === 'pending'
+    && now - Date.parse(record.createdAt) >= 2 * 60 * 60 * 1000
+    && (!record.lastAttemptAt || now - Date.parse(record.lastAttemptAt) >= 6 * 60 * 60 * 1000)).slice(0, 10);
+  for (const record of due) {
+    const paidSince = db.data.orders.some(order => {
+      const paidAt = Date.parse(order.paymentUpdatedAt || order.createdAt || '');
+      return String(order.email || '').toLowerCase() === record.email
+        && order.paymentStatus === 'Paid' && Number.isFinite(paidAt) && paidAt >= Date.parse(record.createdAt);
+    });
+    if (paidSince) { record.status = 'recovered'; await db.write(); continue; }
+    const token = randomBytes(24).toString('hex');
+    record.unsubscribeTokenHash = createHash('sha256').update(token).digest('hex');
+    record.lastAttemptAt = new Date().toISOString();
+    record.attempts = (Number(record.attempts) || 0) + 1;
+    await db.write();
+    const rows = (record.items || []).map(item => `<li style="margin:0 0 10px"><a href="${escapeXml(item.url)}">${escapeXml(item.title)}</a> × ${Number(item.qty) || 1}</li>`).join('');
+    const unsubscribeUrl = `${PUBLIC_SITE_URL}/api/cart-recovery/unsubscribe/${token}`;
+    try {
+      const response = await fetch('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${RESEND_API_KEY}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          from: RESEND_FROM_EMAIL, to: [record.email], subject: 'Your DreamGrind finds are still here',
+          html: `<div style="font:15px/1.6 Arial,sans-serif;color:#18334b;max-width:560px;margin:auto"><h1 style="font-size:25px">Still thinking it over?</h1><p>The items you viewed at DreamGrind are still available to explore. Product availability and prices can change, so please check the store for the latest details.</p><ul>${rows}</ul><p><a href="${PUBLIC_SITE_URL}/" style="display:inline-block;padding:12px 18px;background:#087fc2;color:#fff;text-decoration:none;border-radius:8px">Return to DreamGrind</a></p><p style="font-size:12px;color:#6b7d8e">You received this reminder because you explicitly asked DreamGrind to email you about your unfinished checkout. <a href="${unsubscribeUrl}">Unsubscribe from these reminders</a>.</p></div>`
+        })
+      });
+      if (response.ok) { record.status = 'sent'; record.sentAt = new Date().toISOString(); }
+      else { const detail = await response.text().catch(() => ''); record.lastError = `Resend ${response.status}: ${detail.slice(0, 300)}`; console.error('CART RECOVERY EMAIL ERROR:', response.status, detail.slice(0, 300)); }
+      await db.write();
+    } catch (error) {
+      record.lastError = String(error?.message || error).slice(0, 300);
+      console.error('CART RECOVERY EMAIL ERROR:', error);
+      await db.write();
+    }
+  }
+}
+if (CART_RECOVERY_ENABLED) {
+  const cartRecoveryTimer = setInterval(() => { processCartRecoveryQueue().catch(error => console.error('CART RECOVERY WORKER ERROR:', error)); }, 15 * 60 * 1000);
+  cartRecoveryTimer.unref?.();
+  processCartRecoveryQueue().catch(error => console.error('CART RECOVERY WORKER ERROR:', error));
+}
 
 app.listen(PORT, () => console.log(`DreamGrind running at http://localhost:${PORT}`));

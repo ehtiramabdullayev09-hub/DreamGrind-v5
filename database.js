@@ -14,7 +14,9 @@ const emptyData = {
   products: [],
   orders: [],
   messages: [],
-  newsletter: []
+  newsletter: [],
+  reviews: [],
+  cartRecoveries: []
 };
 
 export async function createDatabase() {

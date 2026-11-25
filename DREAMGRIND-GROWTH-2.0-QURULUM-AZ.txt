@@ -1,0 +1,52 @@
+DREAMGRIND GROWTH 2.0 — QURAŞDIRMA QEYDLƏRİ
+
+Bu ZIP layihənin yenilənmiş mənbə kodudur. Saytda avtomatik dəyişiklik etmir. GitHub-a göndərilib Render deploy etdikdən sonra yeniliklər aktiv olacaq.
+
+ƏVVƏLƏCƏ VACİB
+- Render-də mövcud DATABASE_URL dəyişməsin. PostgreSQL bazasını silməyin və yenisini yaratmayın.
+- EPOINT_PUBLIC_KEY və EPOINT_PRIVATE_KEY dəyərlərinə toxunmayın.
+- JWT_SECRET, ADMIN_EMAIL, ADMIN_PASSWORD və PAYMENT_BASE_URL dəyərlərini saxlayın.
+- Epoint ödənişinin yaradılması, imzanın hesablanması/yoxlanması və məbləğ uyğunluğu yoxlaması qorunub. Yalnız server Epoint callback imzasını və məbləğini təsdiqlədikdən sonra ödənişli sifariş üçün əlavə Growth əməliyyatları (xal və xatırlatma statusu) icra olunur.
+
+YENİ ƏLAVƏLƏR
+1. GA4 analitikası və ziyarətçinin ayrıca razılıq seçimi.
+2. Məhsul baxışları, səbət, checkout və yalnız təsdiqlənmiş ödənişdən sonra purchase hadisəsi.
+3. DreamGrind Discovery, Finder və Recently Viewed.
+4. Məhsul səhifəsində əlaqəli məhsullar və endirimsiz Add both to cart.
+5. Ödənişli sifarişlə yoxlanılan Verified Reviews.
+6. Grind Points: yalnız daxil olmuş müştəri üçün, ödəniş uğurla təsdiqlənəndə xal; refund zamanı xallar geri çıxılır. Hələ endirimə çevrilmir.
+7. Çatdırılma/gömrük izahı və FAQ.
+8. İstəyə bağlı, əvvəlcədən işarələnməmiş səbət xatırlatma razılığı. Resend sazlanmayıbsa görünmür və e-poçt göndərmir.
+9. Google Merchant Center üçün ölkə üzrə XML feed, robots.txt və sitemap.xml.
+
+RENDER-Ə ƏLAVƏ EDİLƏCƏK DƏYİŞƏNLƏR
+- GA_MEASUREMENT_ID: Google Analytics 4 > Web data stream bölməsindən G-XXXXXXXXXX formatlı Measurement ID.
+- PUBLIC_SITE_URL: https://dreamgrind.store
+- RESEND_API_KEY: istəyə bağlıdır. Boş saxlasanız səbət xatırlatması aktiv olmayacaq.
+- RESEND_FROM_EMAIL: istəyə bağlıdır. Resend-də təsdiqlənmiş domenə aid göndərən ünvanı yazın, məsələn: DreamGrind <orders@verified-domain.example>
+
+EPOINT AÇARLARINI BU SAHƏLƏRƏ YAZMAYIN. RESEND API KEY-İ HEÇ VAXT FRONTEND FAYLLARINA ƏLAVƏ ETMƏYİN.
+
+DEPLOY ADDIMLARI
+1. GitHub-da mövcud DreamGrind-v5 repozitoriyasını açın.
+2. ZIP-in içindəki faylları repozitoriyanın mövcud faylları ilə yeniləyin. Xüsusilə server.js, database.js, public qovluğu, package.json və package-lock.json saxlanmalıdır.
+3. GitHub commit yaradın. Render avtomatik deploy etməlidir.
+4. Deploy loglarında serverin normal başladığını yoxlayın.
+5. Saytda ölkə seçimini, məhsul variantlarını, səbəti, qonaq checkout-u və Epoint ödənişini test edin. Mümkünsə aşağı məbləğli və ya Epoint tərəfindən təsdiqlənmiş test əməliyyatı edin.
+6. GA4 və Resend dəyişənlərini yalnız öz hesablarınızda düzgün sazladıqdan sonra əlavə edin.
+7. Admin panelində Merchant Center üçün məhsulun real brand, GTIN və ya MPN, şəkil və faktiki stok məlumatını daxil edin.
+
+FEED URL-LƏRİ
+https://dreamgrind.store/feed/google.xml?country=US
+https://dreamgrind.store/feed/google.xml?country=CA
+https://dreamgrind.store/feed/google.xml?country=UK
+https://dreamgrind.store/feed/google.xml?country=AZ
+
+FEED QEYDİ
+Məhsul yalnız həqiqi istehsalçı brendi, GTIN-in düzgün yoxlama rəqəmi və ya MPN, uyğun şəkil, müsbət qiymət və stok > 0 olduqda feed-ə daxil edilir. GTIN/MPN və stok rəqəmlərini uydurmayın. Feed-də görünməyən məhsul üçün əvvəlcə Admin məlumatlarını yoxlayın.
+
+RƏYLƏR
+Rəy yalnız ödənişi Paid olan sifarişdə həmin məhsul varsa və sifariş nömrəsi + checkout e-poçtu uyğun gəlirsə dərc olunur. Eyni sifarişdən eyni məhsula ikinci rəy qəbul edilmir.
+
+YOXLAMA QEYDİ
+JavaScript fayllarının sintaksisi yoxlanılıb. Bu ZIP-dən Epoint canlı ödənişini, Resend çatdırılmasını, GA4 hesabatını və Merchant Center hesabının təsdiqini yoxlamaq mümkün deyil. Bunları canlı servislərdə ayrıca təsdiqləmək lazımdır.

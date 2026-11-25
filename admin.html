@@ -40,7 +40,7 @@
   </div>
 
   <section id="tab-orders" class="panel tab-panel">
-    <div class="top"><div><h2>Orders</h2><div class="muted">Update fulfilment status and tracking numbers.</div></div></div>
+    <div class="top"><div><h2>Orders</h2><div class="muted">Update fulfilment status and tracking numbers. Azerbaijan orders use the same on-site Epoint checkout as other markets; set each product's confirmed all-in AZN price before making it available there.</div></div></div>
     <div id="orders" class="table-wrap" style="margin-top:14px"></div>
   </section>
 
@@ -54,9 +54,13 @@
       <div><label>Sale ends at (optional)</label><input id="productSaleEndsAt" type="datetime-local"><small class="muted">A countdown appears only while this real offer is active. The date uses this device's time zone.</small></div>
       <div><label>Category</label><input id="productCategory" placeholder="Gadgets"></div>
       <div><label>Stock</label><input id="productStock" type="number" min="0" step="1" value="0"></div>
+      <div><label>Brand (Merchant Center)</label><input id="productBrand" maxlength="100" placeholder="Actual product brand"></div>
+      <div><label>GTIN (8, 12, 13 or 14 digits)</label><input id="productGtin" inputmode="numeric" pattern="[0-9]{8}|[0-9]{12}|[0-9]{13}|[0-9]{14}" maxlength="14" placeholder="Barcode"></div>
+      <div><label>MPN (if no GTIN)</label><input id="productMpn" maxlength="100" placeholder="Manufacturer part number"></div>
+      <div class="full muted">For Google Merchant Center, use the manufacturer's real brand and barcode/part number. Do not enter DreamGrind as the brand unless DreamGrind is genuinely the product brand.</div>
       <div class="full market-pricing-panel">
         <h3 style="margin:0 0 6px">Country availability &amp; prices</h3>
-        <p class="muted" style="margin:0 0 12px">Untick a country to hide this product there and block checkout. Canada and UK prices may be auto-converted. Azerbaijan requires a separate AZN price and is disabled by default until delivery terms are confirmed.</p>
+        <p class="muted" style="margin:0 0 12px">Untick a country to hide this product there and block checkout. Enter Canada prices in CAD and United Kingdom prices in GBP; leave either field blank to auto-convert from USD. Azerbaijan's entered AZN amount is the exact final price customers pay and is not converted or adjusted by USD promotions. Include product cost, sourcing/service fees, delivery, applicable customs/taxes confirmed for that offer, payment fees and DreamGrind's margin before enabling Azerbaijan.</p>
         <div class="market-pricing-grid">
           <div class="market-pricing-card">
             <label class="market-availability"><input id="productAvailableUS" type="checkbox" checked> Available in United States</label>
@@ -65,18 +69,18 @@
           <div class="market-pricing-card">
             <label class="market-availability"><input id="productAvailableCA" type="checkbox" checked> Available in Canada</label>
             <label for="productPriceCA">Canada price (CAD)</label>
-            <input id="productPriceCA" type="number" min="0.01" step="0.01" placeholder="Auto-convert from USD">
+            <input id="productPriceCA" type="number" min="0.01" step="0.01" placeholder="Auto-convert USD to CAD">
           </div>
           <div class="market-pricing-card">
             <label class="market-availability"><input id="productAvailableUK" type="checkbox" checked> Available in United Kingdom</label>
             <label for="productPriceUK">United Kingdom price (GBP)</label>
-            <input id="productPriceUK" type="number" min="0.01" step="0.01" placeholder="Auto-convert from USD">
+            <input id="productPriceUK" type="number" min="0.01" step="0.01" placeholder="Auto-convert USD to GBP">
           </div>
           <div class="market-pricing-card">
             <label class="market-availability"><input id="productAvailableAZ" type="checkbox"> Available in Azerbaijan</label>
-            <label for="productPriceAZ">Azerbaijan price (AZN)</label>
-            <input id="productPriceAZ" type="number" min="0.01" step="0.01" placeholder="Enter AZN price">
-            <small class="muted">A valid AZN price is required. Keep this market disabled until the DDP shipping quote is confirmed and shipping-cost handling is configured.</small>
+            <label for="productPriceAZ">Azerbaijan final price (AZN, required to enable)</label>
+            <input id="productPriceAZ" type="number" min="0.01" step="0.01" placeholder="Enter confirmed all-in AZN price">
+            <small class="muted">Enter the final amount the customer will pay. Cover product cost, sourcing/service fees, delivery, applicable customs/taxes confirmed for this product and route, payment fees and DreamGrind's margin. Do not enable Azerbaijan until this price is entered.</small>
           </div>
         </div>
       </div>
@@ -90,7 +94,7 @@ White | Large | 44.99
 
 For products with only colors: Black | — | 39.99
 For products with only sizes: — | Small | 19.99"></textarea>
-        <small class="muted">Write one available combination per line. Use “—” when color or size does not apply. Leave blank for products with no variants. The selected option’s price is used in cart and checkout.</small>
+        <small class="muted">Write one available combination per line. Use “—” when color or size does not apply. Leave blank for products with no variants. The selected option’s price is used in cart and checkout. For Azerbaijan, variant prices are scaled proportionally from the base AZN price using each variant’s USD price; use separate listings when variants have materially different all-in delivery or tax costs.</small>
       </div>
       <div class="full">
         <label for="productDescription">Product description &amp; features</label>
@@ -161,6 +165,8 @@ function renderOrders() {
   }
 
   const statuses = [
+    'Awaiting shipping quote',
+    'Awaiting payment',
     'Processing',
     'Shipped',
     'In transit',
@@ -211,7 +217,12 @@ function renderOrders() {
                 ${o.deliveryNotes ? `<div class="muted">Delivery notes: ${esc(o.deliveryNotes)}</div>` : ''}
               </td>
 
-              <td><strong>${Number(o.total || 0).toFixed(2)} AZN</strong>${o.marketCurrency && o.marketCurrency !== 'AZN' && Number.isFinite(Number(o.marketTotal)) ? `<div class="muted">Customer price: ${Number(o.marketTotal).toFixed(2)} ${esc(o.marketCurrency)}</div>` : ''}</td>
+              <td>
+                <strong>${o.total == null ? 'Shipping quote pending' : `${Number(o.total).toFixed(2)} AZN`}</strong>
+                <div class="muted">Product subtotal: ${Number(o.subtotal || 0).toFixed(2)} AZN</div>
+                ${o.country === 'Azerbaijan' && o.shippingQuoteRequired === true && !['Paid','Refunded'].includes(o.paymentStatus) && o.status !== 'Cancelled' ? `<div style="min-width:170px;margin-top:8px"><label for="azship-${esc(o.id)}">Legacy order delivery fee (AZN)</label><input id="azship-${esc(o.id)}" type="number" min="0" step="0.01" placeholder="Enter delivery fee" value="${o.shipping == null ? '' : Number(o.shipping).toFixed(2)}"><button style="margin-top:6px" onclick="createAzPaymentLink('${esc(o.id)}')">Create Epoint link</button></div>` : ''}
+                ${o.marketCurrency && o.marketCurrency !== 'AZN' && Number.isFinite(Number(o.marketTotal)) ? `<div class="muted">Customer price: ${Number(o.marketTotal).toFixed(2)} ${esc(o.marketCurrency)}</div>` : ''}
+              </td>
 
               <td>
                 <select id="st-${esc(o.id)}">
@@ -242,7 +253,22 @@ function renderOrders() {
   `;
 }
 async function saveOrder(id){try{const status=$('st-'+id).value;const tracking=$('tr-'+id).value.trim();await api('/api/admin/orders/'+encodeURIComponent(id),{method:'PATCH',body:JSON.stringify({status,trackingNumber:tracking||null})});flash('Order updated.');await loadAll()}catch(e){flash(e.message,false)}}
-function renderProducts(){if(!state.products.length){$('products').innerHTML='<p class="muted">No products.</p>';return}$('products').innerHTML=`<table><thead><tr><th>ID</th><th>Product</th><th>US price</th><th>AZ price</th><th>Category</th><th>Markets</th><th>Stock</th><th>Actions</th></tr></thead><tbody>${state.products.map(p=>{const m=p.availabilityByCountry||{};const markets=[['US',m.US!==false],['CA',m.CA!==false],['UK',m.UK!==false],['AZ',m.AZ===true]].map(([c,on])=>`<span style="color:${on?'#166534':'#b91c1c'}">${c} ${on?'✓':'×'}</span>`).join(' · ');return `<tr><td>${p.id}</td><td><strong>${esc(p.title)}</strong>${p.image?`<div class="muted">Image set</div>`:''}</td><td>$${Number(p.price||0).toFixed(2)}</td><td>${Number(p.countryPrices?.AZ)>0?`${Number(p.countryPrices.AZ).toFixed(2)} AZN`:'—'}</td><td>${esc(p.category||'General')}</td><td>${markets}</td><td>${Number.isFinite(Number(p.stock))?p.stock:'—'}</td><td class="row-actions"><button onclick="editProduct(${p.id})">Edit</button><button class="danger" onclick="deleteProduct(${p.id})">Delete</button></td></tr>`}).join('')}</tbody></table>`}
+async function createAzPaymentLink(id){
+  const field=$('azship-'+id);
+  if(!field?.value?.trim()){flash('Enter the confirmed delivery fee in AZN.',false);return;}
+  const fee=Number(field.value);
+  if(!Number.isFinite(fee)||fee<0){flash('Enter a valid delivery fee in AZN.',false);return;}
+  if(!confirm(`Confirm the Azerbaijan delivery fee as ${fee.toFixed(2)} AZN and create an Epoint payment link?`))return;
+  try{
+    const result=await api('/api/admin/orders/'+encodeURIComponent(id)+'/payment-link',{method:'POST',body:JSON.stringify({shippingFeeAzn:fee})});
+    let copied=false;
+    try{await navigator.clipboard.writeText(result.redirect_url);copied=true;}catch(_){ }
+    flash(`Payment link created. Final total: ${Number(result.total).toFixed(2)} AZN. ${copied?'Link copied to clipboard.':'Copy the link from the prompt.'}`);
+    window.prompt(`Send this secure Epoint payment link to the customer for order ${id}:`,result.redirect_url);
+    await loadAll();
+  }catch(e){flash(e.message,false);}
+}
+function renderProducts(){if(!state.products.length){$('products').innerHTML='<p class="muted">No products.</p>';return}$('products').innerHTML=`<table><thead><tr><th>ID</th><th>Product</th><th>US price</th><th>AZ price</th><th>Category</th><th>Markets</th><th>Stock</th><th>Actions</th></tr></thead><tbody>${state.products.map(p=>{const m=p.availabilityByCountry||{};const markets=[['US',m.US!==false],['CA',m.CA!==false],['UK',m.UK!==false],['AZ',m.AZ===true && Number(p.countryPrices?.AZ)>0]].map(([c,on])=>`<span style="color:${on?'#166534':'#b91c1c'}">${c} ${on?'✓':'×'}</span>`).join(' · ');return `<tr><td>${p.id}</td><td><strong>${esc(p.title)}</strong>${p.image?`<div class="muted">Image set</div>`:''}</td><td>$${Number(p.price||0).toFixed(2)}</td><td>${Number(p.countryPrices?.AZ)>0?`${Number(p.countryPrices.AZ).toFixed(2)} AZN`:'Not set'}</td><td>${esc(p.category||'General')}</td><td>${markets}</td><td>${Number.isFinite(Number(p.stock))?p.stock:'—'}</td><td class="row-actions"><button onclick="editProduct(${p.id})">Edit</button><button class="danger" onclick="deleteProduct(${p.id})">Delete</button></td></tr>`}).join('')}</tbody></table>`}
 function toLocalDateTimeInput(value){
   if(!value)return '';
   const d=new Date(value);
@@ -261,6 +287,9 @@ function editProduct(id){
   $('productSaleEndsAt').value=toLocalDateTimeInput(p.saleEndsAt);
   $('productCategory').value=p.category||'';
   $('productStock').value=p.stock??0;
+  $('productBrand').value=p.brand||'';
+  $('productGtin').value=p.gtin||'';
+  $('productMpn').value=p.mpn||'';
   $('productAvailableUS').checked=p.availabilityByCountry?.US!==false;
   $('productAvailableCA').checked=p.availabilityByCountry?.CA!==false;
   $('productAvailableUK').checked=p.availabilityByCountry?.UK!==false;
@@ -285,7 +314,7 @@ function editProduct(id){
 }
 
 function resetProductForm(){
-  ['productId','productTitle','productPrice','productOldPrice','productSaleEndsAt','productCategory','productDescription','productVariantCombinations','productPriceCA','productPriceUK','productPriceAZ'].forEach(id=>$(id).value='');
+  ['productId','productTitle','productPrice','productOldPrice','productSaleEndsAt','productCategory','productDescription','productVariantCombinations','productPriceCA','productPriceUK','productPriceAZ','productBrand','productGtin','productMpn'].forEach(id=>$(id).value='');
 
   $('productAvailableUS').checked=true;
   $('productAvailableCA').checked=true;
@@ -367,8 +396,8 @@ $('productForm').addEventListener('submit',async e=>{
     const ukPriceValue=$('productPriceUK').value.trim();
     const azPriceValue=$('productPriceAZ').value.trim();
     const countryPrices={US:price,CA:caPriceValue?Number(caPriceValue):null,UK:ukPriceValue?Number(ukPriceValue):null,AZ:azPriceValue?Number(azPriceValue):null};
-    if($('productAvailableAZ').checked && !countryPrices.AZ){
-      flash('Enter an Azerbaijan price in AZN before enabling this market.',false);
+    if($('productAvailableAZ').checked && !(Number(countryPrices.AZ)>0)){
+      flash('Enter the final all-in Azerbaijan price in AZN before enabling this product for Azerbaijan.',false);
       return;
     }
     for(const [countryCode,countryPrice] of Object.entries(countryPrices)){
@@ -384,6 +413,9 @@ $('productForm').addEventListener('submit',async e=>{
       saleEndsAt,
       category:$('productCategory').value.trim()||'General',
       stock:Number($('productStock').value||0),
+      brand:$('productBrand').value.trim()||null,
+      gtin:$('productGtin').value.trim()||null,
+      mpn:$('productMpn').value.trim()||null,
       description:$('productDescription').value.trim(),
       variantCombinations,
       countryPrices,

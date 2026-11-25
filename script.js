@@ -257,7 +257,21 @@ const uiCopy = {
   'How to use': 'İstifadə qaydası', 'Specifications': 'Texniki xüsusiyyətlər',
   "What's included": 'Qutunun içindəkilər', 'Ingredients': 'Tərkibi',
   'Care instructions': 'Qulluq qaydaları', 'Shipping information': 'Çatdırılma məlumatı',
-  'Returns & refunds': 'Qaytarılma və geri ödənişlər', 'Overview': 'Ümumi məlumat', 'Features': 'Xüsusiyyətlər'
+  'Returns & refunds': 'Qaytarılma və geri ödənişlər', 'Overview': 'Ümumi məlumat', 'Features': 'Xüsusiyyətlər',
+  'THE DREAMGRIND EDIT': 'DREAMGRIND SEÇİMLƏRİ', 'Find something useful.': 'Faydalı bir şey kəşf edin.',
+  'Explore products currently available for your selected delivery country.': 'Seçdiyiniz çatdırılma ölkəsində mövcud məhsullara baxın.',
+  'A BETTER WAY TO BROWSE': 'DAHA RAHAT AXTARIŞ', 'DreamGrind Finder': 'DreamGrind Məhsul Tapıcısı',
+  'Choose what you need and your budget. We will narrow the catalogue to products available in your selected market.': 'Ehtiyacınızı və büdcənizi seçin. Kataloqu seçdiyiniz bazarda mövcud məhsullara uyğun daraldacağıq.',
+  'Category': 'Kateqoriya', 'All categories': 'Bütün kateqoriyalar', 'Maximum budget': 'Maksimum büdcə',
+  'Any budget': 'İstənilən büdcə', 'Under 25': '25-dən aşağı', 'Under 50': '50-dən aşağı',
+  'Under 100': '100-dən aşağı', 'Under 200': '200-dən aşağı',
+  'Up to 25': '25-ə qədər', 'Up to 50': '50-yə qədər', 'Up to 100': '100-ə qədər', 'Up to 200': '200-ə qədər', 'What are you looking for?': 'Nə axtarırsınız?',
+  'e.g. pet, home, travel': 'məsələn: ev heyvanı, ev, səyahət', 'Find products': 'Məhsul tap',
+  'PICK UP WHERE YOU LEFT OFF': 'QALDIĞINIZ YERDƏN DAVAM EDİN', 'Recently viewed': 'Son baxılanlar',
+  'HERE TO HELP': 'KÖMƏK ÜÇÜN BURADAYIQ', 'Good questions. Clear answers.': 'Suallarınıza aydın cavablar.',
+  'A few useful details before you place an order.': 'Sifariş verməzdən əvvəl faydalı məlumatlar.',
+  'Cookie settings': 'Kuki tənzimləmələri', 'Grind Points:': 'Grind xalları:',
+  '(earned on paid orders while signed in; not redeemable yet)': '(hesaba daxil olaraq ödənilmiş sifarişlərdən qazanılır; hələ istifadə edilmir)'
 };
 
 const uiCopyReverse = Object.fromEntries(Object.entries(uiCopy).map(([en, az]) => [az, en]));
@@ -385,6 +399,7 @@ function setLanguage(language) {
 
   applyLanguage(lang);
   syncCountryPicker();
+  window.dispatchEvent(new Event('dg:language-change'));
 }
 
 function initLanguage() {
@@ -404,6 +419,7 @@ async function loadProducts() {
         products = data.products || [];
         if (currencyConfig().country !== 'AZ') removeUnavailableCartItemsForCurrentCountry();
         renderProducts();
+        window.dispatchEvent(new Event('dg:products-ready'));
         const initialProductId = new URLSearchParams(window.location.search).get('product');
         if (initialProductId) {
           productPageScrollY = 0;
@@ -479,6 +495,7 @@ function setCountry(country) {
   syncCountryPicker();
   const removedUnavailable = removeUnavailableCartItemsForCurrentCountry();
   renderProducts();
+  window.dispatchEvent(new Event('dg:market-change'));
 
   if ($('modalRoot')?.querySelector('.drawer')) {
     openCart();
@@ -1028,7 +1045,7 @@ function renderProductPage(id) {
   const shippingAccordion = hasCustomShipping ? '' : `
     <details class="product-page-accordion">
       <summary>Shipping &amp; returns</summary>
-      <div class="product-page-accordion-content"><p>DreamGrind accepts orders for the United States, Canada, the United Kingdom and Azerbaijan. For Azerbaijan, only products with a confirmed final AZN price are available for normal checkout. The displayed price includes delivery and applicable import charges confirmed for that product and route. Please contact DreamGrind before returning an item so return instructions can be provided.</p></div>
+      <div class="product-page-accordion-content"><p>DreamGrind accepts orders for the United States, Canada, the United Kingdom and Azerbaijan. For Azerbaijan, only products with a confirmed final AZN price are available for normal checkout. The displayed price includes delivery and only those import or handling charges explicitly confirmed for that exact offer. DreamGrind does not promise DDP or prepaid customs for every order; any charge not clearly stated as included may be payable by the recipient. Please contact DreamGrind before returning an item so return instructions can be provided.</p></div>
     </details>`;
   const saleActive = isProductSaleActive(p);
   const discount = saleActive ? productDiscountPercent(p) : 0;
@@ -1072,7 +1089,7 @@ function renderProductPage(id) {
             <div class="product-page-price" id="productPriceBlock"><span id="productCurrentPrice">${availableInMarket ? displayCountryPrice(currentPrice) : (currencyConfig().country === 'AZ' ? 'Not yet listed for Azerbaijan' : 'Not available in this market')}</span>${availableInMarket ? saleMarkup : ''}</div>
             ${availableInMarket ? '' : `<div class="note-box" role="status">This product is not available for delivery to ${escapeHtml(currencyConfig().country === 'CA' ? 'Canada' : currencyConfig().country === 'UK' ? 'the United Kingdom' : currencyConfig().country === 'AZ' ? 'Azerbaijan' : 'the United States')}.</div>`}
             ${showCountdown ? `<div class="product-page-sale-offer" id="productSaleOffer"><span>Limited-time offer ends in</span><strong id="productSaleCountdown" aria-live="off"></strong></div>` : ''}
-            <div class="product-page-shipping"><span aria-hidden="true">✓</span> ${currencyConfig().country === 'AZ' ? 'Delivery & applicable taxes included' : 'Free shipping'} <span class="product-page-dot">·</span> Secure checkout by Epoint</div>
+            <div class="product-page-shipping"><span aria-hidden="true">✓</span> ${currencyConfig().country === 'AZ' ? 'Delivery included' : 'Free shipping'} <span class="product-page-dot">·</span> Secure checkout by Epoint</div>
 
             ${featureMarkup}
             ${variants}
@@ -1184,6 +1201,20 @@ function cartSubtotal() {
   }, 0);
 }
 function shippingCost() { return 0; }
+function dgAnalyticsItemsFor(items) {
+  return (Array.isArray(items) ? items : []).map(item => {
+    const product = products.find(p => Number(p.id) === Number(item.id));
+    if (!product) return null;
+    const price = Number(cartItemPrice(product, item));
+    const variantParts = [item.variantColor, item.variantSize, item.variant].filter(Boolean);
+    return { item_id: String(product.id), item_name: String(product.title || 'DreamGrind product').slice(0, 100), item_category: String(product.category || 'General').slice(0, 80), ...(variantParts.length ? { item_variant: variantParts.join(' / ').slice(0, 100) } : {}), price: Number((Number.isFinite(price) ? price : 0).toFixed(2)), quantity: Math.max(1, Number(item.qty) || 1) };
+  }).filter(Boolean);
+}
+function dgAnalyticsValueFor(items) {
+  const config = currencyConfig();
+  const gaItems = dgAnalyticsItemsFor(items);
+  return { currency: config.currency, value: Number(gaItems.reduce((sum, item) => sum + item.price * item.quantity, 0).toFixed(2)), items: gaItems };
+}
 function openCart() {
   const c = currencyConfig();
   const lines = state.cart.length ? state.cart.map(item => {
@@ -1243,6 +1274,7 @@ async function startCheckout(items = null) {
   // Remember checkout mode across the Epoint redirect, so a Buy now payment
   // never clears other items already saved in the customer's cart.
   pendingCheckoutItems = checkoutItems;
+  window.DGAnalytics?.track('begin_checkout', dgAnalyticsValueFor(checkoutItems));
   sessionStorage.setItem('dg_checkout_mode', Array.isArray(items) ? 'buy-now' : 'cart');
 
   let user = null;
@@ -1521,7 +1553,7 @@ function handleCheckoutCountryChange() {
     function showRegisterForm() { $('loginTab').classList.remove('active'); $('registerTab').classList.add('active'); $('accountBody').innerHTML = `<form class="form-grid" onsubmit="registerUser(event)"><label>Full name<input id="regName" required autocomplete="name"></label><label>Email<input id="regEmail" type="email" required autocomplete="email"></label><label>Password<input id="regPassword" minlength="8" type="password" required autocomplete="new-password"></label><button class="primary-button" type="submit">Create account</button></form>`; }
     async function registerUser(e) { e.preventDefault(); const r = await fetch('/api/auth/register', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify({ name: $('regName').value.trim(), email: $('regEmail').value.trim(), password: $('regPassword').value }) }); const d = await r.json(); if (!r.ok) { showToast(d.error || 'Unable to create account'); return; } showToast('Account created'); openAccount(); }
     async function loginUser(e) { e.preventDefault(); const r = await fetch('/api/auth/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify({ email: $('loginEmail').value.trim(), password: $('loginPassword').value }) }); const d = await r.json(); if (!r.ok) { showToast(d.error || 'Unable to sign in'); return; } showToast('Logged in'); openAccount(); }
-    function accountHome(user) { return `<p>Welcome back, <strong>${escapeHtml(user.name)}</strong>.</p><div class="note-box">Email: ${escapeHtml(user.email)}<br>Account type: ${user.role === 'admin' ? 'Admin' : 'Customer'}</div><div style="display:grid;gap:8px;margin-top:14px"><button class="secondary-button" onclick="openOrderHistory()">My orders</button><button class="secondary-button" onclick="openSupport()">Message the store</button>${user.role === 'admin' ? '<button class="primary-button" onclick="window.location.href=\'/admin.html\'">Admin panel</button>' : ''}<button class="primary-button" onclick="logoutUser()">Log out</button></div>`; }
+    function accountHome(user) { return `<p>Welcome back, <strong>${escapeHtml(user.name)}</strong>.</p><div class="note-box">Email: ${escapeHtml(user.email)}<br>Account type: ${user.role === 'admin' ? 'Admin' : 'Customer'}<br><strong>Grind Points:</strong> ${Math.max(0, Number(user.loyaltyPoints) || 0)} <span class="muted">(earned on paid orders while signed in; not redeemable yet)</span></div><div style="display:grid;gap:8px;margin-top:14px"><button class="secondary-button" onclick="openOrderHistory()">My orders</button><button class="secondary-button" onclick="openSupport()">Message the store</button>${user.role === 'admin' ? '<button class="primary-button" onclick="window.location.href=\'/admin.html\'">Admin panel</button>' : ''}<button class="primary-button" onclick="logoutUser()">Log out</button></div>`; }
     async function logoutUser() { await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' }); openAccount(); }
     async function openOrderHistory() { const r = await fetch('/api/orders/me', { credentials: 'include' }); const d = await r.json(); if (!r.ok) { showToast('Please log in first'); return; } const orders = d.orders || []; $('modalRoot').innerHTML = `<div class="modal-overlay" onclick="closeModal(event)"><div class="modal"><div class="modal-head"><h2>My orders</h2><button class="close-btn" onclick="closeModal()">✕</button></div>${orders.length ? orders.map(o => `<div class="note-box" style="margin-bottom:9px"><strong>${escapeHtml(o.id)}</strong><br>${new Date(o.createdAt).toLocaleString()}<br>Status: ${escapeHtml(o.status)}<br>Total: ${o.total == null ? 'Delivery quote pending' : money(o.total, 'AZN')}<br><button class="text-button" onclick="closeModal();$('trackInput').value='${o.id}';trackOrder();location.hash='track'">Track order</button></div>`).join('') : '<p class="muted">No orders yet.</p>'}</div></div>`; }
     async function openSupport() {
@@ -1649,6 +1681,11 @@ function handleCheckoutCountryChange() {
       return;
     }
 
+    if (window.DGAnalytics?.getConsent?.() === 'granted') {
+      const checkoutAnalytics = dgAnalyticsValueFor(checkoutItems);
+      sessionStorage.setItem('dg_analytics_checkout', JSON.stringify(checkoutAnalytics));
+      window.DGAnalytics.track('add_payment_info', { ...checkoutAnalytics, payment_type: 'Epoint' });
+    }
     window.location.href = payment.redirect_url;
   } catch (error) {
     console.error('CHECKOUT ERROR:', error);
@@ -1682,10 +1719,14 @@ function handleCheckoutCountryChange() {
         <p>DreamGrind accepts orders for customers in the United States, Canada, the United Kingdom and Azerbaijan. For Azerbaijan, only products with a confirmed final AZN price are available for normal checkout. The displayed price includes the product, delivery and applicable import charges confirmed for that specific offer.</p>
 
         <h3>Shipping cost</h3>
-        <p>For Azerbaijan, there is no separate shipping line at checkout because the confirmed delivery cost is included in the displayed AZN product price. For other destinations, the shipping amount shown at checkout applies.</p>
+        <p>For the United States, Canada and the United Kingdom, the store currently shows free shipping at checkout. Delivery estimates depend on the product and confirmed fulfilment route; DreamGrind does not promise a fixed number of days unless an estimate is shown for that product or confirmed by support.</p>
+        <p>For Azerbaijan, there is no separate shipping line at checkout because the product's final AZN price is entered to include the delivery cost and only those applicable import or handling charges that DreamGrind has confirmed for that exact offer.</p>
+
+        <h3>Customs, duties and taxes</h3>
+        <p>DreamGrind does not make a blanket DDP or tax-paid delivery promise. Import duties, VAT and handling charges are included only when the product offer explicitly says they are covered. Any charge not clearly included in the offer may be payable by the recipient under local rules. Please contact support before ordering if you need clarification for your destination.</p>
 
         <h3>Processing time</h3>
-        <p>Orders are normally processed after successful payment confirmation. Processing and delivery times may vary depending on the destination, product availability and carrier.</p>
+        <p>Orders are normally processed after successful payment confirmation. Processing and delivery times vary by product, destination, stock availability, customs procedures and carrier. Where a delivery estimate is not displayed, contact support before ordering for the latest route information.</p>
 
         <h3>Tracking</h3>
         <p>When tracking information is available, it may be provided to the customer after the order has been dispatched.</p>
@@ -1719,24 +1760,30 @@ function handleCheckoutCountryChange() {
         <p>DreamGrind may collect information that customers provide when creating an account, placing an order or contacting customer support. This may include name, email address, phone number, delivery address, city, country and order information.</p>
 
         <h3>2. How we use information</h3>
-        <p>We use customer information to create and manage accounts, process orders, arrange delivery, provide order tracking, respond to customer requests, maintain website security and comply with applicable legal obligations.</p>
+        <p>We use customer information to create and manage accounts, process orders, arrange delivery, provide order tracking, respond to customer requests, verify reviews against paid orders, maintain website security and comply with applicable legal obligations. Optional analytics are used only after the visitor gives permission. A single unfinished-checkout reminder is sent only when a customer explicitly opts in at checkout.</p>
 
         <h3>3. Payments</h3>
         <p>Online payments are processed through our payment provider, Epoint. DreamGrind does not intentionally store customers' full payment card details on its own website servers.</p>
 
         <h3>4. Service providers</h3>
-        <p>We may use trusted third-party service providers for payment processing, website hosting, database infrastructure, delivery and other services necessary to operate the store. When an order is fulfilled by an overseas supplier or logistics partner, we may share the customer's name, phone number, delivery address and relevant order details with that provider only to arrange fulfilment, customs processing and delivery. This may involve transferring information to service providers outside the customer's country, subject to applicable legal requirements.</p>
+        <p>We may use trusted third-party service providers for payment processing, website hosting, database infrastructure, optional email delivery, analytics where permitted, delivery and other services necessary to operate the store. When an order is fulfilled by an overseas supplier or logistics partner, we may share the customer's name, phone number, delivery address and relevant order details with that provider only to arrange fulfilment, customs processing and delivery. This may involve transferring information to service providers outside the customer's country, subject to applicable legal requirements.</p>
 
-        <h3>5. Cookies and local storage</h3>
-        <p>The website may use essential cookies and browser local storage to support account sessions, shopping cart preferences, country selection and language preferences.</p>
+        <h3>5. Verified product reviews</h3>
+        <p>To verify a review, we check the order number and checkout email against a paid order containing the product. The public review displays the review text, rating and the customer's first name only. The order number and email address are not displayed publicly.</p>
 
-        <h3>6. Data retention</h3>
+        <h3>6. Optional checkout reminders</h3>
+        <p>If a customer checks the separate reminder option at checkout, DreamGrind may send one email about that unfinished checkout after two hours. This is not a newsletter subscription or general marketing consent. The customer can cancel the pending reminder by unchecking the option before leaving checkout, or unsubscribe using the link in the reminder email.</p>
+
+        <h3>7. Cookies and local storage</h3>
+        <p>The website may use essential cookies and browser local storage to support account sessions, shopping cart preferences, country selection and language preferences. Optional Google Analytics is loaded only after the visitor opts in using the cookie controls.</p>
+
+        <h3>8. Data retention</h3>
         <p>Customer information is retained for as long as reasonably necessary to provide services, maintain business records, resolve disputes, prevent fraud and meet applicable legal requirements.</p>
 
-        <h3>7. Data security</h3>
+        <h3>9. Data security</h3>
         <p>DreamGrind takes reasonable technical and organisational measures to protect customer information against unauthorised access, alteration or disclosure.</p>
 
-        <h3>8. Contact</h3>
+        <h3>10. Contact</h3>
         <p>Customers may contact DreamGrind through the Contact Us section of the website regarding privacy or personal information questions.</p>
       `
     },
@@ -1775,6 +1822,10 @@ function handleCheckoutCountryChange() {
 
         <h3>Third-party services</h3>
         <p>Some services used by the website, such as payment processing or hosting infrastructure, may use their own technical cookies or similar technologies where necessary to provide their services.</p>
+
+        <h3>Optional analytics</h3>
+        <p>With your permission, DreamGrind may use Google Analytics to understand store visits and checkout steps. Analytics is optional. Advertising storage, advertising personalisation and advertising user-data consent remain disabled. When analytics is configured, you can change your choice using Cookie settings in the website footer.</p>
+        
       `
     }
   };
@@ -1829,6 +1880,16 @@ async function handlePaymentReturn() {
   sessionStorage.removeItem('dg_checkout_mode');
 
   if (order?.paymentStatus === 'Paid') {
+    if (window.DGAnalytics?.getConsent?.() === 'granted') {
+      try {
+        const checkoutAnalytics = JSON.parse(sessionStorage.getItem('dg_analytics_checkout') || 'null');
+        if (checkoutAnalytics && Array.isArray(checkoutAnalytics.items)) {
+          sessionStorage.setItem('dg_pending_purchase', JSON.stringify({ ...checkoutAnalytics, transaction_id: returnedOrderId }));
+          window.DGAnalytics.flushPendingPurchase?.();
+        }
+      } catch (error) { console.warn('Unable to prepare purchase analytics.', error); }
+    }
+    sessionStorage.removeItem('dg_analytics_checkout');
     if (checkoutMode !== 'buy-now') {
       state.cart = [];
       saveAll();
