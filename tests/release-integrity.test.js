@@ -213,7 +213,7 @@ test('premium motion system is progressive, accessible and does not alter commer
   const motion = await read('public/motion.js');
   const script = await read('public/script.js');
   const server = await read('server.js');
-  assert.match(html, /motion\.js\\?v=20261127-motion-v1/);
+  assert.ok(html.includes('motion.js?v=20261127-motion-v1'));
   assert.match(motion, /IntersectionObserver/);
   assert.match(motion, /prefers-reduced-motion/);
   assert.match(motion, /animation-timeline: view\(\)/);
