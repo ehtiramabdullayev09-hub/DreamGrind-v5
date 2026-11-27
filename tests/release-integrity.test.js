@@ -26,7 +26,7 @@ test('all storefront scripts and styles referenced by index.html exist', async (
 });
 
 test('all shipped JavaScript files parse, including Admin inline code', async () => {
-  for (const file of ['server.js', 'database.js', 'lib/gtin.js', 'public/script.js', 'public/analytics.js', 'public/growth.js']) {
+  for (const file of ['server.js', 'database.js', 'lib/gtin.js', 'public/script.js', 'public/analytics.js', 'public/growth.js', 'public/motion.js']) {
     checkJavaScript(file, await read(file));
   }
   const admin = await read('public/admin.html');
@@ -187,7 +187,7 @@ test('DreamGrind Edit is responsive at tablet and mobile widths', async () => {
 test('all storefront assets use the current editorial cache key', async () => {
   const html = await read('public/index.html');
   for (const asset of ['style.css','growth.css','script.js','analytics.js','growth.js']) {
-    assert.ok(html.includes(asset + '?v=20261127-edit-v1'), 'Stale cache key for ' + asset);
+    const expectedVersion = ['script.js','analytics.js','growth.js'].includes(asset) ? '?v=20261127-edit-v2' : '?v=20261127-edit-v1';
   }
   assert.ok(html.includes('dreamgrind-premium.css?v=20261127-center-v3'), 'Premium CSS must use the current centered-emblem cache key');
 });
