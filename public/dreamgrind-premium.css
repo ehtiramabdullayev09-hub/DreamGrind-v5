@@ -596,3 +596,93 @@ body { background:#fcfdfc; }
   .hero-brand-art { min-height:320px; }
   .hero-actions .dg-hero-edit-button { width:100%;justify-content:center; }
 }
+
+
+/* DreamGrind premium motion system: calm, short and conversion-safe. */
+.dg-motion-ready .dg-reveal {
+  opacity:0;
+  transform:translate3d(0,18px,0);
+  transition:opacity .52s ease, transform .62s cubic-bezier(.2,.7,.2,1);
+  transition-delay:var(--dg-reveal-delay,0ms);
+}
+.dg-motion-ready .dg-reveal.is-visible {
+  opacity:1;
+  transform:translate3d(0,0,0);
+}
+.hero-brand-art {
+  --dg-pointer-x:0px;
+  --dg-pointer-y:0px;
+  transform:translate3d(var(--dg-pointer-x),var(--dg-pointer-y),0);
+  transition:transform .22s ease-out, box-shadow .35s ease;
+}
+.hero-brand-art .brand-art-core {
+  animation:dg-core-breathe 7s ease-in-out infinite;
+  transform-origin:center;
+}
+.hero-brand-art .brand-art-orbit-one { animation:dg-orbit-drift 22s linear infinite; }
+.hero-brand-art .brand-art-orbit-two { animation:dg-orbit-drift 30s linear infinite reverse; }
+.hero-brand-art .brand-art-orbit-three { animation:dg-orbit-drift 38s linear infinite; }
+.hero-brand-art .brand-art-star-one { animation:dg-star-glow 4.8s ease-in-out infinite; }
+.hero-brand-art .brand-art-star-two { animation:dg-star-glow 6s ease-in-out infinite reverse; }
+.product-card .product-image-wrap img {
+  transition:transform .55s cubic-bezier(.2,.7,.2,1);
+}
+@media (hover:hover) and (pointer:fine) {
+  .product-card:hover .product-image-wrap img { transform:scale(1.035); }
+  .dg-edit-collection:hover { transform:translateY(-3px); }
+}
+@keyframes dg-core-breathe {
+  0%,100% { filter:brightness(1); }
+  50% { filter:brightness(1.09); }
+}
+@keyframes dg-orbit-drift {
+  from { rotate:0deg; }
+  to { rotate:360deg; }
+}
+@keyframes dg-star-glow {
+  0%,100% { opacity:.62; transform:translateY(0) scale(.96); }
+  50% { opacity:1; transform:translateY(-3px) scale(1.04); }
+}
+
+/* Reduced motion, touch devices and narrow viewports keep the interface calm. */
+@media (prefers-reduced-motion:reduce) {
+  .dg-motion-ready .dg-reveal,
+  .dg-motion-ready .dg-reveal.is-visible {
+    opacity:1 !important;
+    transform:none !important;
+    transition:none !important;
+  }
+  .hero-brand-art,
+  .hero-brand-art .brand-art-core,
+  .hero-brand-art .brand-art-orbit-one,
+  .hero-brand-art .brand-art-orbit-two,
+  .hero-brand-art .brand-art-orbit-three,
+  .hero-brand-art .brand-art-star-one,
+  .hero-brand-art .brand-art-star-two,
+  .product-card .product-image-wrap img {
+    animation:none !important;
+    transition:none !important;
+    transform:none !important;
+    rotate:none !important;
+  }
+}
+@media (max-width:760px) {
+  .hero-brand-art { transform:none; }
+  .hero-brand-art .brand-art-core { animation-duration:10s; }
+  .hero-brand-art .brand-art-orbit-one,
+  .hero-brand-art .brand-art-orbit-two,
+  .hero-brand-art .brand-art-orbit-three { animation-duration:45s; }
+  .dg-motion-ready .dg-reveal {
+    transform:translate3d(0,12px,0);
+    transition-duration:.42s;
+  }
+  .product-card .product-image-wrap img { transition-duration:.35s; }
+}
+@media (prefers-reduced-data:reduce) {
+  .hero-brand-art .brand-art-core,
+  .hero-brand-art .brand-art-orbit-one,
+  .hero-brand-art .brand-art-orbit-two,
+  .hero-brand-art .brand-art-orbit-three,
+  .hero-brand-art .brand-art-star-one,
+  .hero-brand-art .brand-art-star-two { animation:none; }
+}
