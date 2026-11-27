@@ -58,3 +58,83 @@
   .dg-finder-controls { grid-template-columns: 1fr; }
   .dg-finder-controls .dg-finder-keyword, .dg-finder-controls button { grid-column: 1; }
 }
+
+
+/* The DreamGrind Edit: curated editorial collection cards */
+.dg-edit-section {
+  position:relative;
+  padding:clamp(58px,6.8vw,88px) 0;
+  background:
+    radial-gradient(ellipse at 95% 12%,rgba(39,192,192,.075),transparent 32%),
+    linear-gradient(180deg,#fbfdfc 0%,#f3f8f6 100%);
+  border-top:1px solid #e6efeb;
+  border-bottom:1px solid #e6efeb;
+}
+.dg-edit-heading {
+  display:flex;align-items:end;justify-content:space-between;gap:25px;
+  margin-bottom:25px;
+}
+.dg-edit-heading .eyebrow {
+  margin:0 0 8px;color:#0b8582;font-size:10px;font-weight:900;letter-spacing:.2em;
+}
+.dg-edit-heading h2 {
+  margin:0;color:#102b37;font-size:clamp(30px,3.4vw,43px);
+  line-height:1.05;letter-spacing:-.065em;
+}
+.dg-edit-lede { max-width:550px;margin:10px 0 0;color:#657d7b;font-size:14px;line-height:1.7; }
+.dg-edit-all {
+  display:inline-flex;align-items:center;gap:9px;flex:0 0 auto;
+  padding:10px 14px;border:1px solid #dceae4;border-radius:999px;
+  background:rgba(255,255,255,.82);color:#0a7777;text-decoration:none;
+  font-size:11px;font-weight:850;transition:transform .18s ease,border-color .18s ease;
+}
+.dg-edit-all:hover { transform:translateY(-2px);border-color:#9edbd0; }
+.dg-edit-collections {
+  display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:13px;
+}
+.dg-edit-collection {
+  position:relative;display:flex;min-height:212px;flex-direction:column;align-items:flex-start;
+  justify-content:flex-end;overflow:hidden;padding:20px;
+  border:1px solid #dfeae5;border-radius:19px;
+  background:
+    radial-gradient(circle at 92% 16%,rgba(39,192,192,.16),transparent 33%),
+    linear-gradient(145deg,#fff 0%,#f0f7f3 100%);
+  color:#17383e;text-align:left;cursor:pointer;
+  transition:transform .2s ease,box-shadow .2s ease,border-color .2s ease;
+}
+.dg-edit-collection:nth-child(2) {
+  background:radial-gradient(circle at 90% 15%,rgba(144,194,163,.2),transparent 35%),linear-gradient(145deg,#fff,#f2f7f1);
+}
+.dg-edit-collection:nth-child(3) {
+  background:radial-gradient(circle at 90% 15%,rgba(84,164,184,.18),transparent 35%),linear-gradient(145deg,#fff,#edf6f7);
+}
+.dg-edit-collection:nth-child(4) {
+  background:radial-gradient(circle at 90% 15%,rgba(177,166,211,.17),transparent 35%),linear-gradient(145deg,#fff,#f5f3fa);
+}
+.dg-edit-collection::before {
+  content:"";position:absolute;top:-36px;right:-34px;width:142px;height:142px;
+  border:1px solid rgba(10,125,127,.13);border-radius:50%;
+  box-shadow:0 0 0 17px rgba(10,125,127,.035),0 0 0 34px rgba(10,125,127,.022);
+  transition:transform .45s ease;
+}
+.dg-edit-collection:hover { transform:translateY(-5px);border-color:#acdcd1;box-shadow:0 18px 40px rgba(10,60,60,.085); }
+.dg-edit-collection:hover::before { transform:scale(1.13) rotate(12deg); }
+.dg-edit-collection-kicker { position:relative;z-index:1;margin-bottom:auto;color:#0b8884;font-size:9px;font-weight:950;letter-spacing:.18em; }
+.dg-edit-collection strong { position:relative;z-index:1;max-width:190px;color:#12353d;font-size:20px;line-height:1.1;letter-spacing:-.045em; }
+.dg-edit-collection small { position:relative;z-index:1;max-width:190px;margin-top:9px;color:#68817e;font-size:10px;line-height:1.55; }
+.dg-edit-collection-arrow { position:absolute;right:16px;bottom:17px;display:grid;place-items:center;width:29px;height:29px;border:1px solid rgba(13,130,126,.17);border-radius:50%;color:#087d7b;background:rgba(255,255,255,.55);font-size:14px; }
+@media(max-width:900px) {
+  .dg-edit-collections { grid-template-columns:repeat(2,minmax(0,1fr)); }
+  .dg-edit-collection { min-height:185px; }
+}
+@media(max-width:560px) {
+  .dg-edit-section { padding:46px 0; }
+  .dg-edit-heading { align-items:flex-start;flex-direction:column;gap:13px;margin-bottom:18px; }
+  .dg-edit-lede { font-size:12px; }
+  .dg-edit-collections { gap:9px; }
+  .dg-edit-collection { min-height:156px;padding:14px;border-radius:15px; }
+  .dg-edit-collection strong { max-width:150px;font-size:17px; }
+  .dg-edit-collection small { max-width:150px;font-size:9px; }
+  .dg-edit-collection-kicker { font-size:8px; }
+  .dg-edit-collection-arrow { right:11px;bottom:11px;width:25px;height:25px; }
+}
