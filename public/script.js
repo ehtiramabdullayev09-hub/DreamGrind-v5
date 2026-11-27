@@ -1659,6 +1659,12 @@ function handleCheckoutCountryChange() {
       return;
     }
 
+    const shippingAnalytics = dgAnalyticsValueFor(checkoutItems);
+    window.DGAnalytics?.track('add_shipping_info', {
+      ...shippingAnalytics,
+      shipping_tier: checkoutCountry
+    });
+
     if (d.requiresShippingQuote && d.order?.id) {
       if (sessionStorage.getItem('dg_checkout_mode') !== 'buy-now') {
         state.cart = [];
