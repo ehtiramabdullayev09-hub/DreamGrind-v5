@@ -241,6 +241,13 @@ function renderOrders() {
                   id="tr-${esc(o.id)}"
                   value="${esc(o.trackingNumber || '')}"
                   placeholder="Tracking number"
+                <input
+                  id="tu-${esc(o.id)}"
+                  type="url"
+                  value="${esc(o.trackingUrl || '')}"
+                  placeholder="Carrier tracking URL (https://…)"
+                  style="margin-top:6px"
+                >
                 >
               </td>
 
@@ -256,7 +263,7 @@ function renderOrders() {
     </table>
   `;
 }
-async function saveOrder(id){try{const status=$('st-'+id).value;const tracking=$('tr-'+id).value.trim();await api('/api/admin/orders/'+encodeURIComponent(id),{method:'PATCH',body:JSON.stringify({status,trackingNumber:tracking||null})});flash('Order updated.');await loadAll()}catch(e){flash(e.message,false)}}
+async function saveOrder(id){try{const status=$('st-'+id).value;const tracking=$('tr-'+id).value.trim();const trackingUrl=$('tu-'+id).value.trim();if(trackingUrl&&!/^https:\/\//i.test(trackingUrl)){flash('Carrier tracking URL must start with https://',false);return;}await api('/api/admin/orders/'+encodeURIComponent(id),{method:'PATCH',body:JSON.stringify({status,trackingNumber:tracking||null,trackingUrl:trackingUrl||null})});flash('Order updated.');await loadAll()}catch(e){flash(e.message,false)}}
 async function createAzPaymentLink(id){
   const field=$('azship-'+id);
   if(!field?.value?.trim()){flash('Enter the confirmed delivery fee in AZN.',false);return;}

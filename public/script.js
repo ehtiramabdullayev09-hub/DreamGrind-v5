@@ -1376,7 +1376,15 @@ async function startCheckout(items = null) {
             <span id="coDeliveryNotesLabel">Delivery notes (optional)</span>
             <textarea id="coDeliveryNotes" name="delivery-notes" maxlength="500" placeholder="Landmark or instructions for the courier"></textarea>
           </label>
-          <p class="checkout-country-message full" id="checkoutCountryMessage" role="status" aria-live="polite"></p>
+          <section class="checkout-order-summary full" id="checkoutOrderSummary" aria-live="polite">
+            <h3>Order summary</h3>
+            <div id="checkoutOrderLines"></div>
+            <div class="summary-row"><span>Subtotal</span><strong id="checkoutSubtotal">—</strong></div>
+            <div class="summary-row"><span>Shipping</span><strong id="checkoutShipping">—</strong></div>
+            <div class="summary-row total"><span>Total</span><strong id="checkoutTotal">—</strong></div>
+            <p class="muted" id="checkoutCurrencyNote">Final amount is confirmed before secure payment.</p>
+          </section>
+                    <p class="checkout-country-message full" id="checkoutCountryMessage" role="status" aria-live="polite"></p>
           <div class="note-box full" id="checkoutPaymentNote">${c.country === 'AZ' ? (localStorage.getItem('dg_language') === 'az' ? 'Göstərilən AZN qiymətinə çatdırılma və həmin təklif üçün təsdiqlənmiş müvafiq xərclər daxildir. Ödəniş Epoint vasitəsilə təhlükəsiz həyata keçirilir.' : 'The displayed AZN price includes delivery and applicable charges confirmed for this offer. Payment is processed securely through Epoint.') : 'You will be charged in AZN. Secure payment by Epoint.'}</div>
           <button id="coSubmitButton" class="primary-button full" type="submit">${localStorage.getItem('dg_language') === 'az' ? 'Təhlükəsiz ödənişə keç' : 'Continue to secure payment'}</button>
         </form>
@@ -1385,6 +1393,7 @@ async function startCheckout(items = null) {
   const checkoutCountrySelect = $('coCountry');
   if (checkoutCountrySelect) checkoutCountrySelect.dataset.lastCountry = checkoutCountrySelect.value;
   updateCheckoutAddressFields();
+  renderCheckoutOrderSummary();
   if (c.country === 'AZ' && $('checkoutCountryMessage')) {
     $('checkoutCountryMessage').textContent = localStorage.getItem('dg_language') === 'az'
       ? 'Bu məhsul üçün yekun AZN qiymətinə çatdırılma və təsdiqlənmiş müvafiq xərclər daxildir. Ödənişi Epoint vasitəsilə saytda tamamlayacaqsınız.'
@@ -1517,6 +1526,51 @@ function checkoutPhoneError(country, isAzLanguage) {
     ? '10 rəqəmli ABŞ/Kanada nömrəsi daxil edin. +1 avtomatik əlavə olunur.'
     : 'Enter a 10-digit US or Canadian phone number. +1 is added automatically.';
 }
+function renderCheckoutOrderSummary() {
+  const root = $('checkoutOrderSummary');
+  const linesNode = $('checkoutOrderLines');
+  if (!root || !linesNode) return;
+  const items = pendingCheckoutItems?.length ? pendingCheckoutItems : state.cart;
+  const country = $('coCountry')?.value || 'United States';
+  const code = ({ 'United States':'US', Canada:'CA', 'United Kingdom':'UK', Azerbaijan:'AZ' })[country] || 'US';
+  const currency = ({US:'USD',CA:'CAD',UK:'GBP',AZ:'AZN'})[code];
+  const formatter = new Intl.NumberFormat(code === 'AZ' ? 'az-AZ' : (code === 'UK' ? 'en-GB' : code === 'CA' ? 'en-CA' : 'en-US'), {style:'currency',currency});
+  const availableItems = [];
+  let unavailable = false;
+  for (const item of items) {
+    const product = products.find(entry => Number(entry.id) === Number(item.id));
+    if (!product || !isProductAvailableInCountry(product, code)) {
+      unavailable = true;
+      const unknownTitle = product?.title || 'Unavailable product';
+      availableItems.push({title:unknownTitle,qty:Number(item.qty)||1,price:null,variant:item.variantColor || item.variantSize ? [item.variantColor,item.variantSize].filter(Boolean).join(' / ') : item.variant || ''});
+      continue;
+    }
+    const price = Number(cartItemPrice(product, item));
+    availableItems.push({title:product.title,qty:Math.max(1,Number(item.qty)||1),price:Number.isFinite(price)&&price>0?price:0,variant:item.variantColor || item.variantSize ? [item.variantColor,item.variantSize].filter(Boolean).join(' / ') : item.variant || ''});
+  }
+  const subtotal = availableItems.reduce((sum,item)=>sum+(item.price == null ? 0 : item.price*item.qty),0);
+  const rows = availableItems.map(item => {
+    const option = item.variant ? '<small class="muted">'+escapeHtml(item.variant)+'</small>' : '';
+    const amount = item.price == null ? 'Unavailable for this destination' : formatter.format(item.price*item.qty);
+    return '<div class="checkout-order-line"><span>'+escapeHtml(item.title)+' × '+item.qty+option+'</span><strong>'+escapeHtml(amount)+'</strong></div>';
+  }).join('');
+  linesNode.innerHTML = rows || '<p class="muted">Your cart is empty.</p>';
+  if ($('checkoutSubtotal')) $('checkoutSubtotal').textContent = formatter.format(subtotal);
+  if ($('checkoutShipping')) $('checkoutShipping').textContent = code === 'AZ' ? (localStorage.getItem('dg_language') === 'az' ? 'Daxildir' : 'Included') : formatter.format(0);
+  if ($('checkoutTotal')) $('checkoutTotal').textContent = formatter.format(subtotal);
+  if ($('checkoutCurrencyNote')) $('checkoutCurrencyNote').textContent = code === 'AZ'
+    ? (localStorage.getItem('dg_language') === 'az' ? 'Çatdırılma bu məhsullar üçün təsdiqlənmiş yekun AZN qiymətinə daxildir. Epoint ödənişi təhlükəsiz şəkildə AZN ilə həyata keçirir.' : 'Delivery is included in the confirmed final AZN prices for these products. Epoint processes the payment securely in AZN.')
+    : (localStorage.getItem('dg_language') === 'az' ? 'Məbləğ seçilmiş bazarın valyutasında göstərilir. Epoint ödənişi AZN ilə həyata keçirir; ödənişə keçməzdən əvvəl yekun məbləğ göstərilir.' : 'Prices are displayed in the selected market currency. Epoint processes payment in AZN; the final amount is confirmed before payment.');
+  const button = $('coSubmitButton');
+  if (button && unavailable) {
+    button.disabled = true;
+    button.title = 'Remove products unavailable in the selected destination.';
+  } else if (button && !button.dataset.submitting) {
+    button.disabled = false;
+    button.title = '';
+  }
+}
+
 function handleCheckoutCountryChange() {
   const select = $('coCountry');
   if (!select) return;
@@ -1555,6 +1609,7 @@ function handleCheckoutCountryChange() {
       ? 'Məhsulun göstərilən yekun AZN qiymətinə çatdırılma və təsdiqlənmiş müvafiq xərclər daxildir. Ödənişi Epoint vasitəsilə saytda tamamlayın.'
       : 'The displayed final AZN product price includes delivery and confirmed applicable charges. Complete your payment on the website through Epoint.';
   }
+  renderCheckoutOrderSummary();
   const checkoutItems = (pendingCheckoutItems?.length ? pendingCheckoutItems : state.cart);
   const unavailable = checkoutItems.some(item => {
     const product = products.find(p => Number(p.id) === Number(item.id));
@@ -1730,8 +1785,9 @@ function handleCheckoutCountryChange() {
       if (!r.ok) { $('trackingResult').innerHTML = '<p class="muted">Order not found. Check the order number and try again.</p>'; return; }
       const order = d.order;
       const paymentLabel = order.paymentStatus === 'Paid' ? 'Paid' : order.paymentStatus === 'Refunded' ? 'Refunded' : order.paymentStatus === 'Failed' ? 'Payment not completed' : order.paymentStatus === 'Awaiting quote' ? 'Delivery fee awaiting confirmation' : 'Awaiting payment confirmation';
+      const safeTrackingUrl = /^https:\/\//i.test(String(order.trackingUrl || '')) ? String(order.trackingUrl) : '';
       const trackingMarkup = order.trackingNumber
-        ? `<div class="note-box" style="margin-top:12px"><strong>Carrier tracking number</strong><br><span>${escapeHtml(order.trackingNumber)}</span></div>`
+        ? `<div class="note-box" style="margin-top:12px"><strong>Carrier tracking number</strong><br><span>${escapeHtml(order.trackingNumber)}</span>${safeTrackingUrl ? `<p style="margin:10px 0 0"><a href="${escapeHtml(safeTrackingUrl)}" target="_blank" rel="noopener noreferrer">Track with carrier ↗</a></p>` : ''}</div>`
         : '<p class="muted" style="margin-top:12px">Carrier tracking details will appear here after your order has been dispatched and the number has been added by our team.</p>';
       $('trackingResult').innerHTML = `<div class="tracking-result"><div class="tracking-meta"><div><strong>Order ${escapeHtml(order.id)}</strong><div class="muted">Created ${new Date(order.createdAt).toLocaleString()}</div></div><div class="tracking-status">${escapeHtml(order.status)}</div></div><p><strong>Payment:</strong> ${escapeHtml(paymentLabel)}</p>${trackingMarkup}<p class="muted" style="margin-top:12px">Order statuses are updated by DreamGrind. Carrier movement updates are not live on this page.</p></div>`;
     }

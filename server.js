@@ -915,6 +915,7 @@ app.get('/api/orders/track/:code', (req, res) => {
     paymentStatus: order.paymentStatus,
     createdAt: order.createdAt,
     trackingNumber: order.trackingNumber || null,
+    trackingUrl: order.trackingUrl || null,
     country: order.country,
     subtotal: order.subtotal,
     shipping: order.shipping,
@@ -971,7 +972,8 @@ app.get('/api/admin/users', requireAdmin, (_req, res) => res.json({ users: db.da
 
 const adminOrderUpdateSchema = z.object({
   status: z.enum(['Awaiting shipping quote', 'Awaiting payment', 'Processing', 'Shipped', 'In transit', 'Delivered', 'Cancelled', 'Refunded']),
-  trackingNumber: z.string().trim().max(120).nullable().optional()
+  trackingNumber: z.string().trim().max(120).nullable().optional(),
+  trackingUrl: z.string().trim().url().max(1000).nullable().optional()
 });
 const azShippingQuoteSchema = z.object({ shippingFeeAzn: z.number().finite().min(0).max(100000) });
 app.post('/api/admin/orders/:id/payment-link', requireAdmin, async (req, res) => {
