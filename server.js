@@ -206,7 +206,7 @@ function renderProductLandingPage(product, countryCode) {
   const variants = Array.isArray(product.variantCombinations) ? product.variantCombinations : [];
   const prices = variants.length ? variants.map(v => effectiveVariantPriceForCountry(product,v,market.country)).filter(v => Number.isFinite(v) && v > 0) : [effectiveProductPriceForCountry(product,market.country)].filter(v => Number.isFinite(v) && v > 0);
   const price = prices.length ? Math.min(...prices) : 0;
-  const images = (Array.isArray(product.images) ? product.images : []).concat(product.image || []).filter(v => /^https?:\\/\\//i.test(String(v || ''))).slice(0,8);
+  const images = (Array.isArray(product.images) ? product.images : []).concat(product.image || []).filter(value => { try { const parsed = new URL(String(value || '')); return parsed.protocol === 'http:' || parsed.protocol === 'https:'; } catch { return false; } }).slice(0,8);
   const image = images[0] || '';
   const title = String(product.title || 'DreamGrind product');
   const description = String(product.description || ('Explore ' + title + ' at DreamGrind.')).replace(/<[^>]*>/g,' ').replace(/\\s+/g,' ').trim().slice(0,300);
