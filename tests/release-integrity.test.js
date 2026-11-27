@@ -142,7 +142,7 @@ test('DreamGrind visual layer keeps its navy and cyan brand palette', async () =
   const html = await read('public/index.html');
   assert.ok(css.includes('--dg-navy: #071a2c;'));
   assert.ok(css.includes('--dg-cyan: #15b8df;'));
-  assert.match(html, /dreamgrind-premium\\.css\\?v=20261127-center-v3/);
+  assert.ok(html.includes('dreamgrind-premium.css?v=20261127-center-v3'));
 });
 test('Design-system refresh preserves core storefront sections and handlers', async () => {
   const html = await read('public/index.html');
