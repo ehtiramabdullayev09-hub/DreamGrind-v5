@@ -600,6 +600,33 @@
     attachRecoveryConsent(root, enabled);
   }
 
+
+  function installPairing() {
+    window.dgAddBundle = function (firstId, secondId) {
+      const first = storeProducts().find(item => Number(item.id) === Number(firstId));
+      const second = storeProducts().find(item => Number(item.id) === Number(secondId));
+      if (!first || !second || !available(first) || !available(second)) {
+        if (typeof showToast === 'function') showToast(translate('One or more products are not available in this market.', 'Məhsullardan biri bu bazarda mövcud deyil.'));
+        return;
+      }
+      if (hasOptions(first) || hasOptions(second)) {
+        if (typeof showToast === 'function') showToast(translate('Please choose product options on each product page first.', 'Əvvəlcə hər məhsulun səhifəsində seçimlərini edin.'));
+        return;
+      }
+      const add = product => {
+        const existing = state.cart.find(item => Number(item.id) === Number(product.id) && !item.variantColor && !item.variantSize);
+        if (existing) existing.qty = Math.min(20, Number(existing.qty || 0) + 1);
+        else state.cart.push({ id: Number(product.id), qty: 1, variant: null, variantColor: null, variantSize: null });
+      };
+      add(first);
+      add(second);
+      saveAll();
+      if (typeof updateCounts === 'function') updateCounts();
+      if (typeof showToast === 'function') showToast(translate('Both products were added to your cart.', 'Hər iki məhsul səbətə əlavə edildi.'));
+      window.DGAnalytics?.track('add_to_cart', { currency: market().currency, items: analyticsItems([{id:first.id,qty:1},{id:second.id,qty:1}]) });
+    };
+  }
+
   function init() {
     baseDescription = document.querySelector('meta[name="description"]')?.content || '';
     baseOgTitle = document.querySelector('meta[property="og:title"]')?.content || document.title;
@@ -617,6 +644,7 @@
     });
     renderTools();
     installAnalyticsHooks();
+    installPairing();
     observeProductGrid();
     installProductObserver();
 
