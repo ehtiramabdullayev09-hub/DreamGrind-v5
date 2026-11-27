@@ -352,6 +352,6 @@ test('admin supports only supplier-confirmed products without assigned manufactu
   assert.match(server, /identifierExists: z\\.boolean\\(\\)\\.optional\\(\\)/);
   assert.match(server, /identifierExists: parsed\\.data\\.identifierExists === false/);
   assert.match(admin, /id="productIdentifierMissing"/);
-  assert.match(admin, /identifierExists:\\$\\('productIdentifierMissing'\\)\\.checked/);
+  assert.ok(admin.includes("identifierExists:$('productIdentifierMissing').checked ? false : null"));
   assert.ok(admin.includes("$('productIdentifierMissing').checked=p.identifierExists===false"));
 });
