@@ -94,3 +94,33 @@ test('existing JSON database state is extended without replacing its data model'
   assert.match(server, /db\.data\.cartRecoveries\s*\|\|=/);
   assert.match(database, /dreamgrind_state/);
 });
+
+test('Growth 2.1 includes functional paired-product cart action', async () => {
+  const growth = await read('public/growth.js');
+  assert.match(growth, /window\.dgAddBundle\s*=\s*function/);
+  assert.match(growth, /state\.cart\.push/);
+  assert.match(growth, /saveAll\(\)/);
+});
+
+test('Google feed does not claim universal free shipping without configured rates', async () => {
+  const server = await read('server.js');
+  const feedStart = server.indexOf("app.get('/feed/google.xml'");
+  const feedEnd = server.indexOf("app.get('/api/reviews/:productId'", feedStart);
+  assert.ok(feedStart >= 0 && feedEnd > feedStart, 'Google feed route must exist');
+  const feed = server.slice(feedStart, feedEnd);
+  assert.doesNotMatch(feed, /<g:service>Free shipping<\/g:service>/);
+  assert.doesNotMatch(feed, /<g:price>0\.00 \$\{currency\}<\/g:price>/);
+});
+
+test('product-card ratings use verified review aggregates only', async () => {
+  const script = await read('public/script.js');
+  assert.match(script, /verifiedReviewCount/);
+  assert.match(script, /verifiedAverageRating/);
+});
+
+test('Growth quality workflow runs the release tests on pushes and pull requests', async () => {
+  const workflow = await read('.github/workflows/growth-quality.yml');
+  assert.match(workflow, /npm ci/);
+  assert.match(workflow, /npm test/);
+  assert.match(workflow, /pull_request/);
+});

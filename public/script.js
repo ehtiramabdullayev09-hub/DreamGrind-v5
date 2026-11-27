@@ -952,8 +952,11 @@ function cardHtml(p) {
   const price = lowestCombination ? variantPriceForCountry(p, lowestCombination) : productPriceForCountry(p);
   const comparisonPrice = lowestCombination ? compareAtPriceForCountry(p, lowestCombination) : (saleActive ? compareAtPriceForCountry(p, null) : null);
   const discount = saleActive ? productDiscountPercent(p) : 0;
-  const ratingMarkup = Number(p.reviews) > 0
-    ? `<div class="product-rating">★ ${Number(p.rating ?? 0).toFixed(1)} · ${Number(p.reviews)} reviews</div>`
+  // Show a rating only when backed by verified reviews returned by the server.
+  const verifiedCount = Number(p.verifiedReviewCount || 0);
+  const verifiedRating = Number(p.verifiedAverageRating || 0);
+  const ratingMarkup = verifiedCount > 0 && Number.isFinite(verifiedRating)
+    ? `<div class="product-rating">★ ${verifiedRating.toFixed(1)} · ${verifiedCount} reviews</div>`
     : '';
   const saleMarkup = saleActive && discount > 0
     ? `<span class="product-sale-badge">Save ${discount}%</span>`
