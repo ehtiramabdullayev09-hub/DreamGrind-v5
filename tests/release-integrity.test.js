@@ -431,12 +431,20 @@ test('product detail interface controls and floating support label are localized
 });
 
 
-test('original DreamGrind DG monogram is used as the site favicon', async () => {
+test('original DreamGrind DG monogram is used for Google and mobile site icons', async () => {
   const html = await read('public/index.html');
   const favicon = await read('public/favicon.svg');
-  assert.ok(html.includes('href="/favicon.svg?v=20261128-dg1"'));
-  assert.ok(favicon.includes('aria-label="DreamGrind DG monogram"'));
-  assert.ok(favicon.includes('fill="#fff"'));
-  assert.ok(!html.includes('favicon-48.png'));
-  assert.ok(!favicon.includes('fill="#111111"'));
+  const manifest = await read('public/site.webmanifest');
+  assert.ok(html.includes('href="/favicon-192.png"'));
+  assert.ok(html.includes('href="/favicon-48.png"'));
+  assert.ok(html.includes('href="/apple-touch-icon.png"'));
+  assert.ok(html.includes('href="/site.webmanifest"'));
+  assert.ok(favicon.includes('viewBox="0 0 512 512"'));
+  assert.ok(favicon.includes('fill="#071a2c"'));
+  assert.ok(favicon.includes('fill="#ffffff"'));
+  assert.ok(manifest.includes('/favicon-192.png'));
+  assert.ok(manifest.includes('/favicon-512.png'));
+  for (const asset of ['favicon-48.png', 'favicon-192.png', 'favicon-512.png', 'apple-touch-icon.png']) {
+    await access(path.join(root, 'public', asset));
+  }
 });
