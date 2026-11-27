@@ -429,3 +429,14 @@ test('product detail interface controls and floating support label are localized
   assert.ok(script.includes("'Need help? Chat with us': 'Kömək lazımdır? Bizimlə yazışın'"));
   assert.ok(script.includes(".product-title,.product-page-title,.product-page-description"));
 });
+
+
+test('original DreamGrind DG monogram is used as the site favicon', async () => {
+  const html = await read('public/index.html');
+  const favicon = await read('public/favicon.svg');
+  assert.ok(html.includes('href="/favicon.svg?v=20261128-dg1"'));
+  assert.ok(favicon.includes('aria-label="DreamGrind DG monogram"'));
+  assert.ok(favicon.includes('fill="#fff"'));
+  assert.ok(!html.includes('favicon-48.png'));
+  assert.ok(!favicon.includes('fill="#111111"'));
+});
