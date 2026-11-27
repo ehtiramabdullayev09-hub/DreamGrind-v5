@@ -192,3 +192,11 @@ test('all storefront assets use the current editorial cache key', async () => {
     assert.ok(html.includes(asset + '?v=20261127-edit-v1'), 'Stale cache key for ' + asset);
   }
 });
+
+
+test('hero DG emblem is mathematically centered and has no scale offset', async () => {
+  const css = await read('public/dreamgrind-premium.css');
+  assert.match(css, /\.brand-art-scene\s*\{[^}]*position:\s*relative/s);
+  assert.match(css, /\.brand-art-core\s*\{[^}]*top:\s*50%[^}]*left:\s*50%[^}]*transform:\s*translate\(-50%\s*,\s*-50%\)/s);
+  assert.doesNotMatch(css, /\.brand-art-core\s*\{\s*transform:\s*scale\(1\.04\)/);
+});
