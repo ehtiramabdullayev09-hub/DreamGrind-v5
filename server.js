@@ -196,6 +196,41 @@ app.get('/sitemap.xml', (_req, res) => {
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${urls.map(url => `<url><loc>${escapeXml(url)}</loc></url>`).join('')}</urlset>`;
   res.type('application/xml').set('Cache-Control', 'public, max-age=900').send(body);
 });
+function escapeHtml(value) {
+  return String(value ?? '').replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]));
+}
+function renderProductLandingPage(product, countryCode) {
+  const markets = { US:{country:'United States',currency:'USD',locale:'en-US'}, CA:{country:'Canada',currency:'CAD',locale:'en-CA'}, UK:{country:'United Kingdom',currency:'GBP',locale:'en-GB'}, AZ:{country:'Azerbaijan',currency:'AZN',locale:'az-AZ'} };
+  const market = markets[countryCode] || markets.US;
+  const available = isProductAvailableForCountry(product, market.country);
+  const variants = Array.isArray(product.variantCombinations) ? product.variantCombinations : [];
+  const prices = variants.length ? variants.map(v => effectiveVariantPriceForCountry(product,v,market.country)).filter(v => Number.isFinite(v) && v > 0) : [effectiveProductPriceForCountry(product,market.country)].filter(v => Number.isFinite(v) && v > 0);
+  const price = prices.length ? Math.min(...prices) : 0;
+  const images = (Array.isArray(product.images) ? product.images : []).concat(product.image || []).filter(v => /^https?:\\/\\//i.test(String(v || ''))).slice(0,8);
+  const image = images[0] || '';
+  const title = String(product.title || 'DreamGrind product');
+  const description = String(product.description || ('Explore ' + title + ' at DreamGrind.')).replace(/<[^>]*>/g,' ').replace(/\\s+/g,' ').trim().slice(0,300);
+  const url = PUBLIC_SITE_URL + '/?product=' + encodeURIComponent(product.id) + '&country=' + countryCode;
+  const priceText = price > 0 ? new Intl.NumberFormat(market.locale,{style:'currency',currency:market.currency}).format(price) : 'Unavailable';
+  const inStock = available && Number(product.stock) > 0;
+  const offer = { '@type': variants.length ? 'AggregateOffer' : 'Offer', url, priceCurrency:market.currency, ...(variants.length ? {lowPrice:Number(Math.min(...prices).toFixed(2)),highPrice:Number(Math.max(...prices).toFixed(2)),offerCount:prices.length} : {price:Number(price.toFixed(2))}), availability:inStock ? 'https://schema.org/InStock' : 'https://schema.org/OutOfStock' };
+  const schema = { '@context':'https://schema.org', '@type':'Product', name:title, description, image:images, sku:String(product.id), offers:offer, ...(product.brand ? {brand:{'@type':'Brand',name:String(product.brand).slice(0,100)}} : {}), ...(isValidGtin(product.gtin) ? {gtin:String(product.gtin)} : {}), ...(product.mpn ? {mpn:String(product.mpn).slice(0,100)} : {}) };
+  const breadcrumb = { '@context':'https://schema.org', '@type':'BreadcrumbList', itemListElement:[{'@type':'ListItem',position:1,name:'Home',item:PUBLIC_SITE_URL + '/'},{'@type':'ListItem',position:2,name:String(product.category || 'Shop'),item:PUBLIC_SITE_URL + '/#shop'},{'@type':'ListItem',position:3,name:title,item:url}] };
+  const esc = escapeHtml;
+  const gallery = images.map((src,i) => '<img src="' + esc(src) + '" alt="' + esc(title) + ' - image ' + (i+1) + '" loading="' + (i ? 'lazy' : 'eager') + '" decoding="async" style="width:100%;max-width:520px;aspect-ratio:1/1;object-fit:contain">').join('');
+  const head = '<!doctype html><html lang="' + (countryCode === 'AZ' ? 'az' : 'en') + '"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#071a2c"><title>' + esc(title) + ' | DreamGrind</title><meta name="description" content="' + esc(description) + '"><link rel="canonical" href="' + esc(url) + '"><meta property="og:type" content="product"><meta property="og:title" content="' + esc(title) + ' | DreamGrind"><meta property="og:description" content="' + esc(description) + '"><meta property="og:url" content="' + esc(url) + '">' + (image ? '<meta property="og:image" content="' + esc(image) + '">' : '') + '<meta name="twitter:card" content="summary_large_image"><link rel="icon" href="/favicon.svg" type="image/svg+xml"><link rel="stylesheet" href="/style.css?v=20261127-edit-v1"><link rel="stylesheet" href="/dreamgrind-premium.css?v=20261127-center-v3"><link rel="stylesheet" href="/growth.css?v=20261127-edit-v1"><script type="application/ld+json">' + JSON.stringify(schema).replace(/</g,'\\u003c') + '</script><script type="application/ld+json">' + JSON.stringify(breadcrumb).replace(/</g,'\\u003c') + '</script></head>';
+  return head + '<body><main style="max-width:1180px;margin:32px auto;padding:24px"><a href="/">DreamGrind</a><nav aria-label="Breadcrumb"><a href="/">Home</a> / <a href="/#shop">' + esc(product.category || 'Shop') + '</a> / ' + esc(title) + '</nav><article style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,320px),1fr));gap:32px;margin-top:28px"><div>' + gallery + '</div><div><p style="text-transform:uppercase;letter-spacing:.16em;color:#0b8984;font-size:11px;font-weight:800">' + esc(product.category || 'DreamGrind') + '</p><h1>' + esc(title) + '</h1><p>' + esc(description) + '</p><p style="font-size:26px;font-weight:800">' + esc(priceText) + '</p><p>' + (inStock ? 'Available to order' : 'Currently unavailable') + '</p><p>Secure payment by Epoint. Delivery information is shown before checkout.</p><a href="/?product=' + encodeURIComponent(product.id) + '&country=' + countryCode + '" style="display:inline-flex;padding:14px 20px;border-radius:12px;background:#071a2c;color:white;text-decoration:none;font-weight:800">View product and buy</a></div></article></main><script>try{localStorage.setItem("dg_country",' + JSON.stringify(countryCode) + ')}catch(e){}</script></body></html>';
+}
+app.get('/', (req,res,next) => {
+  if (req.query.product == null) return next();
+  const id = Number(req.query.product);
+  if (!Number.isInteger(id) || id < 1) return next();
+  const product = db.data.products.find(item => Number(item.id) === id);
+  if (!product) return next();
+  const requested = String(req.query.country || 'US').toUpperCase();
+  const country = ['US','CA','UK','AZ'].includes(requested) ? requested : 'US';
+  res.set('Cache-Control','public, max-age=60, stale-while-revalidate=300').type('html').send(renderProductLandingPage(product,country));
+});
 app.use(express.static(path.join(__dirname, 'public')));
 app.use(express.static(path.join(__dirname, 'public')));
 
