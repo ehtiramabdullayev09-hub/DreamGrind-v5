@@ -267,7 +267,7 @@
     const title = `${product.title} | DreamGrind`;
     const description = String(product.description || `Explore ${product.title} at DreamGrind.`).replace(/\s+/g, ' ').trim().slice(0, 155);
     const publicBase = String(baseCanonical || `${window.location.origin}/`).replace(/\/+$/, '');
-    const url = `${publicBase}/?product=${encodeURIComponent(product.id)}`;
+    const url = `${publicBase}/?product=${encodeURIComponent(product.id)}&country=${market().country}`;
     const image = (Array.isArray(product.images) ? product.images[0] : '') || product.image || '';
     document.title = title;
     setMeta('meta[name="description"]', 'content', description);
