@@ -250,7 +250,7 @@ test('sitemap includes all store markets while Merchant feeds target supported S
   assert.match(feed, /UK:\{country:'United Kingdom',currency:'GBP'\}/);
   assert.doesNotMatch(feed, /AZ:\{country:'Azerbaijan'/);
   assert.match(feed, /product\.identifierExists === false/);
-  assert.match(feed, /<g:identifier_exists>no<\\/g:identifier_exists>/);
+  assert.ok(feed.includes('<g:identifier_exists>no</g:identifier_exists>'));
   assert.match(feed, /market\.currency/);
   assert.match(feed, /variantCombinations/);
   assert.match(feed, /isValidGtin/);
@@ -297,7 +297,7 @@ test('sitemap includes all store markets while Merchant feeds target supported S
   assert.match(feed, /UK:\{country:'United Kingdom',currency:'GBP'\}/);
   assert.doesNotMatch(feed, /AZ:\{country:'Azerbaijan'/);
   assert.match(feed, /product\.identifierExists === false/);
-  assert.match(feed, /<g:identifier_exists>no<\\/g:identifier_exists>/);
+  assert.ok(feed.includes('<g:identifier_exists>no</g:identifier_exists>'));
   assert.match(feed, /market\.currency/);
   assert.match(feed, /variantCombinations/);
   assert.match(feed, /isValidGtin/);
