@@ -381,3 +381,169 @@ body {
   .cart-button { padding-inline: 8px; }
   .product-title { font-size: 11px; }
 }
+
+
+/* DreamGrind Signature System 2026: premium editorial meets useful technology */
+:root {
+  --dg-ink:#0b2032;
+  --dg-muted:#66798a;
+  --dg-line:#e2ebef;
+  --dg-soft:#f4f8f8;
+  --dg-navy:#071c2b;
+  --dg-blue:#087d91;
+  --dg-cyan:#27c0c0;
+  --dg-mint:#c6f4e9;
+  --dg-shadow:0 16px 44px rgba(8,35,48,.075);
+  --dg-shadow-hover:0 25px 60px rgba(8,35,48,.13);
+  --text:var(--dg-ink);
+  --muted:var(--dg-muted);
+  --line:var(--dg-line);
+  --soft:var(--dg-soft);
+  --shadow:var(--dg-shadow);
+}
+body { background:#fcfdfc; }
+::selection { background:#0d8790;color:#fff; }
+:focus-visible { outline:3px solid rgba(39,192,192,.48);outline-offset:3px; }
+.announcement { background:linear-gradient(100deg,#071c2b,#0b3545 58%,#0b7778); }
+.announcement .link-btn { color:#b6fff1; }
+.locale-bar { background:rgba(249,252,251,.97);border-bottom-color:#e6efec; }
+.currency-badge { color:#086d70;background:#e5f7f2;border-color:#c8eee4; }
+.locale-inner select { border-color:#dce9e5;color:#1c3c41; }
+.site-header { border-bottom-color:rgba(215,231,225,.86);box-shadow:0 8px 26px rgba(8,35,48,.04); }
+.brand { color:#0b2635; }
+.brand::after { color:#25b5a8; }
+.main-nav { color:#526a72; }
+.main-nav a:hover,.text-button { color:#087d83; }
+.main-nav a::after { background:linear-gradient(90deg,#087d83,#35c8b3); }
+.icon-button,.cart-button { border-color:#deebe7;border-radius:13px; }
+.icon-button:hover,.cart-button:hover { border-color:#9eddd0;box-shadow:0 8px 22px rgba(8,125,131,.1); }
+.cart-button { background:#0b2837;border-color:#0b2837; }
+.cart-button:hover { background:#0b5157;border-color:#0b5157; }
+.hero-section {
+  position:relative;
+  padding:clamp(62px,7vw,104px) 0 clamp(64px,7vw,96px);
+  overflow:hidden;
+  background:
+    radial-gradient(ellipse at 0% 0%,rgba(39,192,192,.13),transparent 32%),
+    radial-gradient(ellipse at 96% 16%,rgba(30,132,143,.12),transparent 31%),
+    linear-gradient(135deg,#f8fbfa 0%,#f0f7f5 54%,#eaf5f2 100%);
+}
+.hero-section::before {
+  content:"";position:absolute;width:520px;height:520px;right:-190px;top:-270px;
+  border:1px solid rgba(8,125,131,.09);border-radius:50%;
+  box-shadow:0 0 0 46px rgba(8,125,131,.025),0 0 0 92px rgba(8,125,131,.018);
+  pointer-events:none;
+}
+.hero-grid { gap:clamp(32px,4.8vw,72px);position:relative;z-index:1; }
+.hero-market-label { display:inline-flex;align-items:center;gap:8px;color:#0a8182;letter-spacing:.19em;font-weight:850; }
+.hero-market-label::before { content:"";width:8px;height:8px;border-radius:50%;background:#20b8a9;box-shadow:0 0 0 5px rgba(32,184,169,.12); }
+.hero-copy h1 { color:#0b2432;font-size:clamp(48px,6.6vw,82px);line-height:.96;letter-spacing:-.078em; }
+.hero-copy h1 span {
+  background:linear-gradient(100deg,#087f87,#22b6aa 72%,#49c9b2);
+  -webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;
+}
+.hero-lede { max-width:560px;color:#657b7c;font-size:clamp(16px,1.5vw,18px);line-height:1.78; }
+.primary-button {
+  border-color:#087e83;background:linear-gradient(110deg,#0a7179,#0a9e9c);
+  box-shadow:0 10px 24px rgba(8,126,131,.17);
+}
+.primary-button:hover { background:linear-gradient(110deg,#075c65,#078583);box-shadow:0 15px 30px rgba(8,126,131,.23); }
+.secondary-button { border-color:#d9e8e2;color:#17434a;background:rgba(255,255,255,.86); }
+.secondary-button:hover { border-color:#9ddacf; }
+.trust-row { color:#637b79; }
+.trust-row i { color:#0a9690; }
+.hero-brand-art {
+  isolation:isolate;min-height:420px;border-radius:30px;
+  border-color:rgba(255,255,255,.12);
+  background:
+    radial-gradient(ellipse at 50% 38%,rgba(30,171,167,.29),transparent 46%),
+    radial-gradient(ellipse at 90% 100%,rgba(37,192,192,.18),transparent 45%),
+    linear-gradient(145deg,#10394a 0%,#071c2b 58%,#0d4c50 100%);
+  box-shadow:0 32px 76px rgba(8,38,48,.19),inset 0 1px 0 rgba(255,255,255,.08);
+}
+.brand-art-live-dot { background:#3ad5c2;box-shadow:0 0 0 4px rgba(58,213,194,.14); }
+.brand-art-orbit { border-color:rgba(105,235,213,.2); }
+.brand-art-core { background:radial-gradient(circle,rgba(27,180,169,.25),rgba(5,29,43,.2) 68%,transparent 70%); }
+.brand-art-core::before,.brand-art-core::after { border-color:rgba(105,235,213,.26); }
+.brand-art-monogram { color:#d7fff7;text-shadow:0 0 32px rgba(39,192,192,.34); }
+.brand-art-kicker { border-color:rgba(157,240,219,.21);color:#e0fff6; }
+.brand-art-footer-line { background:linear-gradient(90deg,rgba(80,227,199,.75),rgba(80,227,199,.03)); }
+.brand-art-footer span:last-child { color:#b7fff1; }
+.section { padding-top:clamp(58px,6.2vw,86px); }
+.eyebrow { color:#0a8582; }
+.section-heading h2,.about-grid h2,.track-section h2,.newsletter-card h2 {
+  color:#102b37;font-size:clamp(30px,3.3vw,41px);letter-spacing:-.06em;
+}
+.category-grid { gap:16px; }
+.category-card {
+  border-color:#e1ebe7;border-radius:21px;
+  background:linear-gradient(145deg,#fff 0%,#f4faf7 100%);
+  box-shadow:0 5px 20px rgba(8,35,48,.035);
+}
+.category-card::after { background:radial-gradient(circle,rgba(39,192,192,.16),transparent 70%); }
+.category-card:hover { border-color:#addfd4; }
+.category-card span { color:#0c9290; }
+.category-card strong { color:#153844; }
+.category-card small { color:#738885; }
+.product-grid { gap:19px; }
+.product-card { border-color:#e2ebe7;border-radius:21px;box-shadow:0 6px 23px rgba(8,35,48,.04); }
+.product-card:hover { border-color:#b8ded5; }
+.product-image-wrap { background:#f1f6f4; }
+.badge { background:#0d3c48; }
+.wish-btn.active { background:#078f8a; }
+.product-category { color:#0c8987; }
+.product-title { color:#173743; }
+.price { color:#102d38; }
+.add-mini { border-color:#0b8586;background:#0b8586;border-radius:11px; }
+.add-mini:hover { background:#086a70; }
+.chip { border-color:#dce8e4;color:#536d6d; }
+.chip:hover { border-color:#a6ddd2;color:#0b7e7d; }
+.chip.active { border-color:#0a7f83;background:#0a7f83; }
+.shop-controls select { border-color:#dce8e4; }
+.about-section {
+  background:linear-gradient(135deg,#eef7f3 0%,#f9fcfb 56%,#eaf6f3 100%);
+  border-color:#e2eee9;
+}
+.about-points > div { border-bottom-color:#dceae4; }
+.about-points strong { color:#183c42; }
+.about-points p { color:#68807d; }
+.track-section {
+  background:radial-gradient(ellipse at 85% 0%,rgba(35,185,173,.22),transparent 38%),linear-gradient(120deg,#071c2b,#0d3543 70%,#0e5558);
+}
+.track-section .eyebrow { color:#73dfce; }
+.track-card { border-color:rgba(185,236,223,.18); }
+.track-input-row input:focus { border-color:#42cdbb;box-shadow:0 0 0 3px rgba(66,205,187,.13); }
+.contact-card { border-color:#e2ebe7;background:linear-gradient(140deg,#fff,#f4faf7); }
+.contact-option { border-color:#e0ebe6; }
+.contact-option:hover { border-color:#a5ddd2; }
+.contact-option-icon { background:#e7f7f2;color:#087d7a; }
+.newsletter-card {
+  background:radial-gradient(ellipse at 92% 0%,rgba(39,192,192,.27),transparent 38%),linear-gradient(115deg,#071c2b,#0d3b48);
+}
+.newsletter-card .eyebrow { color:#77e2d0; }
+.site-footer { border-top-color:#e0eae5;background:#f4f8f6; }
+.site-footer .brand { color:#0b2635; }
+.footer-grid strong { color:#163943; }
+.footer-grid button:hover,.footer-contact-link:hover { color:#087d83; }
+.dg-floating-whatsapp { box-shadow:0 10px 30px rgba(8,75,59,.22); }
+.dg-floating-whatsapp:hover { background:#0b654c; }
+@media (max-width:760px) {
+  .hero-section { padding-top:42px;padding-bottom:44px; }
+  .hero-grid { gap:25px; }
+  .hero-copy h1 { font-size:clamp(42px,10.7vw,58px);line-height:.99; }
+  .hero-lede { font-size:14px;line-height:1.72; }
+  .hero-actions { margin-top:21px; }
+  .hero-brand-art { min-height:320px;border-radius:23px; }
+  .trust-row { gap:9px 12px;font-size:10px; }
+  .section { padding-top:48px; }
+  .category-grid { gap:10px; }
+  .category-card { min-height:140px;padding:16px;border-radius:16px; }
+  .product-grid { gap:11px; }
+  .product-card { border-radius:16px; }
+  .product-info { padding:11px; }
+  .product-title { font-size:12px; }
+  .footer-grid { gap:23px 15px; }
+}
+@media (prefers-reduced-motion:reduce) {
+  .hero-section::before { display:none; }
+}
