@@ -178,16 +178,25 @@ Sitemap: ${PUBLIC_SITE_URL}/sitemap.xml
 });
 app.get('/sitemap.xml', (_req, res) => {
   const urls = [`${PUBLIC_SITE_URL}/`];
-  const sitemapMarkets = ['United States', 'Canada', 'United Kingdom', 'Azerbaijan'];
+  const markets = [
+    { code: 'US', country: 'United States' },
+    { code: 'CA', country: 'Canada' },
+    { code: 'UK', country: 'United Kingdom' },
+    { code: 'AZ', country: 'Azerbaijan' }
+  ];
   for (const product of db.data.products) {
-    if (product && product.id != null && sitemapMarkets.some(country => isProductAvailableForCountry(product, country))) {
-      urls.push(`${PUBLIC_SITE_URL}/?product=${encodeURIComponent(product.id)}`);
+    if (!product || product.id == null) continue;
+    for (const market of markets) {
+      if (isProductAvailableForCountry(product, market.country) && effectiveProductPriceForCountry(product, market.country) > 0) {
+        urls.push(`${PUBLIC_SITE_URL}/?product=${encodeURIComponent(product.id)}&country=${market.code}`);
+      }
     }
   }
   const body = `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${urls.map(url => `<url><loc>${escapeXml(url)}</loc></url>`).join('')}</urlset>`;
   res.type('application/xml').set('Cache-Control', 'public, max-age=900').send(body);
 });
+app.use(express.static(path.join(__dirname, 'public')));
 app.use(express.static(path.join(__dirname, 'public')));
 
 const authLimiter = rateLimit({ windowMs: 15 * 60 * 1000, limit: 20, standardHeaders: 'draft-8', legacyHeaders: false });
