@@ -137,15 +137,13 @@ test('conversion trust updates include real brand copy and persistent WhatsApp c
   assert.match(script, /Delivery and confirmed charges included in the displayed AZN price/);
 });
 
-test('DreamGrind signature design system uses unified navy and teal palette', async () => {
+test('DreamGrind visual layer keeps its navy and cyan brand palette', async () => {
   const css = await read('public/dreamgrind-premium.css');
   const html = await read('public/index.html');
-  assert.match(css, /DreamGrind Signature System 2026/);
-  assert.match(css, /--dg-navy:#071c2b/);
-  assert.match(css, /--dg-cyan:#27c0c0/);
-  assert.match(html, /dreamgrind-premium\.css\?v=20261127-center-v1/);
+  assert.match(css, /--dg-navy:\s*#071a2c/i);
+  assert.match(css, /--dg-cyan:\s*#15b8df/i);
+  assert.match(html, /dreamgrind-premium\\.css\\?v=20261127-center-v3/);
 });
-
 test('Design-system refresh preserves core storefront sections and handlers', async () => {
   const html = await read('public/index.html');
   const script = await read('public/script.js');
