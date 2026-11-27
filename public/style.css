@@ -1360,3 +1360,43 @@
 @media (prefers-reduced-motion:reduce) {
   .product-image-wrap img { transition:none !important; }
 }
+
+/* Checkout order summary: visible, compact and responsive across markets. */
+.checkout-order-summary {
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 15px;
+  background: #fafafa;
+  margin: 4px 0 8px;
+}
+.checkout-order-summary h3 {
+  margin: 0 0 10px;
+  font-size: 16px;
+}
+.checkout-order-line {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 9px 0;
+  border-bottom: 1px solid var(--line);
+  font-size: 13px;
+}
+.checkout-order-line > span { min-width: 0; }
+.checkout-order-line > strong { flex: 0 0 auto; text-align: right; }
+.checkout-order-line small { display: block; margin-top: 3px; }
+.checkout-order-summary .summary-row { margin-top: 10px; }
+.checkout-order-summary .summary-row.total {
+  border-top: 1px solid var(--line);
+  padding-top: 12px;
+  font-size: 17px;
+}
+.checkout-order-summary > .muted {
+  margin: 10px 0 0;
+  font-size: 11px;
+  line-height: 1.5;
+}
+@media (max-width: 520px) {
+  .checkout-order-summary { padding: 12px; }
+  .checkout-order-line { gap: 8px; font-size: 12px; }
+}
