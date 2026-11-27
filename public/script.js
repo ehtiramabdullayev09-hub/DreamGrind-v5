@@ -1785,8 +1785,9 @@ function handleCheckoutCountryChange() {
       if (!r.ok) { $('trackingResult').innerHTML = '<p class="muted">Order not found. Check the order number and try again.</p>'; return; }
       const order = d.order;
       const paymentLabel = order.paymentStatus === 'Paid' ? 'Paid' : order.paymentStatus === 'Refunded' ? 'Refunded' : order.paymentStatus === 'Failed' ? 'Payment not completed' : order.paymentStatus === 'Awaiting quote' ? 'Delivery fee awaiting confirmation' : 'Awaiting payment confirmation';
+      const safeTrackingUrl = /^https:\/\//i.test(String(order.trackingUrl || '')) ? String(order.trackingUrl) : '';
       const trackingMarkup = order.trackingNumber
-        ? `<div class="note-box" style="margin-top:12px"><strong>Carrier tracking number</strong><br><span>${escapeHtml(order.trackingNumber)}</span></div>`
+        ? `<div class="note-box" style="margin-top:12px"><strong>Carrier tracking number</strong><br><span>${escapeHtml(order.trackingNumber)}</span>${safeTrackingUrl ? `<p style="margin:10px 0 0"><a href="${escapeHtml(safeTrackingUrl)}" target="_blank" rel="noopener noreferrer">Track with carrier ↗</a></p>` : ''}</div>`
         : '<p class="muted" style="margin-top:12px">Carrier tracking details will appear here after your order has been dispatched and the number has been added by our team.</p>';
       $('trackingResult').innerHTML = `<div class="tracking-result"><div class="tracking-meta"><div><strong>Order ${escapeHtml(order.id)}</strong><div class="muted">Created ${new Date(order.createdAt).toLocaleString()}</div></div><div class="tracking-status">${escapeHtml(order.status)}</div></div><p><strong>Payment:</strong> ${escapeHtml(paymentLabel)}</p>${trackingMarkup}<p class="muted" style="margin-top:12px">Order statuses are updated by DreamGrind. Carrier movement updates are not live on this page.</p></div>`;
     }
