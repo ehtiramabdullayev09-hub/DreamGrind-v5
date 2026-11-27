@@ -111,7 +111,7 @@
 
   async function track(eventName, parameters) {
     if (!consentGranted() || !(await ensureLoaded()) || !initialized) return false;
-    window.gtag('event', eventName, parameters || {});
+    window.gtag('event', eventName, { ...(parameters || {}), transport_type: 'beacon' });
     return true;
   }
 
