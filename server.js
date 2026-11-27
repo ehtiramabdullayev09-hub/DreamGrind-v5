@@ -491,16 +491,17 @@ app.get('/api/products', (_req, res) => {
 
 app.get('/feed/google.xml', (req, res) => {
   const code = String(req.query.country || 'US').toUpperCase();
-  const markets = { US:{country:'United States',currency:'USD'}, CA:{country:'Canada',currency:'CAD'}, UK:{country:'United Kingdom',currency:'GBP'}, AZ:{country:'Azerbaijan',currency:'AZN'} };
+  const markets = { US:{country:'United States',currency:'USD'}, CA:{country:'Canada',currency:'CAD'}, UK:{country:'United Kingdom',currency:'GBP'} };
   const market = markets[code];
-  if (!market) return res.status(400).type('text/plain').send('Unsupported country.');
+  if (!market) return res.status(400).type('text/plain').send('Unsupported Google Shopping target country.');
   const items = db.data.products.filter(product => isProductAvailableForCountry(product, market.country)).map(product => {
-      const images = (Array.isArray(product.images) ? product.images : []).concat(product.image || []).filter(url => { try { const parsed = new URL(String(url || '')); return parsed.protocol === 'http:' || parsed.protocol === 'https:'; } catch { return false; } });
+    const images = (Array.isArray(product.images) ? product.images : []).concat(product.image || []).filter(url => { try { const parsed = new URL(String(url || '')); return parsed.protocol === 'http:' || parsed.protocol === 'https:'; } catch { return false; } });
     const gtinValid = isValidGtin(product.gtin);
     const mpn = String(product.mpn || '').trim();
     const brand = String(product.brand || '').trim();
+    const identifierMissingConfirmed = product.identifierExists === false;
     const stock = Number(product.stock);
-    if (!images.length || !brand || (!gtinValid && !mpn) || !(stock > 0)) return null;
+    if (!images.length || !(stock > 0) || (!gtinValid && !(mpn && brand) && !identifierMissingConfirmed)) return null;
     const variants = Array.isArray(product.variantCombinations) ? product.variantCombinations : [];
     const rows = variants.length ? variants : [null];
     return rows.map(variant => {
@@ -512,10 +513,11 @@ app.get('/feed/google.xml', (req, res) => {
       const title = variantText ? String(product.title || '') + ' - ' + variantText : String(product.title || '');
       const description = String(product.description || product.title || '').replace(/<[^>]*>/g,' ').replace(/\\s+/g,' ').trim().slice(0,4500);
       const url = PUBLIC_SITE_URL + '/?product=' + encodeURIComponent(product.id) + '&country=' + code;
-      const identifier = gtinValid ? '<g:gtin>' + escapeXml(product.gtin) + '</g:gtin>' : '<g:mpn>' + escapeXml(mpn) + '</g:mpn>';
+      const identifier = gtinValid ? '<g:gtin>' + escapeXml(product.gtin) + '</g:gtin>' : (mpn && brand ? '<g:mpn>' + escapeXml(mpn) + '</g:mpn>' : '<g:identifier_exists>no</g:identifier_exists>');
+      const brandAttribute = brand ? '<g:brand>' + escapeXml(brand) + '</g:brand>' : '';
       const attrs = variant ? (variant.color ? '<g:color>' + escapeXml(variant.color) + '</g:color>' : '') + (variant.size ? '<g:size>' + escapeXml(variant.size) + '</g:size>' : '') : '';
       const group = variants.length ? '<g:item_group_id>' + escapeXml(product.id) + '</g:item_group_id>' : '';
-      return '<item><g:id>' + escapeXml(itemId) + '</g:id><g:title>' + escapeXml(title) + '</g:title><g:description>' + escapeXml(description) + '</g:description><g:link>' + escapeXml(url) + '</g:link><g:image_link>' + escapeXml(images[0]) + '</g:image_link>' + images.slice(1,10).map(image => '<g:additional_image_link>' + escapeXml(image) + '</g:additional_image_link>').join('') + '<g:availability>in_stock</g:availability><g:condition>new</g:condition><g:price>' + price.toFixed(2) + ' ' + market.currency + '</g:price><g:brand>' + escapeXml(brand) + '</g:brand><g:product_type>' + escapeXml(product.category || 'General') + '</g:product_type>' + identifier + attrs + group + '</item>';
+      return '<item><g:id>' + escapeXml(itemId) + '</g:id><g:title>' + escapeXml(title) + '</g:title><g:description>' + escapeXml(description) + '</g:description><g:link>' + escapeXml(url) + '</g:link><g:image_link>' + escapeXml(images[0]) + '</g:image_link>' + images.slice(1,10).map(image => '<g:additional_image_link>' + escapeXml(image) + '</g:additional_image_link>').join('') + '<g:availability>in_stock</g:availability><g:condition>new</g:condition><g:price>' + price.toFixed(2) + ' ' + market.currency + '</g:price>' + brandAttribute + identifier + attrs + group + '</item>';
     }).filter(Boolean).join('');
   }).filter(Boolean);
   const xml = '<?xml version="1.0" encoding="UTF-8"?><rss version="2.0" xmlns:g="http://base.google.com/ns/1.0"><channel><title>DreamGrind ' + code + '</title><link>' + escapeXml(PUBLIC_SITE_URL) + '</link><description>DreamGrind product feed for ' + market.country + '</description>' + items.join('') + '</channel></rss>';
@@ -1057,7 +1059,8 @@ const adminProductSchema = z.object({
   category: z.string().trim().min(2).max(80).optional(),
   brand: z.string().trim().max(100).nullable().optional(),
   gtin: z.string().trim().refine(isValidGtin, 'Enter a valid GTIN with a correct check digit.').nullable().optional(),
-  mpn: z.string().trim().max(100).nullable().optional()
+  mpn: z.string().trim().max(100).nullable().optional(),
+  identifierExists: z.boolean().optional()
 });
 app.post('/api/admin/products', requireAdmin, async (req, res) => {
   const parsed = adminProductSchema.safeParse(req.body);
@@ -1086,6 +1089,7 @@ video: parsed.data.video || null,
     brand: parsed.data.brand || null,
     gtin: parsed.data.gtin || null,
     mpn: parsed.data.mpn || null,
+    identifierExists: parsed.data.identifierExists === false ? false : null,
     createdAt: new Date().toISOString(),
     rating: 5,
     reviews: 0,

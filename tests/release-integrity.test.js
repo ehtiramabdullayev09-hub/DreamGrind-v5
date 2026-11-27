@@ -235,13 +235,22 @@ test('SEO landing route renders Product and Breadcrumb JSON-LD before client scr
   assert.match(server, /availability.*schema\.org|schema\.org.*availability/);
 });
 
-test('country-specific sitemap and Google Merchant feeds use matching market URLs', async () => {
+test('sitemap includes all store markets while Merchant feeds target supported Shopping countries only', async () => {
   const server = await read('server.js');
-  assert.match(server, /&country=\$\{market\.code\}/);
-  const start = server.indexOf("app.get('/feed/google.xml'");
-  const end = server.indexOf("app.get('/api/reviews/:productId'", start);
-  const feed = server.slice(start,end);
+  const sitemapStart = server.indexOf("app.get('/sitemap.xml'");
+  const sitemapEnd = server.indexOf("function escapeHtml(value)", sitemapStart);
+  const sitemap = server.slice(sitemapStart, sitemapEnd);
+  assert.match(sitemap, /&country=\$\{market\.code\}/);
+  const feedStart = server.indexOf("app.get('/feed/google.xml'");
+  const feedEnd = server.indexOf("app.get('/api/reviews/:productId'", feedStart);
+  const feed = server.slice(feedStart, feedEnd);
   assert.match(feed, /&country=' \+ code/);
+  assert.match(feed, /US:\{country:'United States',currency:'USD'\}/);
+  assert.match(feed, /CA:\{country:'Canada',currency:'CAD'\}/);
+  assert.match(feed, /UK:\{country:'United Kingdom',currency:'GBP'\}/);
+  assert.doesNotMatch(feed, /AZ:\{country:'Azerbaijan'/);
+  assert.match(feed, /product\.identifierExists === false/);
+  assert.ok(feed.includes('<g:identifier_exists>no</g:identifier_exists>'));
   assert.match(feed, /market\.currency/);
   assert.match(feed, /variantCombinations/);
   assert.match(feed, /isValidGtin/);
@@ -273,13 +282,22 @@ test('SEO landing route renders Product and Breadcrumb JSON-LD before client scr
   assert.match(server, /priceCurrency:market\.currency/);
 });
 
-test('country-specific sitemap and Google Merchant feeds use matching market URLs', async () => {
+test('sitemap includes all store markets while Merchant feeds target supported Shopping countries only', async () => {
   const server = await read('server.js');
-  assert.match(server, /&country=\$\{market\.code\}/);
-  const start = server.indexOf("app.get('/feed/google.xml'");
-  const end = server.indexOf("app.get('/api/reviews/:productId'", start);
-  const feed = server.slice(start, end);
+  const sitemapStart = server.indexOf("app.get('/sitemap.xml'");
+  const sitemapEnd = server.indexOf("function escapeHtml(value)", sitemapStart);
+  const sitemap = server.slice(sitemapStart, sitemapEnd);
+  assert.match(sitemap, /&country=\$\{market\.code\}/);
+  const feedStart = server.indexOf("app.get('/feed/google.xml'");
+  const feedEnd = server.indexOf("app.get('/api/reviews/:productId'", feedStart);
+  const feed = server.slice(feedStart, feedEnd);
   assert.match(feed, /&country=' \+ code/);
+  assert.match(feed, /US:\{country:'United States',currency:'USD'\}/);
+  assert.match(feed, /CA:\{country:'Canada',currency:'CAD'\}/);
+  assert.match(feed, /UK:\{country:'United Kingdom',currency:'GBP'\}/);
+  assert.doesNotMatch(feed, /AZ:\{country:'Azerbaijan'/);
+  assert.match(feed, /product\.identifierExists === false/);
+  assert.ok(feed.includes('<g:identifier_exists>no</g:identifier_exists>'));
   assert.match(feed, /market\.currency/);
   assert.match(feed, /variantCombinations/);
   assert.match(feed, /isValidGtin/);
@@ -325,4 +343,15 @@ test('core payment, order and admin routes remain available', async () => {
   assert.match(server, /await db\.write\(\)/);
   assert.match(script, /payment\.redirect_url/);
   assert.match(script, /dg_checkout_mode/);
+});
+
+
+test('admin supports only supplier-confirmed products without assigned manufacturer identifiers', async () => {
+  const server = await read('server.js');
+  const admin = await read('public/admin.html');
+  assert.ok(server.includes('identifierExists: z.boolean().optional()'));
+  assert.ok(server.includes('identifierExists: parsed.data.identifierExists === false ? false : null'));
+  assert.ok(admin.includes('id="productIdentifierMissing"'));
+  assert.ok(admin.includes("identifierExists:$('productIdentifierMissing').checked ? false : null"));
+  assert.ok(admin.includes("$('productIdentifierMissing').checked=p.identifierExists===false"));
 });
