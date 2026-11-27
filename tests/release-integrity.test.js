@@ -140,8 +140,8 @@ test('conversion trust updates include real brand copy and persistent WhatsApp c
 test('DreamGrind visual layer keeps its navy and cyan brand palette', async () => {
   const css = await read('public/dreamgrind-premium.css');
   const html = await read('public/index.html');
-  assert.match(css, /--dg-navy:\s*#071a2c/i);
-  assert.match(css, /--dg-cyan:\s*#15b8df/i);
+  assert.ok(css.includes('--dg-navy: #071a2c;'));
+  assert.ok(css.includes('--dg-cyan: #15b8df;'));
   assert.match(html, /dreamgrind-premium\\.css\\?v=20261127-center-v3/);
 });
 test('Design-system refresh preserves core storefront sections and handlers', async () => {
