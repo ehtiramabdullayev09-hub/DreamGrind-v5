@@ -349,9 +349,9 @@ test('core payment, order and admin routes remain available', async () => {
 test('admin supports only supplier-confirmed products without assigned manufacturer identifiers', async () => {
   const server = await read('server.js');
   const admin = await read('public/admin.html');
-  assert.match(server, /identifierExists: z\\.boolean\\(\\)\\.optional\\(\\)/);
-  assert.match(server, /identifierExists: parsed\\.data\\.identifierExists === false/);
-  assert.match(admin, /id="productIdentifierMissing"/);
+  assert.ok(server.includes('identifierExists: z.boolean().optional()'));
+  assert.ok(server.includes('identifierExists: parsed.data.identifierExists === false ? false : null'));
+  assert.ok(admin.includes('id="productIdentifierMissing"'));
   assert.ok(admin.includes("identifierExists:$('productIdentifierMissing').checked ? false : null"));
   assert.ok(admin.includes("$('productIdentifierMissing').checked=p.identifierExists===false"));
 });
