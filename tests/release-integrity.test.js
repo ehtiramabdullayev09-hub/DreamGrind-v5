@@ -205,3 +205,22 @@ test('hero DG emblem keeps the original clean monogram without overlapping capti
   assert.ok(html.includes('<span class="brand-art-monogram">DG</span>'));
   assert.doesNotMatch(html, /brand-art-core-caption|FIND YOUR EVERYDAY/);
 });
+
+
+test('premium motion system is progressive, accessible and does not alter commerce handlers', async () => {
+  const html = await read('public/index.html');
+  const css = await read('public/dreamgrind-premium.css');
+  const motion = await read('public/motion.js');
+  const script = await read('public/script.js');
+  const server = await read('server.js');
+  assert.match(html, /motion\.js\\?v=20261127-motion-v1/);
+  assert.match(motion, /IntersectionObserver/);
+  assert.match(motion, /prefers-reduced-motion/);
+  assert.match(motion, /animation-timeline: view\(\)/);
+  assert.match(css, /@media \(prefers-reduced-motion:reduce\)/);
+  assert.match(css, /transform:translate3d/);
+  assert.match(script, /payment\/create|createEpointPayment/);
+  assert.match(server, /createEpointPayment/);
+  assert.match(html, /id="productGrid"/);
+  assert.match(html, /id="countryPicker"/);
+});
