@@ -143,7 +143,7 @@ test('DreamGrind signature design system uses unified navy and teal palette', as
   assert.match(css, /DreamGrind Signature System 2026/);
   assert.match(css, /--dg-navy:#071c2b/);
   assert.match(css, /--dg-cyan:#27c0c0/);
-  assert.match(html, /dreamgrind-premium\.css\?v=20261127-signature-v1/);
+  assert.match(html, /dreamgrind-premium\.css\?v=20261127-edit-v1/);
 });
 
 test('Design-system refresh preserves core storefront sections and handlers', async () => {
