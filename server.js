@@ -491,28 +491,36 @@ app.get('/api/products', (_req, res) => {
 
 app.get('/feed/google.xml', (req, res) => {
   const code = String(req.query.country || 'US').toUpperCase();
-  const countries = { US: 'United States', CA: 'Canada', UK: 'United Kingdom', AZ: 'Azerbaijan' };
-  if (!Object.prototype.hasOwnProperty.call(countries, code)) return res.status(400).type('text/plain').send('Unsupported country.');
-  const currency = ({ US: 'USD', CA: 'CAD', UK: 'GBP', AZ: 'AZN' })[code];
-  const items = db.data.products.filter(product => isProductAvailableForCountry(product, countries[code])
-    && !(Array.isArray(product.variantCombinations) && product.variantCombinations.length)
-    && !(Array.isArray(product.variants) && product.variants.length))
-    .map(product => {
-      const images = (Array.isArray(product.images) ? product.images : []).concat(product.image || []).filter(url => /^https?:\/\//i.test(String(url || '')));
-      const validGtin = isValidGtin(product.gtin);
-      const hasIdentifier = validGtin || Boolean(String(product.mpn || '').trim());
-      if (!images.length || !String(product.brand || '').trim() || !hasIdentifier || !(Number(product.stock) > 0)) return null;
-      const price = effectiveProductPriceForCountry(product, countries[code]);
+  const markets = { US:{country:'United States',currency:'USD'}, CA:{country:'Canada',currency:'CAD'}, UK:{country:'United Kingdom',currency:'GBP'}, AZ:{country:'Azerbaijan',currency:'AZN'} };
+  const market = markets[code];
+  if (!market) return res.status(400).type('text/plain').send('Unsupported country.');
+  const items = db.data.products.filter(product => isProductAvailableForCountry(product, market.country)).map(product => {
+    const images = (Array.isArray(product.images) ? product.images : []).concat(product.image || []).filter(url => /^https?:\\/\\//i.test(String(url || '')));
+    const gtinValid = isValidGtin(product.gtin);
+    const mpn = String(product.mpn || '').trim();
+    const brand = String(product.brand || '').trim();
+    const stock = Number(product.stock);
+    if (!images.length || !brand || (!gtinValid && !mpn) || !(stock > 0)) return null;
+    const variants = Array.isArray(product.variantCombinations) ? product.variantCombinations : [];
+    const rows = variants.length ? variants : [null];
+    return rows.map(variant => {
+      const price = variant ? effectiveVariantPriceForCountry(product, variant, market.country) : effectiveProductPriceForCountry(product, market.country);
       if (!(Number.isFinite(price) && price > 0)) return null;
-      const description = String(product.description || product.title || '').replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 4500);
-      const availability = 'in_stock';
-      const shippingCountry = code === 'UK' ? 'GB' : code;
-      return `<item><g:id>${escapeXml(product.id)}</g:id><g:title>${escapeXml(product.title)}</g:title><g:description>${escapeXml(description)}</g:description><g:link>${escapeXml(`${PUBLIC_SITE_URL}/?product=${encodeURIComponent(product.id)}`)}</g:link><g:image_link>${escapeXml(images[0])}</g:image_link>${images.slice(1, 10).map(url => `<g:additional_image_link>${escapeXml(url)}</g:additional_image_link>`).join('')}<g:availability>${availability}</g:availability><g:condition>new</g:condition><g:price>${price.toFixed(2)} ${currency}</g:price><g:brand>${escapeXml(product.brand)}</g:brand><g:product_type>${escapeXml(product.category || 'General')}</g:product_type>${validGtin ? `<g:gtin>${escapeXml(product.gtin)}</g:gtin>` : `<g:mpn>${escapeXml(product.mpn)}</g:mpn>`}</item>`;
-    }).filter(Boolean);
-  const xml = `<?xml version="1.0" encoding="UTF-8"?><rss version="2.0" xmlns:g="http://base.google.com/ns/1.0"><channel><title>DreamGrind ${code}</title><link>${escapeXml(PUBLIC_SITE_URL)}</link><description>DreamGrind product feed for ${countries[code]}</description>${items.join('')}</channel></rss>`;
-  res.type('application/xml').set('Cache-Control', 'public, max-age=900').send(xml);
+      const variantText = variant ? [variant.color, variant.size].filter(Boolean).join(' / ') : '';
+      const suffix = variant ? '-' + Buffer.from([variant.color || '', variant.size || ''].join('|')).toString('base64url').slice(0,24) : '';
+      const itemId = String(product.id) + suffix;
+      const title = variantText ? String(product.title || '') + ' - ' + variantText : String(product.title || '');
+      const description = String(product.description || product.title || '').replace(/<[^>]*>/g,' ').replace(/\\s+/g,' ').trim().slice(0,4500);
+      const url = PUBLIC_SITE_URL + '/?product=' + encodeURIComponent(product.id) + '&country=' + code;
+      const identifier = gtinValid ? '<g:gtin>' + escapeXml(product.gtin) + '</g:gtin>' : '<g:mpn>' + escapeXml(mpn) + '</g:mpn>';
+      const attrs = variant ? (variant.color ? '<g:color>' + escapeXml(variant.color) + '</g:color>' : '') + (variant.size ? '<g:size>' + escapeXml(variant.size) + '</g:size>' : '') : '';
+      const group = variants.length ? '<g:item_group_id>' + escapeXml(product.id) + '</g:item_group_id>' : '';
+      return '<item><g:id>' + escapeXml(itemId) + '</g:id><g:title>' + escapeXml(title) + '</g:title><g:description>' + escapeXml(description) + '</g:description><g:link>' + escapeXml(url) + '</g:link><g:image_link>' + escapeXml(images[0]) + '</g:image_link>' + images.slice(1,10).map(image => '<g:additional_image_link>' + escapeXml(image) + '</g:additional_image_link>').join('') + '<g:availability>in_stock</g:availability><g:condition>new</g:condition><g:price>' + price.toFixed(2) + ' ' + market.currency + '</g:price><g:brand>' + escapeXml(brand) + '</g:brand><g:product_type>' + escapeXml(product.category || 'General') + '</g:product_type>' + identifier + attrs + group + '</item>';
+    }).filter(Boolean).join('');
+  }).filter(Boolean);
+  const xml = '<?xml version="1.0" encoding="UTF-8"?><rss version="2.0" xmlns:g="http://base.google.com/ns/1.0"><channel><title>DreamGrind ' + code + '</title><link>' + escapeXml(PUBLIC_SITE_URL) + '</link><description>DreamGrind product feed for ' + market.country + '</description>' + items.join('') + '</channel></rss>';
+  res.type('application/xml').set('Cache-Control','public, max-age=900').send(xml);
 });
-
 app.get('/api/reviews/:productId', (req, res) => {
   const productId = Number(req.params.productId);
   if (!Number.isInteger(productId) || productId < 1) return res.status(400).json({ error: 'Invalid product.' });
