@@ -386,3 +386,14 @@ test('checkout summary styling remains responsive and does not alter existing st
   assert.ok(css.includes('@media (max-width: 520px)'));
   assert.ok(css.includes('.checkout-order-line'));
 });
+
+
+test('admin order updates persist the carrier tracking URL as well as the tracking number', async () => {
+  const server = await read('server.js');
+  const handlerStart = server.indexOf("app.patch('/api/admin/orders/:id'");
+  const handlerEnd = server.indexOf("const adminProductSchema", handlerStart);
+  const handler = server.slice(handlerStart, handlerEnd);
+  assert.ok(handler.includes("if (parsed.data.trackingNumber !== undefined) order.trackingNumber = parsed.data.trackingNumber || null;"));
+  assert.ok(handler.includes("if (parsed.data.trackingUrl !== undefined) order.trackingUrl = parsed.data.trackingUrl || null;"));
+  assert.ok(handler.includes("await db.write();"));
+});
