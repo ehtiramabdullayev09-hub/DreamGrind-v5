@@ -124,3 +124,15 @@ test('Growth quality workflow runs the release tests on pushes and pull requests
   assert.match(workflow, /npm test/);
   assert.match(workflow, /pull_request/);
 });
+
+test('conversion trust updates include real brand copy and persistent WhatsApp contact', async () => {
+  const html = await read('public/index.html');
+  const css = await read('public/style.css');
+  const script = await read('public/script.js');
+  assert.match(html, /dg-floating-whatsapp/);
+  assert.match(css, /\.dg-floating-whatsapp/);
+  assert.match(html, /Useful everyday finds, thoughtfully selected/);
+  assert.doesNotMatch(html, /A modern storefront foundation for international customers/);
+  assert.match(script, /Shipping cost and delivery estimate shown at checkout/);
+  assert.match(script, /Delivery and confirmed charges included in the displayed AZN price/);
+});

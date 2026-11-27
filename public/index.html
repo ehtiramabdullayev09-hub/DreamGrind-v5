@@ -20,7 +20,7 @@
   <link rel="stylesheet" href="growth.css?v=20261125-growth-v2">
 </head>
 <body>
-  <div class="announcement"><div class="container announcement-inner"><span id="announcementText">Free shipping on selected orders</span><button class="link-btn" onclick="showPolicy('shipping')">Shipping info</button></div></div>
+  <div class="announcement"><div class="container announcement-inner"><span id="announcementText">Discover useful everyday finds. Delivery details are shown before checkout.</span><button class="link-btn" onclick="showPolicy('shipping')">Shipping info</button></div></div>
 <div class="locale-bar">
   <div class="container locale-inner">
     <span data-i18n="shippingTo">Shipping to:</span>
@@ -151,7 +151,7 @@
       <div class="container"><div class="section-heading"><div><p class="eyebrow">PICK UP WHERE YOU LEFT OFF</p><h2>Recently viewed</h2></div></div><div id="dgRecentGrid" class="product-grid"></div></div>
     </section>
 
-    <section id="about" class="about-section"><div class="container about-grid"><div><p class="eyebrow"data-i18n="whyDreamGrind">Why DreamGrind</p><h2>A small store with a thoughtful shopping experience.</h2></div><div class="about-points"><div><strong>Curated</strong><p>Products can be selected with usefulness and presentation in mind.</p></div><div><strong>Transparent</strong><p>Shipping, order status and support information are designed to be visible.</p></div><div><strong>Human support</strong><p>Customers can contact the store directly rather than being left guessing.</p></div></div></div></section>
+    <section id="about" class="about-section"><div class="container about-grid"><div><p class="eyebrow"data-i18n="whyDreamGrind">Why DreamGrind</p><h2>A small store with a thoughtful shopping experience.</h2></div><div class="about-points"><div><strong>Useful everyday finds</strong><p>We focus on practical gadgets, thoughtful home finds and products for pets.</p></div><div><strong>Clear before you buy</strong><p>Check product details, available destinations, delivery information and confirmed charges before completing checkout.</p></div><div><strong>Real human support</strong><p>Questions about a product or delivery? Contact our store directly before placing your order.</p></div></div></div></section>
 
     <section id="dg-faq" class="dg-growth-section dg-faq-section">
       <div class="container dg-faq-layout">
@@ -184,10 +184,10 @@
       </div>
     </section>
 
-    <section class="newsletter-section"><div class="container newsletter-card"><div><p class="eyebrow"data-i18n="stayInLoop">Stay in the loop</p><h2>Get new product drops in your inbox.</h2></div><form class="newsletter-form" onsubmit="subscribe(event)"><input id="newsletterEmail" type="email" placeholder="you@example.com" required><button class="primary-button">Subscribe</button></form></div></section>
+    <section class="newsletter-section"><div class="container newsletter-card"><div><p class="eyebrow"data-i18n="stayInLoop">Stay in the loop</p><h2>Be first to discover new useful finds.</h2></div><form class="newsletter-form" onsubmit="subscribe(event)"><input id="newsletterEmail" type="email" placeholder="you@example.com" required><button class="primary-button">Subscribe</button></form></div></section>
   </main>
 
-  <footer class="site-footer"><div class="container footer-grid"><div class="footer-brand"><div class="brand">DreamGrind</div><p class="muted">A modern storefront foundation for international customers.</p><div class="footer-business">
+  <footer class="site-footer"><div class="container footer-grid"><div class="footer-brand"><div class="brand">DreamGrind</div><p class="muted">Useful everyday finds, thoughtfully selected for your home, lifestyle and pets. Clear product details, straightforward delivery information and direct human support.</p><div class="footer-business">
   <strong>Business Information</strong>
   <p>DreamGrind</p>
   <p>Individual Entrepreneur: Ehtiram Abdullayev</p>
@@ -195,6 +195,10 @@
   <p>Business activity: E-commerce and retail sales</p>
 </div></div><div><strong>Customer</strong><button onclick="openAccount()">My account</button><button onclick="openWishlist()">Wishlist</button><button onclick="openCart()">Cart</button></div><div><strong>Support</strong><button onclick="showPolicy('shipping')">Shipping</button><button onclick="showPolicy('returns')">Returns & refunds</button><button onclick="openSupport()">Contact us</button><a class="footer-contact-link" href="https://wa.me/994998998097?text=Hello%20DreamGrind%2C%20I%20have%20a%20question." target="_blank" rel="noopener noreferrer">WhatsApp</a><a class="footer-contact-link" href="mailto:dreamgrindstore@gmail.com">Email us</a></div><div><strong>Legal</strong><button onclick="showPolicy('privacy')">Privacy</button><button onclick="showPolicy('terms')">Terms</button><button onclick="showPolicy('cookies')">Cookies</button><button type="button" id="dgCookieSettingsButton" hidden onclick="window.DGAnalytics?.openSettings()">Cookie settings</button></div></div><div class="container footer-bottom"><span>© 2026 DreamGrind</span><button onclick="openSupport()">Message the store</button></div></footer>
 
+  <a class="dg-floating-whatsapp" href="https://wa.me/994998998097?text=Hello%20DreamGrind%2C%20I%20have%20a%20question." target="_blank" rel="noopener noreferrer" aria-label="Chat with DreamGrind on WhatsApp">
+    <span class="dg-whatsapp-mark" aria-hidden="true">◉</span>
+    <span class="dg-whatsapp-label">Need help? Chat with us</span>
+  </a>
   <div id="modalRoot"></div><div id="toast" class="toast hidden"></div>
   <script src="script.js?v=20261127-product-art"></script>
   <script src="analytics.js?v=20261127-product-art" defer></script>

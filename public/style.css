@@ -1322,3 +1322,27 @@
   .dg-product-page .dg-product-intro { padding:9px; }
   .dg-product-page .dg-benefit-item { font-size:9px; }
 }
+
+
+/* Persistent direct support. Positioned clear of the mobile checkout bar. */
+.dg-floating-whatsapp {
+  position:fixed;right:22px;bottom:22px;z-index:90;
+  display:inline-flex;align-items:center;gap:10px;
+  min-height:48px;padding:8px 16px 8px 9px;
+  border:1px solid rgba(255,255,255,.18);border-radius:999px;
+  background:#137b58;color:#fff;text-decoration:none;
+  box-shadow:0 10px 30px rgba(13,66,48,.22);
+  font-size:12px;font-weight:850;
+  transition:transform .18s ease,box-shadow .18s ease,background .18s ease;
+}
+.dg-floating-whatsapp:hover { transform:translateY(-2px);background:#0f684a;box-shadow:0 14px 34px rgba(13,66,48,.28); }
+.dg-whatsapp-mark { display:grid;place-items:center;width:30px;height:30px;border-radius:50%;background:rgba(255,255,255,.17);font-size:17px; }
+.dg-whatsapp-label { white-space:nowrap; }
+@media(max-width:760px) {
+  .dg-floating-whatsapp { right:14px;bottom:calc(82px + env(safe-area-inset-bottom));min-height:44px;padding:7px 13px 7px 8px; }
+  .dg-whatsapp-mark { width:28px;height:28px; }
+}
+@media(max-width:380px) {
+  .dg-floating-whatsapp { right:10px;bottom:calc(80px + env(safe-area-inset-bottom)); }
+  .dg-whatsapp-label { font-size:11px; }
+}
