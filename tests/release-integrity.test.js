@@ -156,3 +156,39 @@ test('Design-system refresh preserves core storefront sections and handlers', as
     assert.ok(script.includes(handler), 'Missing handler: ' + handler);
   }
 });
+
+test('The DreamGrind Edit collections route to existing catalogue categories', async () => {
+  const html = await read('public/index.html');
+  for (const id of ['dg-edit','dgEditTitle','dgEditCollections']) {
+    assert.ok(html.includes('id="' + id + '"'), 'Missing collection section element: ' + id);
+  }
+  for (const category of ['Home','Pet','Gadgets','Lifestyle']) {
+    assert.ok(html.includes("setCategory('" + category + "')"), 'Missing collection route: ' + category);
+  }
+  for (const title of ['The Cozy Home Edit','The Pet Parent Edit','The Everyday Upgrade','The Little Things Edit']) {
+    assert.ok(html.includes(title), 'Missing editorial collection: ' + title);
+  }
+});
+
+test('homepage hero links to the primary shop and the DreamGrind Edit', async () => {
+  const html = await read('public/index.html');
+  const css = await read('public/dreamgrind-premium.css');
+  assert.ok(html.includes('Find your next'));
+  assert.ok(html.includes('href="#shop"'));
+  assert.ok(html.includes('href="#dg-edit"'));
+  assert.ok(css.includes('Signature homepage hero typography'));
+});
+
+test('DreamGrind Edit is responsive at tablet and mobile widths', async () => {
+  const css = await read('public/growth.css');
+  assert.ok(css.includes('grid-template-columns:repeat(4,minmax(0,1fr))'));
+  assert.ok(css.includes('@media(max-width:900px)'));
+  assert.ok(css.includes('@media(max-width:560px)'));
+});
+
+test('all storefront assets use the current editorial cache key', async () => {
+  const html = await read('public/index.html');
+  for (const asset of ['style.css','dreamgrind-premium.css','growth.css','script.js','analytics.js','growth.js']) {
+    assert.ok(html.includes(asset + '?v=20261127-edit-v1'), 'Stale cache key for ' + asset);
+  }
+});
