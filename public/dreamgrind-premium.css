@@ -549,6 +549,29 @@ body { background:#fcfdfc; }
 }
 
 
+
+/* DG monogram centering correction: keep the emblem geometrically centered. */
+.brand-art-scene { position:relative; }
+.brand-art-core {
+  position:absolute;
+  top:50%;
+  left:50%;
+  right:auto;
+  bottom:auto;
+  transform:translate(-50%,-50%);
+  margin:0;
+}
+.brand-art-monogram,
+.brand-art-core-caption {
+  position:absolute;
+  left:50%;
+  transform:translateX(-50%);
+  text-align:center;
+}
+@media (max-width:760px) {
+  .brand-art-core { top:50%;left:50%;transform:translate(-50%,-50%); }
+}
+
 /* Signature homepage hero typography and CTA refinement */
 .dg-hero-overline {
   margin:16px 0 12px;color:#0b8984;font-size:9px;font-weight:950;
@@ -558,7 +581,7 @@ body { background:#fcfdfc; }
 .hero-copy h1 span { display:inline; }
 .dg-hero-edit-button { display:inline-flex;align-items:center;gap:8px; }
 .hero-brand-art { min-height:460px; }
-.brand-art-core { transform:scale(1.04); }
+/* Centering is handled by the dedicated rule above. */
 .brand-art-float-top,.brand-art-float-bottom {
   border-color:rgba(186,246,232,.16);
   background:rgba(6,30,43,.48);

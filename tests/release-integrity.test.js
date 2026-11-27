@@ -143,7 +143,7 @@ test('DreamGrind signature design system uses unified navy and teal palette', as
   assert.match(css, /DreamGrind Signature System 2026/);
   assert.match(css, /--dg-navy:#071c2b/);
   assert.match(css, /--dg-cyan:#27c0c0/);
-  assert.match(html, /dreamgrind-premium\.css\?v=20261127-edit-v1/);
+  assert.match(html, /dreamgrind-premium\.css\?v=20261127-center-v1/);
 });
 
 test('Design-system refresh preserves core storefront sections and handlers', async () => {
@@ -188,7 +188,16 @@ test('DreamGrind Edit is responsive at tablet and mobile widths', async () => {
 
 test('all storefront assets use the current editorial cache key', async () => {
   const html = await read('public/index.html');
-  for (const asset of ['style.css','dreamgrind-premium.css','growth.css','script.js','analytics.js','growth.js']) {
+  for (const asset of ['style.css','growth.css','script.js','analytics.js','growth.js']) {
     assert.ok(html.includes(asset + '?v=20261127-edit-v1'), 'Stale cache key for ' + asset);
   }
+  assert.ok(html.includes('dreamgrind-premium.css?v=20261127-center-v1'), 'Premium CSS must use the centered-emblem cache key');
+});
+
+
+test('hero DG emblem is mathematically centered and has no scale offset', async () => {
+  const css = await read('public/dreamgrind-premium.css');
+  assert.match(css, /\.brand-art-scene\s*\{[^}]*position:\s*relative/s);
+  assert.match(css, /\.brand-art-core\s*\{[^}]*top:\s*50%[^}]*left:\s*50%[^}]*transform:\s*translate\(-50%\s*,\s*-50%\)/s);
+  assert.doesNotMatch(css, /\.brand-art-core\s*\{\s*transform:\s*scale\(1\.04\)/);
 });
