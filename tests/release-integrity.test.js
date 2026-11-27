@@ -397,3 +397,35 @@ test('admin order updates persist the carrier tracking URL as well as the tracki
   assert.ok(handler.includes("if (parsed.data.trackingUrl !== undefined) order.trackingUrl = parsed.data.trackingUrl || null;"));
   assert.ok(handler.includes("await db.write();"));
 });
+
+
+test('new hero, DreamGrind Edit collections and floating WhatsApp support translate in Azerbaijani', async () => {
+  const script = await read('public/script.js');
+  const html = await read('public/index.html');
+  for (const [english, azerbaijani] of [
+    ['Find your next', 'Növbəti sevimli seçiminizi'],
+    ['everyday favorite.', 'gündəlik seçimlər arasından tapın.'],
+    ['The DreamGrind Edit', 'DreamGrind seçimləri'],
+    ['The Cozy Home Edit', 'Rahat ev seçimləri'],
+    ['The Pet Parent Edit', 'Ev heyvanları üçün seçimlər'],
+    ['The Everyday Upgrade', 'Gündəlik yeniliklər'],
+    ['The Little Things Edit', 'Kiçik detallar kolleksiyası'],
+    ['Need help? Chat with us', 'Kömək lazımdır? Bizimlə yazışın']
+  ]) {
+    assert.ok(script.includes("'" + english.replace(/'/g, "\\'") + "': '" + azerbaijani + "'"), 'Missing translation for ' + english);
+  }
+  assert.ok(html.includes('id="dgEditTitle"'));
+  assert.ok(html.includes('class="hero-copy"'));
+  assert.ok(html.includes('class="dg-floating-whatsapp"'));
+  assert.ok(script.includes('const uiCopyReverse = Object.fromEntries'));
+});
+
+
+test('product detail interface controls and floating support label are localized without translating product data', async () => {
+  const script = await read('public/script.js');
+  assert.ok(script.includes("'Back to shop': 'Mağazaya qayıt'"));
+  assert.ok(script.includes("'Add to cart': 'Səbətə əlavə et'"));
+  assert.ok(script.includes("'Product details': 'Məhsul haqqında'"));
+  assert.ok(script.includes("'Need help? Chat with us': 'Kömək lazımdır? Bizimlə yazışın'"));
+  assert.ok(script.includes(".product-title,.product-page-title,.product-page-description"));
+});
