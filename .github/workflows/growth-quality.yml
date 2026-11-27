@@ -2,7 +2,7 @@ name: DreamGrind Growth quality checks
 
 on:
   push:
-    branches: [main, growth-2.1-completion]
+    branches: [main, growth-2.1-completion, premium-motion-commerce]
   pull_request:
     branches: [main]
   workflow_dispatch:
