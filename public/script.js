@@ -1013,8 +1013,8 @@ function renderProductPage(id) {
   productPageOpen = true;
   document.title = `${p.title} | DreamGrind`;
   const availableInMarket = isProductAvailableInCountry(p);
-
-  const images = (p.images && p.images.length) ? p.images : (p.image ? [p.image] : []);
+  const marketConfig = currencyConfig();
+  const images = (Array.isArray(p.images) && p.images.length) ? p.images : (p.image ? [p.image] : []);
   const mainImage = images[0] || '';
   const imageGallery = mainImage
     ? `<div class="main-product-media"><img id="mainProductImage" src="${escapeHtml(mainImage)}" alt="${escapeHtml(p.title)}"></div>`
@@ -1031,23 +1031,20 @@ function renderProductPage(id) {
   const combinations = productVariantCombinations(p);
   const variants = combinations.length
     ? renderProductVariantOptions(p)
-    : (p.variants && p.variants.length
+    : (Array.isArray(p.variants) && p.variants.length
       ? `<div class="product-page-options"><label class="product-page-label">Choose option</label><div class="variant-row">${p.variants.map(v => `
           <button type="button" class="variant ${p.variants[0] === v ? 'active' : ''}" onclick="selectVariant(this)">${escapeHtml(v)}</button>`).join('')}</div></div>`
       : '');
-
   const parsedDescription = parseProductDescription(p.description || '');
   const overviewMarkup = renderProductDescriptionLines(parsedDescription.overview, 'product-page-description');
   const featureMarkup = renderProductFeatureList(parsedDescription.features);
   const hasCustomShipping = parsedDescription.sections.some(section => /shipping|returns/i.test(section.title));
   const extraSections = parsedDescription.sections.map(section => `
-    <details class="product-page-accordion">
-      <summary>${escapeHtml(section.title)}</summary>
+    <details class="product-page-accordion"><summary>${escapeHtml(section.title)}</summary>
       ${renderProductDescriptionLines(section.lines, 'product-page-accordion-content')}
     </details>`).join('');
   const shippingAccordion = hasCustomShipping ? '' : `
-    <details class="product-page-accordion">
-      <summary>Shipping &amp; returns</summary>
+    <details class="product-page-accordion"><summary>Shipping &amp; returns</summary>
       <div class="product-page-accordion-content"><p>DreamGrind accepts orders for the United States, Canada, the United Kingdom and Azerbaijan. For Azerbaijan, only products with a confirmed final AZN price are available for normal checkout. The displayed price includes delivery and only those import or handling charges explicitly confirmed for that exact offer. DreamGrind does not promise DDP or prepaid customs for every order; any charge not clearly stated as included may be payable by the recipient. Please contact DreamGrind before returning an item so return instructions can be provided.</p></div>
     </details>`;
   const saleActive = isProductSaleActive(p);
@@ -1057,72 +1054,89 @@ function renderProductPage(id) {
   const initialCombination = combinations.length ? selectedProductVariantCombination(p) : null;
   const currentPrice = initialCombination ? variantPriceForCountry(p, initialCombination) : productPriceForCountry(p);
   const initialCompareAt = initialCombination ? compareAtPriceForCountry(p, initialCombination) : compareAtPriceForCountry(p, null);
-  const ratingMarkup = Number(p.reviews) > 0
-    ? `<div class="product-rating" aria-label="Rated ${Number(p.rating ?? 0)} out of 5">★ ${Number(p.rating ?? 0).toFixed(1)} <span class="product-page-reviews">· ${Number(p.reviews)} reviews</span></div>`
-    : '';
+  const ratingCount = Number(p.reviews || 0);
+  const ratingValue = Number(p.rating || 0);
+  const ratingMarkup = ratingCount > 0 && Number.isFinite(ratingValue)
+    ? `<div class="product-rating" aria-label="Rated ${ratingValue.toFixed(1)} out of 5"><span class="dg-rating-stars" aria-hidden="true">★★★★★</span> <strong>${ratingValue.toFixed(1)}</strong> <span class="product-page-reviews">(${ratingCount} verified reviews)</span></div>`
+    : `<div class="dg-rating-proof"><span class="dg-rating-stars" aria-hidden="true">★★★★★</span><span>Be among the first verified customers to review this find.</span></div>`;
   const saleMarkup = saleActive
     ? `${discount > 0 ? `<span class="product-page-discount-badge" id="productDiscountBadge">Save ${discount}%</span>` : ''}<span class="price-old" id="productComparePrice">${displayCountryPrice(initialCompareAt ?? p.oldPrice)}</span>`
     : '';
-
+  const benefitSource = Array.isArray(p.highlights) ? p.highlights : (Array.isArray(p.features) ? p.features : []);
+  const benefitMarkup = benefitSource.filter(Boolean).slice(0,4).map((item,index) => `
+    <div class="dg-benefit-item"><span class="dg-benefit-icon" aria-hidden="true">${['✦','✓','◈','↗'][index]}</span><span>${escapeHtml(String(item).replace(/<[^>]*>/g,' ').trim())}</span></div>`).join('');
+  const safeBenefitMarkup = benefitMarkup || `
+    <div class="dg-benefit-item"><span class="dg-benefit-icon">✓</span><span>Clear product information</span></div>
+    <div class="dg-benefit-item"><span class="dg-benefit-icon">◇</span><span>Secure checkout</span></div>`;
+  const paidUnits = Math.max(0, Number(p.unitsSold) || 0);
+  const proofMarkup = paidUnits > 0
+    ? `<span class="dg-proof-dot"></span><span>${paidUnits.toLocaleString()} ${paidUnits === 1 ? 'paid order' : 'paid orders'}</span>`
+    : `<span class="dg-proof-dot dg-proof-dot-muted"></span><span>Thoughtfully selected by DreamGrind</span>`;
+  const shippingLabel = marketConfig.country === 'AZ'
+    ? 'Delivery and confirmed charges included in the displayed AZN price'
+    : 'Shipping cost and delivery estimate shown at checkout';
+  const priceMarkup = availableInMarket ? displayCountryPrice(currentPrice) : (marketConfig.country === 'AZ' ? 'Not yet listed for Azerbaijan' : 'Not available in this market');
   $('modalRoot').innerHTML = `
-    <section class="product-page-overlay" aria-label="Product details">
+    <section class="product-page-overlay dg-product-page" aria-label="Product details">
       <header class="product-page-topbar">
         <div class="product-page-topbar-inner">
           <button class="product-page-back" type="button" onclick="closeProductPage()" aria-label="Back to shop">← <span>Back to shop</span></button>
-          <a class="product-page-brand" href="/" onclick="event.preventDefault();closeProductPage();window.scrollTo({top:0,behavior:'smooth'})">DreamGrind</a>
-          <button class="product-page-cart" type="button" onclick="closeProductPage();openCart()">Cart <span>${state.cart.reduce((n, x) => n + x.qty, 0)}</span></button>
+          <a class="product-page-brand" href="/" onclick="event.preventDefault();closeProductPage();window.scrollTo({top:0,behavior:'smooth'})">DreamGrind<span>.</span></a>
+          <button class="product-page-cart" type="button" onclick="closeProductPage();openCart()">Cart <span>${state.cart.reduce((n,x)=>n+x.qty,0)}</span></button>
         </div>
       </header>
-
       <div class="product-page-shell">
         <nav class="product-page-breadcrumb" aria-label="Breadcrumb"><a href="/" onclick="event.preventDefault();closeProductPage()">Home</a><span>›</span><a href="/#shop" onclick="event.preventDefault();closeProductPage();location.hash='shop'">Shop</a><span>›</span><span>${escapeHtml(p.title)}</span></nav>
-
-        <div class="product-page-layout">
-          <section class="product-page-gallery" aria-label="Product gallery">
-            ${imageGallery}
+        <div class="dg-product-intro">
+          <div class="dg-product-gallery-column">
+            <div class="dg-product-gallery-grid">
+              <div class="dg-product-main-visual">${imageGallery}${saleActive ? '<span class="dg-image-badge">Special offer</span>' : ''}</div>
+              <aside class="dg-product-visual-rail" aria-label="Product highlights">
+                <div class="dg-visual-tile"><span>✦</span><strong>Useful</strong><small>Everyday find</small></div>
+                <div class="dg-visual-tile"><span>◇</span><strong>Curated</strong><small>DreamGrind edit</small></div>
+                <div class="dg-visual-tile"><span>✓</span><strong>Secure</strong><small>Epoint checkout</small></div>
+              </aside>
+            </div>
             ${thumbnails}
             ${video}
-          </section>
-
-          <section class="product-page-info">
+            ${images.length > 1 ? '<p class="dg-gallery-hint">Explore every angle and detail</p>' : ''}
+          </div>
+          <section class="product-page-info dg-product-info">
+            <div class="dg-product-proof">${ratingMarkup}<div class="dg-proof-orders">${proofMarkup}</div></div>
             <div class="product-page-category">${escapeHtml(p.category || 'General')}</div>
             <h1 class="product-page-title">${escapeHtml(p.title)}</h1>
-            ${ratingMarkup}
-
-            <div class="product-page-price" id="productPriceBlock"><span id="productCurrentPrice">${availableInMarket ? displayCountryPrice(currentPrice) : (currencyConfig().country === 'AZ' ? 'Not yet listed for Azerbaijan' : 'Not available in this market')}</span>${availableInMarket ? saleMarkup : ''}</div>
-            ${availableInMarket ? '' : `<div class="note-box" role="status">This product is not available for delivery to ${escapeHtml(currencyConfig().country === 'CA' ? 'Canada' : currencyConfig().country === 'UK' ? 'the United Kingdom' : currencyConfig().country === 'AZ' ? 'Azerbaijan' : 'the United States')}.</div>`}
+            <p class="dg-product-subtitle">${escapeHtml(String(p.shortDescription || p.tagline || '').trim() || 'A thoughtful find for everyday life.')}</p>
+            <div class="dg-product-servings">${combinations.length ? 'Choose your preferred option' : 'Selected for useful everyday moments'}</div>
+            <div class="product-page-price dg-product-price" id="productPriceBlock"><span id="productCurrentPrice">${priceMarkup}</span>${availableInMarket ? saleMarkup : ''}${discount > 0 ? `<span class="dg-save-pill">Save ${discount}%</span>` : ''}</div>
             ${showCountdown ? `<div class="product-page-sale-offer" id="productSaleOffer"><span>Limited-time offer ends in</span><strong id="productSaleCountdown" aria-live="off"></strong></div>` : ''}
-            <div class="product-page-shipping"><span aria-hidden="true">✓</span> ${currencyConfig().country === 'AZ' ? 'Delivery included' : 'Free shipping'} <span class="product-page-dot">·</span> Secure checkout by Epoint</div>
-
+            <div class="dg-product-benefits">${safeBenefitMarkup}</div>
+            <div class="dg-shipping-line"><span class="dg-proof-dot"></span><span>${escapeHtml(shippingLabel)}</span></div>
+            <div class="dg-stock-line">${availableInMarket ? 'Available for your selected delivery country' : 'Not available for this delivery country'}</div>
+            ${availableInMarket ? '' : `<div class="note-box" role="status">This product is not available for delivery to ${escapeHtml(marketConfig.country)}.</div>`}
             ${featureMarkup}
             ${variants}
-
             <div class="product-page-quantity"><label for="detailQty" class="product-page-label">Quantity</label><input id="detailQty" type="number" min="1" max="20" value="1" inputmode="numeric"></div>
-
             <div class="detail-actions product-page-desktop-actions">
-              <button class="primary-button full" type="button" onclick="addProductFromDetail(${p.id})" ${availableInMarket ? '' : 'disabled'}>Add to cart</button>
-              <button class="buy-now-button full" type="button" onclick="buyNowFromDetail(${p.id})" ${availableInMarket ? '' : 'disabled'}>Buy now <span aria-hidden="true">→</span></button>
+              <button class="primary-button full dg-add-button" type="button" onclick="addProductFromDetail(${p.id})" ${availableInMarket?'':'disabled'}>Add to cart</button>
+              <button class="buy-now-button full dg-buy-button" type="button" onclick="buyNowFromDetail(${p.id})" ${availableInMarket?'':'disabled'}>Buy now <span aria-hidden="true">→</span></button>
             </div>
-
-            <section class="product-page-confidence" aria-label="Shopping information">
-              <div class="product-page-confidence-heading"><span class="product-page-confidence-mark" aria-hidden="true">✓</span><strong>Shop with confidence</strong></div>
-              <div class="product-page-confidence-grid">
-                <div class="product-page-confidence-item"><span class="product-page-confidence-icon" aria-hidden="true">↗</span><div><strong>${currencyConfig().country === 'AZ' ? 'Delivery included' : 'Free shipping'}</strong><small>${currencyConfig().country === 'AZ' ? 'Included in displayed AZN price' : 'United States, Canada &amp; UK'}</small></div></div>
-                <div class="product-page-confidence-item"><span class="product-page-confidence-icon" aria-hidden="true">▣</span><div><strong>Secure payment</strong><small>Processed through Epoint</small></div></div>
-                <div class="product-page-confidence-item"><span class="product-page-confidence-icon" aria-hidden="true">✓</span><div><strong>Guest checkout</strong><small>No account required</small></div></div>
-              </div>
-              <div class="product-page-confidence-policy">Shipping and returns information is shown below.</div>
-            </section>
-
+            <div class="dg-trust-mini"><span>✓ Secure Epoint payment</span><span>✓ Guest checkout</span><span>✓ Direct customer support</span></div>
             ${overviewMarkup ? `<section class="product-page-details-text"><h2 class="product-page-section-title">Product details</h2>${overviewMarkup}</section>` : ''}
             ${(extraSections || shippingAccordion) ? `<section class="product-page-accordions" aria-label="More product information">${extraSections}${shippingAccordion}</section>` : ''}
           </section>
         </div>
+        <section class="dg-product-story">
+          <div class="dg-story-image">${images.length > 1 ? `<img src="${escapeHtml(images[1])}" alt="${escapeHtml(p.title)} product detail" loading="lazy">` : (mainImage ? `<img src="${escapeHtml(mainImage)}" alt="${escapeHtml(p.title)}" loading="lazy">` : '')}</div>
+          <div class="dg-story-copy"><p class="eyebrow">THE DREAMGRIND EDIT</p><h2>Good finds make everyday better.</h2><p>${escapeHtml(String(p.shortDescription || p.tagline || p.description || 'Discover a practical detail, a thoughtful design and a better everyday experience.').replace(/<[^>]*>/g,' ').slice(0,420))}</p><div class="dg-story-stats"><span><strong>01</strong> Thoughtful design</span><span><strong>02</strong> Clear details</span><span><strong>03</strong> Easy checkout</span></div></div>
+        </section>
+        <section class="dg-product-media-strip">
+          <div class="dg-media-heading"><div><p class="eyebrow">SEE THE DETAILS</p><h2>Explore this find</h2></div><span>${images.length} product views</span></div>
+          <div class="dg-media-grid">${images.slice(0,6).map((img,index)=>`<button type="button" class="dg-media-card" onclick="changeProductImage('${String(img).replace(/\\/g,'\\\\').replace(/'/g,"\\'")}', document.querySelector('.product-thumb:nth-child(${index+1})'))"><img src="${escapeHtml(img)}" alt="${escapeHtml(p.title)} view ${index+1}" loading="lazy"></button>`).join('')}${video ? '<div class="dg-media-video-note">Product video available above</div>' : ''}</div>
+        </section>
       </div>
-
       <div class="product-page-sticky-actions" aria-label="Purchase actions">
-        <button class="product-page-mobile-add" type="button" onclick="addProductFromDetail(${p.id})" ${availableInMarket ? '' : 'disabled'}>Add to cart</button>
-        <button class="product-page-mobile-buy" type="button" onclick="buyNowFromDetail(${p.id})" ${availableInMarket ? '' : 'disabled'}>Buy now →</button>
+        <button class="product-page-mobile-add" type="button" onclick="addProductFromDetail(${p.id})" ${availableInMarket?'':'disabled'}>Add to cart</button>
+        <button class="product-page-mobile-buy" type="button" onclick="buyNowFromDetail(${p.id})" ${availableInMarket?'':'disabled'}>Buy now →</button>
       </div>
     </section>`;
 
