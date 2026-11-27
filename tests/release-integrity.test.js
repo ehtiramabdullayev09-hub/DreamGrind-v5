@@ -204,6 +204,6 @@ test('hero DG emblem is mathematically centered and has no scale offset', async 
 
 test('hero DG emblem keeps the original clean monogram without overlapping caption text', async () => {
   const html = await read('public/index.html');
-  assert.match(html, /<span class="brand-art-monogram">DG<\\/span>/);
+  assert.ok(html.includes('<span class="brand-art-monogram">DG</span>'));
   assert.doesNotMatch(html, /brand-art-core-caption|FIND YOUR EVERYDAY/);
 });
