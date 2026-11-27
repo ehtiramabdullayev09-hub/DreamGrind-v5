@@ -355,3 +355,34 @@ test('admin supports only supplier-confirmed products without assigned manufactu
   assert.ok(admin.includes("identifierExists:$('productIdentifierMissing').checked ? false : null"));
   assert.ok(admin.includes("$('productIdentifierMissing').checked=p.identifierExists===false"));
 });
+
+
+test('checkout displays an itemised market-currency total and refreshes it when country changes', async () => {
+  const script = await read('public/script.js');
+  assert.ok(script.includes('id="checkoutOrderSummary"'));
+  assert.ok(script.includes('function renderCheckoutOrderSummary()'));
+  assert.ok(script.includes("renderCheckoutOrderSummary();"));
+  assert.ok(script.includes("format = ({US:'USD',CA:'CAD',UK:'GBP',AZ:'AZN'})"));
+  assert.ok(script.includes('checkoutTotal'));
+  assert.ok(script.includes('button.disabled = true'));
+});
+
+test('customer order tracking exposes only validated HTTPS carrier links entered by admin', async () => {
+  const server = await read('server.js');
+  const admin = await read('public/admin.html');
+  const script = await read('public/script.js');
+  assert.ok(server.includes('trackingUrl: z.string().trim().url().max(1000).nullable().optional()'));
+  assert.ok(server.includes('trackingUrl: order.trackingUrl || null'));
+  assert.ok(admin.includes('id="tu-${esc(o.id)}"'));
+  assert.ok(admin.includes('Carrier tracking URL (https://…);'));
+  assert.ok(admin.includes('trackingUrl:trackingUrl||null'));
+  assert.ok(script.includes('const safeTrackingUrl = /^https:\\/\\/i.test(String(order.trackingUrl || \'\'))'));
+  assert.ok(script.includes('Track with carrier'));
+});
+
+test('checkout summary styling remains responsive and does not alter existing storefront layout rules', async () => {
+  const css = await read('public/style.css');
+  assert.ok(css.includes('.checkout-order-summary'));
+  assert.ok(css.includes('@media (max-width: 520px)'));
+  assert.ok(css.includes('.checkout-order-line'));
+});
