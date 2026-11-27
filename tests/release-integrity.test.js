@@ -224,3 +224,40 @@ test('premium motion system is progressive, accessible and does not alter commer
   assert.match(html, /id="productGrid"/);
   assert.match(html, /id="countryPicker"/);
 });
+
+
+test('SEO landing route renders Product and Breadcrumb JSON-LD before client scripts', async () => {
+  const server = await read('server.js');
+  assert.match(server, /app\.get\('\/',\s*\(req,res,next\)/);
+  assert.match(server, /function renderProductLandingPage/);
+  assert.match(server, /application\/ld\+json/);
+  assert.match(server, /canonical/);
+  assert.match(server, /availability.*schema\.org|schema\.org.*availability/);
+});
+
+test('country-specific sitemap and Google Merchant feeds use matching market URLs', async () => {
+  const server = await read('server.js');
+  assert.match(server, /&country=\$\{market\.code\}/);
+  const start = server.indexOf("app.get('/feed/google.xml'");
+  const end = server.indexOf("app.get('/api/reviews/:productId'", start);
+  const feed = server.slice(start,end);
+  assert.match(feed, /&country=' \+ code/);
+  assert.match(feed, /market\.currency/);
+  assert.match(feed, /variantCombinations/);
+  assert.match(feed, /isValidGtin/);
+  assert.doesNotMatch(feed, /free shipping|<g:shipping>/i);
+});
+
+test('country-specific product links set the storefront currency before price rendering', async () => {
+  const script = await read('public/script.js');
+  assert.match(script, /queryCountry/);
+  assert.match(script, /includes\(queryCountry\)/);
+  assert.match(script, /country = \['US','CA','UK','AZ'\]/);
+});
+
+test('analytics ecommerce events use beacon transport and purchase remains idempotent', async () => {
+  const analytics = await read('public/analytics.js');
+  assert.match(analytics, /transport_type:\s*'beacon'/);
+  assert.match(analytics, /dg_purchase_sent_/);
+  assert.match(analytics, /transaction_id/);
+});
