@@ -131,7 +131,7 @@ test('conversion trust updates include real brand copy and persistent WhatsApp c
   const script = await read('public/script.js');
   assert.match(html, /dg-floating-whatsapp/);
   assert.match(css, /\.dg-floating-whatsapp/);
-  assert.match(html, /Useful everyday finds, thoughtfully selected/);
+  assert.ok(html.includes('Useful everyday finds, thoughtfully selected'));
   assert.doesNotMatch(html, /A modern storefront foundation for international customers/);
   assert.match(script, /Shipping cost and delivery estimate shown at checkout/);
   assert.match(script, /Delivery and confirmed charges included in the displayed AZN price/);
@@ -191,7 +191,7 @@ test('all storefront assets use the current editorial cache key', async () => {
   for (const asset of ['style.css','growth.css','script.js','analytics.js','growth.js']) {
     assert.ok(html.includes(asset + '?v=20261127-edit-v1'), 'Stale cache key for ' + asset);
   }
-  assert.ok(html.includes('dreamgrind-premium.css?v=20261127-center-v1'), 'Premium CSS must use the centered-emblem cache key');
+  assert.ok(html.includes('dreamgrind-premium.css?v=20261127-center-v3'), 'Premium CSS must use the current centered-emblem cache key');
 });
 
 
