@@ -431,6 +431,7 @@ test('product detail interface controls and floating support label are localized
 });
 
 
+// Final regression coverage for the exact DG brand mark and all public icon sizes.
 test('original DreamGrind DG monogram is used for Google and mobile site icons', async () => {
   const html = await read('public/index.html');
   const favicon = await read('public/favicon.svg');
