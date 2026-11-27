@@ -419,3 +419,13 @@ test('new hero, DreamGrind Edit collections and floating WhatsApp support transl
   assert.ok(html.includes('class="dg-floating-whatsapp"'));
   assert.ok(script.includes('const uiCopyReverse = Object.fromEntries'));
 });
+
+
+test('product detail interface controls and floating support label are localized without translating product data', async () => {
+  const script = await read('public/script.js');
+  assert.ok(script.includes("'Back to shop': 'Mağazaya qayıt'"));
+  assert.ok(script.includes("'Add to cart': 'Səbətə əlavə et'"));
+  assert.ok(script.includes("'Product details': 'Məhsul haqqında'"));
+  assert.ok(script.includes("'Need help? Chat with us': 'Kömək lazımdır? Bizimlə yazışın'"));
+  assert.ok(script.includes(".product-title,.product-page-title,.product-page-description"));
+});
