@@ -261,3 +261,68 @@ test('analytics ecommerce events use beacon transport and purchase remains idemp
   assert.match(analytics, /dg_purchase_sent_/);
   assert.match(analytics, /transaction_id/);
 });
+
+
+test('SEO landing route renders Product and Breadcrumb JSON-LD before client scripts', async () => {
+  const server = await read('server.js');
+  assert.match(server, /app\.get\('\/',\s*\(req,res,next\)/);
+  assert.match(server, /function renderProductLandingPage/);
+  assert.match(server, /application\/ld\+json/);
+  assert.match(server, /BreadcrumbList/);
+  assert.match(server, /canonical/);
+  assert.match(server, /priceCurrency:market\.currency/);
+});
+
+test('country-specific sitemap and Google Merchant feeds use matching market URLs', async () => {
+  const server = await read('server.js');
+  assert.match(server, /&country=\$\{market\.code\}/);
+  const start = server.indexOf("app.get('/feed/google.xml'");
+  const end = server.indexOf("app.get('/api/reviews/:productId'", start);
+  const feed = server.slice(start, end);
+  assert.match(feed, /&country=' \+ code/);
+  assert.match(feed, /market\.currency/);
+  assert.match(feed, /variantCombinations/);
+  assert.match(feed, /isValidGtin/);
+  assert.doesNotMatch(feed, /free shipping|<g:shipping>/i);
+});
+
+test('country query parameter takes precedence over stored market in shared product links', async () => {
+  const script = await read('public/script.js');
+  assert.match(script, /queryCountry/);
+  assert.match(script, /\['US','CA','UK','AZ'\]\.includes\(queryCountry\)/);
+});
+
+test('GA4 funnel includes shipping and payment information and maintains idempotent paid purchase', async () => {
+  const script = await read('public/script.js');
+  const growth = await read('public/growth.js');
+  const analytics = await read('public/analytics.js');
+  assert.match(script, /track\('begin_checkout'/);
+  assert.match(script, /track\('add_shipping_info'/);
+  assert.match(script, /track\('add_payment_info'/);
+  assert.match(growth, /track\('view_item'/);
+  assert.match(growth, /track\('view_item_list'/);
+  assert.match(growth, /track\('add_to_cart'/);
+  assert.match(analytics, /transport_type:\s*'beacon'/);
+  assert.match(analytics, /dg_purchase_sent_/);
+  assert.match(analytics, /transaction_id/);
+  assert.match(script, /order\?\.paymentStatus\s*===\s*['"]Paid['"]/);
+});
+
+test('product images reserve aspect ratio to reduce layout shifts', async () => {
+  const css = await read('public/style.css');
+  const script = await read('public/script.js');
+  assert.match(css, /\.product-image-wrap\s*\{[^}]*aspect-ratio:\s*1\s*\/\s*1/s);
+  assert.match(script, /loading="lazy"/);
+});
+
+test('core payment, order and admin routes remain available', async () => {
+  const server = await read('server.js');
+  const script = await read('public/script.js');
+  for (const route of ['/api/payment/create','/api/payment/callback','/api/orders','/api/admin/products']) {
+    assert.ok(server.includes(route), 'Missing core route: ' + route);
+  }
+  assert.match(server, /createEpointPayment\(/);
+  assert.match(server, /await db\.write\(\)/);
+  assert.match(script, /payment\.redirect_url/);
+  assert.match(script, /dg_checkout_mode/);
+});
