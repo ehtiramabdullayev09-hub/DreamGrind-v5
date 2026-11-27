@@ -15,9 +15,9 @@
   <link rel="icon" type="image/svg+xml" href="/favicon.svg">
   <title>DreamGrind — Smart Shopping Starts Here</title>
   <link rel="preconnect" href="https://images.unsplash.com">
-  <link rel="stylesheet" href="style.css?v=20261127-signature-v1">
-  <link rel="stylesheet" href="dreamgrind-premium.css?v=20261127-signature-v1">
-  <link rel="stylesheet" href="growth.css?v=20261127-signature-v1">
+  <link rel="stylesheet" href="style.css?v=20261127-edit-v1">
+  <link rel="stylesheet" href="dreamgrind-premium.css?v=20261127-edit-v1">
+  <link rel="stylesheet" href="growth.css?v=20261127-edit-v1">
 </head>
 <body>
   <div class="announcement"><div class="container announcement-inner"><span id="announcementText">Discover useful everyday finds. Delivery details are shown before checkout.</span><button class="link-btn" onclick="showPolicy('shipping')">Shipping info</button></div></div>
@@ -71,11 +71,12 @@
   <div class="container hero-grid">
     <div class="hero-copy">
       <p class="eyebrow hero-market-label" data-i18n="markets">USA • CANADA • UK • AZERBAIJAN</p>
-      <h1>Good finds for a better <span>everyday.</span></h1>
-      <p class="hero-lede">Discover useful gadgets, home essentials and pet favorites for the little things that make life better.</p>
+      <p class="dg-hero-overline">THE EVERYDAY EDIT · EST. FOR BETTER DAYS</p>
+      <h1>Find your next <span>everyday favorite.</span></h1>
+      <p class="hero-lede">Thoughtful gadgets, home details and pet finds chosen to make everyday routines a little better.</p>
       <div class="hero-actions">
-        <a class="primary-button hero-shop-button" href="#shop">Explore the collection <span aria-hidden="true">↗</span></a>
-        <button class="secondary-button hero-wishlist-button" onclick="setCategory('Pet')">Shop pet favorites <span aria-hidden="true">↗</span></button>
+        <a class="primary-button hero-shop-button" href="#shop">Discover the collection <span aria-hidden="true">↗</span></a>
+        <a class="secondary-button dg-hero-edit-button" href="#dg-edit">Explore the DreamGrind Edit <span aria-hidden="true">↗</span></a>
       </div>
       <div class="trust-row" aria-label="Shopping benefits">
         <span><i aria-hidden="true">✓</i> Guest checkout</span>
@@ -124,6 +125,25 @@
     <section id="categories" class="section container"><div class="section-heading"><div><p class="eyebrow"data-i18n="browse">Browse</p><h2>Shop by category</h2></div><button class="text-button" onclick="setCategory('All')">View all</button></div><div class="category-grid"><button class="category-card" onclick="setCategory('Gadgets')"><span>⚡</span><strong>Gadgets</strong><small>Useful tech & accessories</small></button><button class="category-card" onclick="setCategory('Home')"><span>⌂</span><strong>Home</strong><small>Simple everyday upgrades</small></button><button class="category-card" onclick="setCategory('Pet')"><span>🐾</span><strong>Pet</strong><small>Fun finds for companions</small></button><button class="category-card" onclick="setCategory('Lifestyle')"><span>✦</span><strong>Lifestyle</strong><small>Travel, desk & daily carry</small></button><button class="category-card" onclick="setCategory('General')"><span>✦</span><strong>General</strong><small>Everyday products & more</small></button></div></section>
 
     <section id="shop" class="section container"><div class="section-heading shop-heading"><div><p class="eyebrow"data-i18n="shop">Shop</p><h2 id="shopTitle">Trending products</h2></div><div class="shop-controls"><div id="categoryChips" class="chip-row"><button class="chip active" onclick="setCategory('All')">All</button><button class="chip" onclick="setCategory('Gadgets')">Gadgets</button><button class="chip" onclick="setCategory('Home')">Home</button><button class="chip" onclick="setCategory('Pet')">Pet</button><button class="chip" onclick="setCategory('Lifestyle')">Lifestyle</button><button class="chip" onclick="setCategory('General')">General</button></div><select id="sortSelect" aria-label="Sort products" onchange="renderProducts()"><option value="featured">Featured</option><option value="rating">Top rated</option><option value="low">Price: low to high</option><option value="high">Price: high to low</option></select></div></div><div id="productGrid" class="product-grid" aria-live="polite"></div><div id="emptyResults" class="empty-state hidden"><div class="empty-icon">⌕</div><h3>No products found</h3><p>Try another search or category.</p><button class="secondary-button" onclick="clearFilters()">Clear filters</button></div></section>
+
+    <section id="dg-edit" class="dg-edit-section" aria-labelledby="dgEditTitle">
+      <div class="container">
+        <div class="dg-edit-heading">
+          <div>
+            <p class="eyebrow">CURATED FOR EVERYDAY</p>
+            <h2 id="dgEditTitle">The DreamGrind Edit</h2>
+            <p class="dg-edit-lede">Thoughtful finds for the spaces, routines and little moments that make everyday better.</p>
+          </div>
+          <a href="#shop" class="dg-edit-all" onclick="setCategory('All')">Explore all finds <span aria-hidden="true">↗</span></a>
+        </div>
+        <div class="dg-edit-collections" id="dgEditCollections" aria-live="polite">
+          <button class="dg-edit-collection" type="button" onclick="setCategory('Home')"><span class="dg-edit-collection-kicker">01 / HOME</span><strong>The Cozy Home Edit</strong><small>Small upgrades for everyday spaces</small><span class="dg-edit-collection-arrow">↗</span></button>
+          <button class="dg-edit-collection" type="button" onclick="setCategory('Pet')"><span class="dg-edit-collection-kicker">02 / PETS</span><strong>The Pet Parent Edit</strong><small>Thoughtful finds for your companions</small><span class="dg-edit-collection-arrow">↗</span></button>
+          <button class="dg-edit-collection" type="button" onclick="setCategory('Gadgets')"><span class="dg-edit-collection-kicker">03 / GADGETS</span><strong>The Everyday Upgrade</strong><small>Useful details, smarter routines</small><span class="dg-edit-collection-arrow">↗</span></button>
+          <button class="dg-edit-collection" type="button" onclick="setCategory('Lifestyle')"><span class="dg-edit-collection-kicker">04 / LIFESTYLE</span><strong>The Little Things Edit</strong><small>Ideas for work, travel and daily life</small><span class="dg-edit-collection-arrow">↗</span></button>
+        </div>
+      </div>
+    </section>
 
     <section id="dg-discover" class="dg-growth-section">
       <div class="container">
@@ -200,8 +220,8 @@
     <span class="dg-whatsapp-label">Need help? Chat with us</span>
   </a>
   <div id="modalRoot"></div><div id="toast" class="toast hidden"></div>
-  <script src="script.js?v=20261127-signature-v1"></script>
-  <script src="analytics.js?v=20261127-signature-v1" defer></script>
-  <script src="growth.js?v=20261127-signature-v1" defer></script>
+  <script src="script.js?v=20261127-edit-v1"></script>
+  <script src="analytics.js?v=20261127-edit-v1" defer></script>
+  <script src="growth.js?v=20261127-edit-v1" defer></script>
 </body>
 </html>

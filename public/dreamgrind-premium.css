@@ -547,3 +547,29 @@ body { background:#fcfdfc; }
 @media (prefers-reduced-motion:reduce) {
   .hero-section::before { display:none; }
 }
+
+
+/* Signature homepage hero typography and CTA refinement */
+.dg-hero-overline {
+  margin:16px 0 12px;color:#0b8984;font-size:9px;font-weight:950;
+  letter-spacing:.2em;text-transform:uppercase;
+}
+.hero-copy h1 { max-width:660px; }
+.hero-copy h1 span { display:inline; }
+.dg-hero-edit-button { display:inline-flex;align-items:center;gap:8px; }
+.hero-brand-art { min-height:460px; }
+.brand-art-core { transform:scale(1.04); }
+.brand-art-float-top,.brand-art-float-bottom {
+  border-color:rgba(186,246,232,.16);
+  background:rgba(6,30,43,.48);
+  box-shadow:0 12px 34px rgba(0,0,0,.13);
+  backdrop-filter:blur(14px);
+}
+.brand-art-float-top strong { color:#f2fffb; }
+.brand-art-float-label,.brand-art-float-bottom span { color:#9de8da; }
+.brand-art-core-caption { color:#8ddfd2; }
+@media(max-width:760px) {
+  .dg-hero-overline { margin:13px 0 10px;font-size:8px; }
+  .hero-brand-art { min-height:320px; }
+  .hero-actions .dg-hero-edit-button { width:100%;justify-content:center; }
+}
