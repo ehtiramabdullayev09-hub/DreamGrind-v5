@@ -495,7 +495,7 @@ app.get('/feed/google.xml', (req, res) => {
   const market = markets[code];
   if (!market) return res.status(400).type('text/plain').send('Unsupported country.');
   const items = db.data.products.filter(product => isProductAvailableForCountry(product, market.country)).map(product => {
-    const images = (Array.isArray(product.images) ? product.images : []).concat(product.image || []).filter(url => /^https?:\\/\\//i.test(String(url || '')));
+      const images = (Array.isArray(product.images) ? product.images : []).concat(product.image || []).filter(url => { try { const parsed = new URL(String(url || '')); return parsed.protocol === 'http:' || parsed.protocol === 'https:'; } catch { return false; } });
     const gtinValid = isValidGtin(product.gtin);
     const mpn = String(product.mpn || '').trim();
     const brand = String(product.brand || '').trim();
