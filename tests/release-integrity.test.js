@@ -376,7 +376,7 @@ test('customer order tracking exposes only validated HTTPS carrier links entered
   assert.ok(admin.includes('id="tu-${esc(o.id)}"'));
   assert.ok(admin.includes('Carrier tracking URL (https://…'));
   assert.ok(admin.includes('trackingUrl:trackingUrl||null'));
-  assert.ok(script.includes('safeTrackingUrl = /^https:') && script.includes('order.trackingUrl || null')));
+  assert.ok(script.includes('safeTrackingUrl = /^https:') && script.includes('order.trackingUrl || null'));
   assert.ok(script.includes('Track with carrier'));
 });
 
