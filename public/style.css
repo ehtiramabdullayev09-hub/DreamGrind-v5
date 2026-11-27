@@ -1353,3 +1353,10 @@
 @media (prefers-reduced-motion:reduce) {
   .product-image-wrap img { transition:none !important; }
 }
+
+/* Stable responsive product image boxes prevent cumulative layout shift. */
+.product-image-wrap { overflow:hidden; aspect-ratio:1 / 1; }
+.product-image-wrap img { display:block;width:100%;height:100%;object-fit:contain;aspect-ratio:1 / 1; }
+@media (prefers-reduced-motion:reduce) {
+  .product-image-wrap img { transition:none !important; }
+}
