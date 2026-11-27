@@ -125,6 +125,25 @@
 
     <section id="shop" class="section container"><div class="section-heading shop-heading"><div><p class="eyebrow"data-i18n="shop">Shop</p><h2 id="shopTitle">Trending products</h2></div><div class="shop-controls"><div id="categoryChips" class="chip-row"><button class="chip active" onclick="setCategory('All')">All</button><button class="chip" onclick="setCategory('Gadgets')">Gadgets</button><button class="chip" onclick="setCategory('Home')">Home</button><button class="chip" onclick="setCategory('Pet')">Pet</button><button class="chip" onclick="setCategory('Lifestyle')">Lifestyle</button><button class="chip" onclick="setCategory('General')">General</button></div><select id="sortSelect" aria-label="Sort products" onchange="renderProducts()"><option value="featured">Featured</option><option value="rating">Top rated</option><option value="low">Price: low to high</option><option value="high">Price: high to low</option></select></div></div><div id="productGrid" class="product-grid" aria-live="polite"></div><div id="emptyResults" class="empty-state hidden"><div class="empty-icon">⌕</div><h3>No products found</h3><p>Try another search or category.</p><button class="secondary-button" onclick="clearFilters()">Clear filters</button></div></section>
 
+    <section id="dg-edit" class="dg-edit-section" aria-labelledby="dgEditTitle">
+      <div class="container">
+        <div class="dg-edit-heading">
+          <div>
+            <p class="eyebrow">CURATED FOR EVERYDAY</p>
+            <h2 id="dgEditTitle">The DreamGrind Edit</h2>
+            <p class="dg-edit-lede">Thoughtful finds for the spaces, routines and little moments that make everyday better.</p>
+          </div>
+          <a href="#shop" class="dg-edit-all" onclick="setCategory('All')">Explore all finds <span aria-hidden="true">↗</span></a>
+        </div>
+        <div class="dg-edit-collections" id="dgEditCollections" aria-live="polite">
+          <button class="dg-edit-collection" type="button" onclick="setCategory('Home')"><span class="dg-edit-collection-kicker">01 / HOME</span><strong>The Cozy Home Edit</strong><small>Small upgrades for everyday spaces</small><span class="dg-edit-collection-arrow">↗</span></button>
+          <button class="dg-edit-collection" type="button" onclick="setCategory('Pet')"><span class="dg-edit-collection-kicker">02 / PETS</span><strong>The Pet Parent Edit</strong><small>Thoughtful finds for your companions</small><span class="dg-edit-collection-arrow">↗</span></button>
+          <button class="dg-edit-collection" type="button" onclick="setCategory('Gadgets')"><span class="dg-edit-collection-kicker">03 / GADGETS</span><strong>The Everyday Upgrade</strong><small>Useful details, smarter routines</small><span class="dg-edit-collection-arrow">↗</span></button>
+          <button class="dg-edit-collection" type="button" onclick="setCategory('Lifestyle')"><span class="dg-edit-collection-kicker">04 / LIFESTYLE</span><strong>The Little Things Edit</strong><small>Ideas for work, travel and daily life</small><span class="dg-edit-collection-arrow">↗</span></button>
+        </div>
+      </div>
+    </section>
+
     <section id="dg-discover" class="dg-growth-section">
       <div class="container">
         <div class="section-heading"><div><p class="eyebrow">THE DREAMGRIND EDIT</p><h2>Find something useful.</h2><p class="muted">Explore products currently available for your selected delivery country.</p></div></div>
