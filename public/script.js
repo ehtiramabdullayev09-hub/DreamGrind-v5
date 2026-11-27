@@ -462,7 +462,9 @@ function money(value, currency = 'AZN') {
 }
 
 function currencyConfig() {
-  const country = localStorage.getItem('dg_country') || 'US';
+  const queryCountry = new URLSearchParams(window.location.search).get('country');
+  const storedCountry = localStorage.getItem('dg_country');
+  const country = ['US','CA','UK','AZ'].includes(queryCountry) ? queryCountry : (storedCountry || 'US');
 
   const configs = {
     US: { country: 'US', currency: 'USD', rate: 1 },
@@ -1656,6 +1658,12 @@ function handleCheckoutCountryChange() {
       }
       return;
     }
+
+    const shippingAnalytics = dgAnalyticsValueFor(checkoutItems);
+    window.DGAnalytics?.track('add_shipping_info', {
+      ...shippingAnalytics,
+      shipping_tier: checkoutCountry
+    });
 
     if (d.requiresShippingQuote && d.order?.id) {
       if (sessionStorage.getItem('dg_checkout_mode') !== 'buy-now') {

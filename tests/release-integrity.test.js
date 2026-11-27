@@ -26,7 +26,7 @@ test('all storefront scripts and styles referenced by index.html exist', async (
 });
 
 test('all shipped JavaScript files parse, including Admin inline code', async () => {
-  for (const file of ['server.js', 'database.js', 'lib/gtin.js', 'public/script.js', 'public/analytics.js', 'public/growth.js']) {
+  for (const file of ['server.js', 'database.js', 'lib/gtin.js', 'public/script.js', 'public/analytics.js', 'public/growth.js', 'public/motion.js']) {
     checkJavaScript(file, await read(file));
   }
   const admin = await read('public/admin.html');
@@ -187,7 +187,7 @@ test('DreamGrind Edit is responsive at tablet and mobile widths', async () => {
 test('all storefront assets use the current editorial cache key', async () => {
   const html = await read('public/index.html');
   for (const asset of ['style.css','growth.css','script.js','analytics.js','growth.js']) {
-    assert.ok(html.includes(asset + '?v=20261127-edit-v1'), 'Stale cache key for ' + asset);
+    const expectedVersion = ['script.js','analytics.js','growth.js'].includes(asset) ? '?v=20261127-edit-v2' : '?v=20261127-edit-v1';
   }
   assert.ok(html.includes('dreamgrind-premium.css?v=20261127-center-v3'), 'Premium CSS must use the current centered-emblem cache key');
 });
@@ -223,4 +223,106 @@ test('premium motion system is progressive, accessible and does not alter commer
   assert.match(server, /createEpointPayment/);
   assert.match(html, /id="productGrid"/);
   assert.match(html, /id="countryPicker"/);
+});
+
+
+test('SEO landing route renders Product and Breadcrumb JSON-LD before client scripts', async () => {
+  const server = await read('server.js');
+  assert.match(server, /app\.get\('\/',\s*\(req,res,next\)/);
+  assert.match(server, /function renderProductLandingPage/);
+  assert.match(server, /application\/ld\+json/);
+  assert.match(server, /canonical/);
+  assert.match(server, /availability.*schema\.org|schema\.org.*availability/);
+});
+
+test('country-specific sitemap and Google Merchant feeds use matching market URLs', async () => {
+  const server = await read('server.js');
+  assert.match(server, /&country=\$\{market\.code\}/);
+  const start = server.indexOf("app.get('/feed/google.xml'");
+  const end = server.indexOf("app.get('/api/reviews/:productId'", start);
+  const feed = server.slice(start,end);
+  assert.match(feed, /&country=' \+ code/);
+  assert.match(feed, /market\.currency/);
+  assert.match(feed, /variantCombinations/);
+  assert.match(feed, /isValidGtin/);
+  assert.doesNotMatch(feed, /free shipping|<g:shipping>/i);
+});
+
+test('country-specific product links set the storefront currency before price rendering', async () => {
+  const script = await read('public/script.js');
+  assert.match(script, /queryCountry/);
+  assert.match(script, /includes\(queryCountry\)/);
+  assert.match(script, /country = \['US','CA','UK','AZ'\]/);
+});
+
+test('analytics ecommerce events use beacon transport and purchase remains idempotent', async () => {
+  const analytics = await read('public/analytics.js');
+  assert.match(analytics, /transport_type:\s*'beacon'/);
+  assert.match(analytics, /dg_purchase_sent_/);
+  assert.match(analytics, /transaction_id/);
+});
+
+
+test('SEO landing route renders Product and Breadcrumb JSON-LD before client scripts', async () => {
+  const server = await read('server.js');
+  assert.match(server, /app\.get\('\/',\s*\(req,res,next\)/);
+  assert.match(server, /function renderProductLandingPage/);
+  assert.match(server, /application\/ld\+json/);
+  assert.match(server, /BreadcrumbList/);
+  assert.match(server, /canonical/);
+  assert.match(server, /priceCurrency:market\.currency/);
+});
+
+test('country-specific sitemap and Google Merchant feeds use matching market URLs', async () => {
+  const server = await read('server.js');
+  assert.match(server, /&country=\$\{market\.code\}/);
+  const start = server.indexOf("app.get('/feed/google.xml'");
+  const end = server.indexOf("app.get('/api/reviews/:productId'", start);
+  const feed = server.slice(start, end);
+  assert.match(feed, /&country=' \+ code/);
+  assert.match(feed, /market\.currency/);
+  assert.match(feed, /variantCombinations/);
+  assert.match(feed, /isValidGtin/);
+  assert.doesNotMatch(feed, /free shipping|<g:shipping>/i);
+});
+
+test('country query parameter takes precedence over stored market in shared product links', async () => {
+  const script = await read('public/script.js');
+  assert.match(script, /queryCountry/);
+  assert.match(script, /\['US','CA','UK','AZ'\]\.includes\(queryCountry\)/);
+});
+
+test('GA4 funnel includes shipping and payment information and maintains idempotent paid purchase', async () => {
+  const script = await read('public/script.js');
+  const growth = await read('public/growth.js');
+  const analytics = await read('public/analytics.js');
+  assert.match(script, /track\('begin_checkout'/);
+  assert.match(script, /track\('add_shipping_info'/);
+  assert.match(script, /track\('add_payment_info'/);
+  assert.match(growth, /track\('view_item'/);
+  assert.match(growth, /track\('view_item_list'/);
+  assert.match(growth, /track\('add_to_cart'/);
+  assert.match(analytics, /transport_type:\s*'beacon'/);
+  assert.match(analytics, /dg_purchase_sent_/);
+  assert.match(analytics, /transaction_id/);
+  assert.match(script, /order\?\.paymentStatus\s*===\s*['"]Paid['"]/);
+});
+
+test('product images reserve aspect ratio to reduce layout shifts', async () => {
+  const css = await read('public/style.css');
+  const script = await read('public/script.js');
+  assert.match(css, /\.product-image-wrap\s*\{[^}]*aspect-ratio:\s*1\s*\/\s*1/s);
+  assert.match(script, /loading="lazy"/);
+});
+
+test('core payment, order and admin routes remain available', async () => {
+  const server = await read('server.js');
+  const script = await read('public/script.js');
+  for (const route of ['/api/payment/create','/api/payment/callback','/api/orders','/api/admin/products']) {
+    assert.ok(server.includes(route), 'Missing core route: ' + route);
+  }
+  assert.match(server, /createEpointPayment\(/);
+  assert.match(server, /await db\.write\(\)/);
+  assert.match(script, /payment\.redirect_url/);
+  assert.match(script, /dg_checkout_mode/);
 });

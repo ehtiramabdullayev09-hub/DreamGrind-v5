@@ -178,16 +178,60 @@ Sitemap: ${PUBLIC_SITE_URL}/sitemap.xml
 });
 app.get('/sitemap.xml', (_req, res) => {
   const urls = [`${PUBLIC_SITE_URL}/`];
-  const sitemapMarkets = ['United States', 'Canada', 'United Kingdom', 'Azerbaijan'];
+  const markets = [
+    { code: 'US', country: 'United States' },
+    { code: 'CA', country: 'Canada' },
+    { code: 'UK', country: 'United Kingdom' },
+    { code: 'AZ', country: 'Azerbaijan' }
+  ];
   for (const product of db.data.products) {
-    if (product && product.id != null && sitemapMarkets.some(country => isProductAvailableForCountry(product, country))) {
-      urls.push(`${PUBLIC_SITE_URL}/?product=${encodeURIComponent(product.id)}`);
+    if (!product || product.id == null) continue;
+    for (const market of markets) {
+      if (isProductAvailableForCountry(product, market.country) && effectiveProductPriceForCountry(product, market.country) > 0) {
+        urls.push(`${PUBLIC_SITE_URL}/?product=${encodeURIComponent(product.id)}&country=${market.code}`);
+      }
     }
   }
   const body = `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${urls.map(url => `<url><loc>${escapeXml(url)}</loc></url>`).join('')}</urlset>`;
   res.type('application/xml').set('Cache-Control', 'public, max-age=900').send(body);
 });
+function escapeHtml(value) {
+  return String(value ?? '').replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]));
+}
+function renderProductLandingPage(product, countryCode) {
+  const markets = { US:{country:'United States',currency:'USD',locale:'en-US'}, CA:{country:'Canada',currency:'CAD',locale:'en-CA'}, UK:{country:'United Kingdom',currency:'GBP',locale:'en-GB'}, AZ:{country:'Azerbaijan',currency:'AZN',locale:'az-AZ'} };
+  const market = markets[countryCode] || markets.US;
+  const available = isProductAvailableForCountry(product, market.country);
+  const variants = Array.isArray(product.variantCombinations) ? product.variantCombinations : [];
+  const prices = variants.length ? variants.map(v => effectiveVariantPriceForCountry(product,v,market.country)).filter(v => Number.isFinite(v) && v > 0) : [effectiveProductPriceForCountry(product,market.country)].filter(v => Number.isFinite(v) && v > 0);
+  const price = prices.length ? Math.min(...prices) : 0;
+  const images = (Array.isArray(product.images) ? product.images : []).concat(product.image || []).filter(value => { try { const parsed = new URL(String(value || '')); return parsed.protocol === 'http:' || parsed.protocol === 'https:'; } catch { return false; } }).slice(0,8);
+  const image = images[0] || '';
+  const title = String(product.title || 'DreamGrind product');
+  const description = String(product.description || ('Explore ' + title + ' at DreamGrind.')).replace(/<[^>]*>/g,' ').replace(/\\s+/g,' ').trim().slice(0,300);
+  const url = PUBLIC_SITE_URL + '/?product=' + encodeURIComponent(product.id) + '&country=' + countryCode;
+  const priceText = price > 0 ? new Intl.NumberFormat(market.locale,{style:'currency',currency:market.currency}).format(price) : 'Unavailable';
+  const inStock = available && Number(product.stock) > 0;
+  const offer = { '@type': variants.length ? 'AggregateOffer' : 'Offer', url, priceCurrency:market.currency, ...(variants.length ? {lowPrice:Number(Math.min(...prices).toFixed(2)),highPrice:Number(Math.max(...prices).toFixed(2)),offerCount:prices.length} : {price:Number(price.toFixed(2))}), availability:inStock ? 'https://schema.org/InStock' : 'https://schema.org/OutOfStock' };
+  const schema = { '@context':'https://schema.org', '@type':'Product', name:title, description, image:images, sku:String(product.id), offers:offer, ...(product.brand ? {brand:{'@type':'Brand',name:String(product.brand).slice(0,100)}} : {}), ...(isValidGtin(product.gtin) ? {gtin:String(product.gtin)} : {}), ...(product.mpn ? {mpn:String(product.mpn).slice(0,100)} : {}) };
+  const breadcrumb = { '@context':'https://schema.org', '@type':'BreadcrumbList', itemListElement:[{'@type':'ListItem',position:1,name:'Home',item:PUBLIC_SITE_URL + '/'},{'@type':'ListItem',position:2,name:String(product.category || 'Shop'),item:PUBLIC_SITE_URL + '/#shop'},{'@type':'ListItem',position:3,name:title,item:url}] };
+  const esc = escapeHtml;
+  const gallery = images.map((src,i) => '<img src="' + esc(src) + '" alt="' + esc(title) + ' - image ' + (i+1) + '" loading="' + (i ? 'lazy' : 'eager') + '" decoding="async" style="width:100%;max-width:520px;aspect-ratio:1/1;object-fit:contain">').join('');
+  const head = '<!doctype html><html lang="' + (countryCode === 'AZ' ? 'az' : 'en') + '"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#071a2c"><title>' + esc(title) + ' | DreamGrind</title><meta name="description" content="' + esc(description) + '"><link rel="canonical" href="' + esc(url) + '"><meta property="og:type" content="product"><meta property="og:title" content="' + esc(title) + ' | DreamGrind"><meta property="og:description" content="' + esc(description) + '"><meta property="og:url" content="' + esc(url) + '">' + (image ? '<meta property="og:image" content="' + esc(image) + '">' : '') + '<meta name="twitter:card" content="summary_large_image"><link rel="icon" href="/favicon.svg" type="image/svg+xml"><link rel="stylesheet" href="/style.css?v=20261127-edit-v1"><link rel="stylesheet" href="/dreamgrind-premium.css?v=20261127-center-v3"><link rel="stylesheet" href="/growth.css?v=20261127-edit-v1"><script type="application/ld+json">' + JSON.stringify(schema).replace(/</g,'\\u003c') + '</script><script type="application/ld+json">' + JSON.stringify(breadcrumb).replace(/</g,'\\u003c') + '</script></head>';
+  return head + '<body><main style="max-width:1180px;margin:32px auto;padding:24px"><a href="/">DreamGrind</a><nav aria-label="Breadcrumb"><a href="/">Home</a> / <a href="/#shop">' + esc(product.category || 'Shop') + '</a> / ' + esc(title) + '</nav><article style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,320px),1fr));gap:32px;margin-top:28px"><div>' + gallery + '</div><div><p style="text-transform:uppercase;letter-spacing:.16em;color:#0b8984;font-size:11px;font-weight:800">' + esc(product.category || 'DreamGrind') + '</p><h1>' + esc(title) + '</h1><p>' + esc(description) + '</p><p style="font-size:26px;font-weight:800">' + esc(priceText) + '</p><p>' + (inStock ? 'Available to order' : 'Currently unavailable') + '</p><p>Secure payment by Epoint. Delivery information is shown before checkout.</p><a href="/?product=' + encodeURIComponent(product.id) + '&country=' + countryCode + '" style="display:inline-flex;padding:14px 20px;border-radius:12px;background:#071a2c;color:white;text-decoration:none;font-weight:800">View product and buy</a></div></article></main><script>try{localStorage.setItem("dg_country",' + JSON.stringify(countryCode) + ')}catch(e){}</script></body></html>';
+}
+app.get('/', (req,res,next) => {
+  if (req.query.product == null) return next();
+  const id = Number(req.query.product);
+  if (!Number.isInteger(id) || id < 1) return next();
+  const product = db.data.products.find(item => Number(item.id) === id);
+  if (!product) return next();
+  const requested = String(req.query.country || 'US').toUpperCase();
+  const country = ['US','CA','UK','AZ'].includes(requested) ? requested : 'US';
+  res.set('Cache-Control','public, max-age=60, stale-while-revalidate=300').type('html').send(renderProductLandingPage(product,country));
+});
+app.use(express.static(path.join(__dirname, 'public')));
 app.use(express.static(path.join(__dirname, 'public')));
 
 const authLimiter = rateLimit({ windowMs: 15 * 60 * 1000, limit: 20, standardHeaders: 'draft-8', legacyHeaders: false });
@@ -447,28 +491,36 @@ app.get('/api/products', (_req, res) => {
 
 app.get('/feed/google.xml', (req, res) => {
   const code = String(req.query.country || 'US').toUpperCase();
-  const countries = { US: 'United States', CA: 'Canada', UK: 'United Kingdom', AZ: 'Azerbaijan' };
-  if (!Object.prototype.hasOwnProperty.call(countries, code)) return res.status(400).type('text/plain').send('Unsupported country.');
-  const currency = ({ US: 'USD', CA: 'CAD', UK: 'GBP', AZ: 'AZN' })[code];
-  const items = db.data.products.filter(product => isProductAvailableForCountry(product, countries[code])
-    && !(Array.isArray(product.variantCombinations) && product.variantCombinations.length)
-    && !(Array.isArray(product.variants) && product.variants.length))
-    .map(product => {
-      const images = (Array.isArray(product.images) ? product.images : []).concat(product.image || []).filter(url => /^https?:\/\//i.test(String(url || '')));
-      const validGtin = isValidGtin(product.gtin);
-      const hasIdentifier = validGtin || Boolean(String(product.mpn || '').trim());
-      if (!images.length || !String(product.brand || '').trim() || !hasIdentifier || !(Number(product.stock) > 0)) return null;
-      const price = effectiveProductPriceForCountry(product, countries[code]);
+  const markets = { US:{country:'United States',currency:'USD'}, CA:{country:'Canada',currency:'CAD'}, UK:{country:'United Kingdom',currency:'GBP'}, AZ:{country:'Azerbaijan',currency:'AZN'} };
+  const market = markets[code];
+  if (!market) return res.status(400).type('text/plain').send('Unsupported country.');
+  const items = db.data.products.filter(product => isProductAvailableForCountry(product, market.country)).map(product => {
+      const images = (Array.isArray(product.images) ? product.images : []).concat(product.image || []).filter(url => { try { const parsed = new URL(String(url || '')); return parsed.protocol === 'http:' || parsed.protocol === 'https:'; } catch { return false; } });
+    const gtinValid = isValidGtin(product.gtin);
+    const mpn = String(product.mpn || '').trim();
+    const brand = String(product.brand || '').trim();
+    const stock = Number(product.stock);
+    if (!images.length || !brand || (!gtinValid && !mpn) || !(stock > 0)) return null;
+    const variants = Array.isArray(product.variantCombinations) ? product.variantCombinations : [];
+    const rows = variants.length ? variants : [null];
+    return rows.map(variant => {
+      const price = variant ? effectiveVariantPriceForCountry(product, variant, market.country) : effectiveProductPriceForCountry(product, market.country);
       if (!(Number.isFinite(price) && price > 0)) return null;
-      const description = String(product.description || product.title || '').replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 4500);
-      const availability = 'in_stock';
-      const shippingCountry = code === 'UK' ? 'GB' : code;
-      return `<item><g:id>${escapeXml(product.id)}</g:id><g:title>${escapeXml(product.title)}</g:title><g:description>${escapeXml(description)}</g:description><g:link>${escapeXml(`${PUBLIC_SITE_URL}/?product=${encodeURIComponent(product.id)}`)}</g:link><g:image_link>${escapeXml(images[0])}</g:image_link>${images.slice(1, 10).map(url => `<g:additional_image_link>${escapeXml(url)}</g:additional_image_link>`).join('')}<g:availability>${availability}</g:availability><g:condition>new</g:condition><g:price>${price.toFixed(2)} ${currency}</g:price><g:brand>${escapeXml(product.brand)}</g:brand><g:product_type>${escapeXml(product.category || 'General')}</g:product_type>${validGtin ? `<g:gtin>${escapeXml(product.gtin)}</g:gtin>` : `<g:mpn>${escapeXml(product.mpn)}</g:mpn>`}</item>`;
-    }).filter(Boolean);
-  const xml = `<?xml version="1.0" encoding="UTF-8"?><rss version="2.0" xmlns:g="http://base.google.com/ns/1.0"><channel><title>DreamGrind ${code}</title><link>${escapeXml(PUBLIC_SITE_URL)}</link><description>DreamGrind product feed for ${countries[code]}</description>${items.join('')}</channel></rss>`;
-  res.type('application/xml').set('Cache-Control', 'public, max-age=900').send(xml);
+      const variantText = variant ? [variant.color, variant.size].filter(Boolean).join(' / ') : '';
+      const suffix = variant ? '-' + Buffer.from([variant.color || '', variant.size || ''].join('|')).toString('base64url').slice(0,24) : '';
+      const itemId = String(product.id) + suffix;
+      const title = variantText ? String(product.title || '') + ' - ' + variantText : String(product.title || '');
+      const description = String(product.description || product.title || '').replace(/<[^>]*>/g,' ').replace(/\\s+/g,' ').trim().slice(0,4500);
+      const url = PUBLIC_SITE_URL + '/?product=' + encodeURIComponent(product.id) + '&country=' + code;
+      const identifier = gtinValid ? '<g:gtin>' + escapeXml(product.gtin) + '</g:gtin>' : '<g:mpn>' + escapeXml(mpn) + '</g:mpn>';
+      const attrs = variant ? (variant.color ? '<g:color>' + escapeXml(variant.color) + '</g:color>' : '') + (variant.size ? '<g:size>' + escapeXml(variant.size) + '</g:size>' : '') : '';
+      const group = variants.length ? '<g:item_group_id>' + escapeXml(product.id) + '</g:item_group_id>' : '';
+      return '<item><g:id>' + escapeXml(itemId) + '</g:id><g:title>' + escapeXml(title) + '</g:title><g:description>' + escapeXml(description) + '</g:description><g:link>' + escapeXml(url) + '</g:link><g:image_link>' + escapeXml(images[0]) + '</g:image_link>' + images.slice(1,10).map(image => '<g:additional_image_link>' + escapeXml(image) + '</g:additional_image_link>').join('') + '<g:availability>in_stock</g:availability><g:condition>new</g:condition><g:price>' + price.toFixed(2) + ' ' + market.currency + '</g:price><g:brand>' + escapeXml(brand) + '</g:brand><g:product_type>' + escapeXml(product.category || 'General') + '</g:product_type>' + identifier + attrs + group + '</item>';
+    }).filter(Boolean).join('');
+  }).filter(Boolean);
+  const xml = '<?xml version="1.0" encoding="UTF-8"?><rss version="2.0" xmlns:g="http://base.google.com/ns/1.0"><channel><title>DreamGrind ' + code + '</title><link>' + escapeXml(PUBLIC_SITE_URL) + '</link><description>DreamGrind product feed for ' + market.country + '</description>' + items.join('') + '</channel></rss>';
+  res.type('application/xml').set('Cache-Control','public, max-age=900').send(xml);
 });
-
 app.get('/api/reviews/:productId', (req, res) => {
   const productId = Number(req.params.productId);
   if (!Number.isInteger(productId) || productId < 1) return res.status(400).json({ error: 'Invalid product.' });
