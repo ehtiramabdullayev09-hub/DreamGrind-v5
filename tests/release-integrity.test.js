@@ -136,3 +136,23 @@ test('conversion trust updates include real brand copy and persistent WhatsApp c
   assert.match(script, /Shipping cost and delivery estimate shown at checkout/);
   assert.match(script, /Delivery and confirmed charges included in the displayed AZN price/);
 });
+
+test('DreamGrind signature design system uses unified navy and teal palette', async () => {
+  const css = await read('public/dreamgrind-premium.css');
+  const html = await read('public/index.html');
+  assert.match(css, /DreamGrind Signature System 2026/);
+  assert.match(css, /--dg-navy:#071c2b/);
+  assert.match(css, /--dg-cyan:#27c0c0/);
+  assert.match(html, /dreamgrind-premium\.css\?v=20261127-signature-v1/);
+});
+
+test('Design-system refresh preserves core storefront sections and handlers', async () => {
+  const html = await read('public/index.html');
+  const script = await read('public/script.js');
+  for (const id of ['shop','categories','about','modalRoot','productGrid','countryPicker']) {
+    assert.match(html, new RegExp('id="' + id + '"'));
+  }
+  for (const handler of ['setCountry','setLanguage','openCart','openWishlist','addProductFromDetail','buyNowFromDetail']) {
+    assert.ok(script.includes(handler), 'Missing handler: ' + handler);
+  }
+});
