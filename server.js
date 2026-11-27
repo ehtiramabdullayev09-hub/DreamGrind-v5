@@ -1017,6 +1017,7 @@ app.patch('/api/admin/orders/:id', requireAdmin, async (req, res) => {
   if (!order) return res.status(404).json({ error: 'Order not found.' });
   order.status = parsed.data.status;
   if (parsed.data.trackingNumber !== undefined) order.trackingNumber = parsed.data.trackingNumber || null;
+  if (parsed.data.trackingUrl !== undefined) order.trackingUrl = parsed.data.trackingUrl || null;
   if (parsed.data.status === 'Refunded') {
     order.paymentStatus = 'Refunded';
     order.refundedAt ||= new Date().toISOString();
