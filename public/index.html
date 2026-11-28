@@ -18,7 +18,7 @@
   <link rel="manifest" href="/site.webmanifest">
   <title>DreamGrind — Smart Shopping Starts Here</title>
   <link rel="preconnect" href="https://images.unsplash.com">
-  <link rel="stylesheet" href="/style.css?v=20261128-storefront-repair-v6">
+  <link rel="stylesheet" href="/style.css?v=20261128-checkout-security-v7">
   <link rel="stylesheet" href="/dreamgrind-premium.css?v=20261127-center-v3">
   <link rel="stylesheet" href="/growth.css?v=20261127-edit-v1">
 </head>
@@ -182,7 +182,7 @@
       </div>
     </section>
 
-    <section id="track" class="track-section"><div class="container track-layout"><div><p class="eyebrow" data-i18n="orderStatus">Order status</p><h2 data-i18n="trackYourOrder">Track your order</h2><p class="muted" data-i18n="orderTrackingIntro">Enter your DreamGrind order number to see the latest order status. Carrier tracking details appear here once they are added to your order.</p></div><div class="track-card"><form class="track-input-row" onsubmit="trackOrder(event)"><input id="trackInput" placeholder="Example: DG10001" aria-label="Order number" autocomplete="off" required><button class="primary-button" type="submit" data-i18n="track">Track order</button></form><div id="trackingResult" aria-live="polite"></div></div></div></section>
+    <section id="track" class="track-section"><div class="container track-layout"><div><p class="eyebrow" data-i18n="orderStatus">Order status</p><h2 data-i18n="trackYourOrder">Track your order</h2><p class="muted" data-i18n="orderTrackingIntro">Enter your DreamGrind order number to see the latest order status. Carrier tracking details appear here once they are added to your order.</p></div><div class="track-card"><form class="track-input-row" onsubmit="trackOrder(event)"><input id="trackInput" placeholder="Example: DG10001" aria-label="Order number" autocomplete="off" required><input id="trackEmail" type="email" placeholder="Checkout email address" aria-label="Checkout email address" autocomplete="email"><button class="primary-button" type="submit" data-i18n="track">Track order</button></form><div id="trackingResult" aria-live="polite"></div></div></div></section>
 
     <section id="contact" class="contact-section">
       <div class="container contact-card">
@@ -222,7 +222,7 @@
     <span class="dg-whatsapp-label" data-i18n="floatingWhatsapp">Need help? Contact us</span>
   </a>
   <div id="modalRoot"></div><div id="toast" class="toast hidden"></div>
-  <script src="/script.js?v=20261128-storefront-repair-v6"></script>
+  <script src="/script.js?v=20261128-checkout-security-v7"></script>
   <script src="/analytics.js?v=20261127-edit-v3" defer></script>
   <script src="/growth.js?v=20261127-edit-v3" defer></script>
   <script src="/motion.js?v=20261127-motion-v1" defer></script>
