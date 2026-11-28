@@ -1920,6 +1920,7 @@ function handleCheckoutCountryChange() {
       sessionStorage.setItem('dg_analytics_checkout', JSON.stringify(checkoutAnalytics));
       window.DGAnalytics.track('add_payment_info', { ...checkoutAnalytics, payment_type: 'Epoint' });
     }
+    sessionStorage.setItem('dg_checkout_email', $('coEmail').value.trim());
     window.location.href = payment.redirect_url;
   } catch (error) {
     console.error('CHECKOUT ERROR:', error);
@@ -1935,7 +1936,7 @@ function handleCheckoutCountryChange() {
       const code = $('trackInput').value.trim().toUpperCase();
       const email = $('trackEmail').value.trim();
       if (!code || !email) { $('trackingResult').innerHTML = '<p class="muted">Enter your order number and checkout email.</p>'; return; }
-      const r = await fetch('/api/orders/track/' + encodeURIComponent(code) + '?email=' + encodeURIComponent(email), { cache: 'no-store' });
+      const r = await fetch('/api/orders/track/' + encodeURIComponent(code), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email }), cache: 'no-store' });
       const d = await r.json();
       if (!r.ok) { $('trackingResult').innerHTML = '<p class="muted">Order not found. Check the order number and try again.</p>'; return; }
       const order = d.order;
@@ -2100,7 +2101,9 @@ async function handlePaymentReturn() {
   let order = null;
   for (let attempt = 0; attempt < 6; attempt += 1) {
     try {
-      const response = await fetch('/api/orders/track/' + encodeURIComponent(returnedOrderId), { cache: 'no-store' });
+      const checkoutEmail = sessionStorage.getItem('dg_checkout_email') || '';
+      if (!checkoutEmail) break;
+      const response = await fetch('/api/orders/track/' + encodeURIComponent(returnedOrderId), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: checkoutEmail }), cache: 'no-store' });
       const data = await response.json();
       if (response.ok && data.order) {
         order = data.order;
@@ -2114,6 +2117,7 @@ async function handlePaymentReturn() {
 
   const checkoutMode = sessionStorage.getItem('dg_checkout_mode') || 'cart';
   sessionStorage.removeItem('dg_checkout_mode');
+  sessionStorage.removeItem('dg_checkout_email');
 
   if (order?.paymentStatus === 'Paid') {
     if (window.DGAnalytics?.getConsent?.() === 'granted') {

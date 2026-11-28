@@ -893,8 +893,8 @@ app.get('/api/orders/me', requireAuth, (req, res) => {
   res.json({ orders });
 });
 
-app.get('/api/orders/track/:code', (req, res) => {
-  const email = String(req.query.email || '').trim().toLowerCase();
+app.post('/api/orders/track/:code', (req, res) => {
+  const email = String(req.body?.email || '').trim().toLowerCase();
   if (!email || !emailSchema.safeParse(email).success) {
     return res.status(400).json({ error: 'Enter the email address used at checkout.' });
   }
