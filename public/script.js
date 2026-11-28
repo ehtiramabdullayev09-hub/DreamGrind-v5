@@ -403,6 +403,7 @@ const uiCopy = {
   'Explore this find': 'Bu məhsulu kəşf edin',
   'Special offer': 'Xüsusi təklif',
   'Limited-time offer ends in': 'Məhdud müddətli təklifin bitməsinə'
+  'Use Grind Points': 'Grind Points xallarımı istifadə et',
 };
 
 const uiCopyReverse = Object.fromEntries(Object.entries(uiCopy).map(([en, az]) => [az, en]));
@@ -1522,6 +1523,7 @@ async function startCheckout(items = null) {
             <div id="checkoutOrderLines"></div>
             <div class="summary-row"><span>Subtotal</span><strong id="checkoutSubtotal">—</strong></div>
             <div class="summary-row"><span>Shipping</span><strong id="checkoutShipping">—</strong></div>
+            <div id="checkoutLoyaltyRow" class="grind-checkout-row hidden"><label><input id="redeemGrindPoints" type="checkbox" onchange="renderCheckoutOrderSummary()"><span id="checkoutLoyaltyLabel">Use Grind Points</span></label><strong id="checkoutLoyaltyDiscount">−0</strong></div>
             <div class="summary-row total"><span>Total</span><strong id="checkoutTotal">—</strong></div>
             <p class="muted" id="checkoutCurrencyNote">Final amount is confirmed before secure payment.</p>
           </section>
@@ -1703,6 +1705,15 @@ function renderCheckoutOrderSummary() {
     availableItems.push({title:product.title,qty:Math.max(1,Number(item.qty)||1),price:Number.isFinite(price)&&price>0?price:0,variant:item.variantColor || item.variantSize ? [item.variantColor,item.variantSize].filter(Boolean).join(' / ') : item.variant || ''});
   }
   const subtotal = availableItems.reduce((sum,item)=>sum+(item.price == null ? 0 : item.price*item.qty),0);
+  const pointsBalance = Math.max(0,Number(currentCachedUser?.loyaltyPoints)||0);
+  const maxPoints = Math.min(pointsBalance,Math.floor(subtotal*0.10*100));
+  const redeem = Boolean($('redeemGrindPoints')?.checked);
+  const rateToAzn = { US:1.70, CA:1.70/1.36, UK:1.70/0.75, AZ:1 };
+  const discount = (redeem ? maxPoints/100 : 0)/(rateToAzn[code]||1);
+  const finalTotal = Math.max(0,subtotal-discount);
+  if ($('checkoutLoyaltyRow')) $('checkoutLoyaltyRow').classList.toggle('hidden',!currentCachedUser||pointsBalance<100);
+  if ($('checkoutLoyaltyDiscount')) $('checkoutLoyaltyDiscount').textContent = '−'+formatter.format(discount);
+  if ($('checkoutLoyaltyLabel')) $('checkoutLoyaltyLabel').textContent = localStorage.getItem('dg_language')==='az'?'Grind Points istifadə et ('+maxPoints.toLocaleString()+' GP mövcuddur)':'Use Grind Points ('+maxPoints.toLocaleString()+' GP available)';
   const rows = availableItems.map(item => {
     const option = item.variant ? '<small class="muted">'+escapeHtml(item.variant)+'</small>' : '';
     const amount = item.price == null ? 'Unavailable for this destination' : formatter.format(item.price*item.qty);
@@ -1711,7 +1722,7 @@ function renderCheckoutOrderSummary() {
   linesNode.innerHTML = rows || '<p class="muted">Your cart is empty.</p>';
   if ($('checkoutSubtotal')) $('checkoutSubtotal').textContent = formatter.format(subtotal);
   if ($('checkoutShipping')) $('checkoutShipping').textContent = code === 'AZ' ? (localStorage.getItem('dg_language') === 'az' ? 'Daxildir' : 'Included') : formatter.format(0);
-  if ($('checkoutTotal')) $('checkoutTotal').textContent = formatter.format(subtotal);
+  if ($('checkoutTotal')) $('checkoutTotal').textContent = formatter.format(finalTotal);
   if ($('checkoutCurrencyNote')) $('checkoutCurrencyNote').textContent = code === 'AZ'
     ? (localStorage.getItem('dg_language') === 'az' ? 'Çatdırılma bu məhsullar üçün təsdiqlənmiş yekun AZN qiymətinə daxildir. Epoint ödənişi təhlükəsiz şəkildə AZN ilə həyata keçirir.' : 'Delivery is included in the confirmed final AZN prices for these products. Epoint processes the payment securely in AZN.')
     : (localStorage.getItem('dg_language') === 'az' ? 'Məbləğ seçilmiş bazarın valyutasında göstərilir. Epoint ödənişi AZN ilə həyata keçirir; ödənişə keçməzdən əvvəl yekun məbləğ göstərilir.' : 'Prices are displayed in the selected market currency. Epoint processes payment in AZN; the final amount is confirmed before payment.');
@@ -1774,8 +1785,25 @@ function handleCheckoutCountryChange() {
   }
 }
 
-    async function getCurrentUser() { const r = await fetch('/api/auth/me', { credentials: 'include' }); const d = await r.json(); return d.user || null; }
-    async function openAccount() { const user = await getCurrentUser(); $('modalRoot').innerHTML = `<div class="modal-overlay" onclick="closeModal(event)"><div class="modal"><div class="modal-head"><h2>My account</h2><button class="close-btn" onclick="closeModal()">✕</button></div>${user ? accountHome(user) : accountForms()}</div></div>`; if (!user) showLoginForm(); }
+    let currentCachedUser = null;
+async function getCurrentUser() { const r = await fetch('/api/auth/me', { credentials:'include', cache:'no-store' }); const d = await r.json(); currentCachedUser=d.user||null; return currentCachedUser; }
+async function renderGrindPointsPanel() {
+  const root = $('grindPointsMount');
+  if (!root) return;
+  let data = { balance:Math.max(0,Number(currentCachedUser?.loyaltyPoints)||0), history:[], valueAzn:0 };
+  try { const r = await fetch('/api/loyalty/me',{credentials:'include',cache:'no-store'}); if(r.ok) data=await r.json(); } catch(error) { console.warn('Grind Points unavailable.',error); }
+  const az = localStorage.getItem('dg_language') === 'az';
+  const balance = Math.max(0,Number(data.balance)||0);
+  const labels = {earned:az?'Xal qazanıldı':'Points earned',redeemed:az?'Xal istifadə edildi':'Points used',refund:az?'Refund sonrası qaytarıldı':'Points returned after refund',reversed:az?'Qazanılmış xallar geri alındı':'Earned points reversed'};
+  const rows = Array.isArray(data.history) && data.history.length ? data.history.slice(0,8).map(item=>'<div class="grind-ledger-row"><span>'+(labels[item.type]||'Points update')+'<small>'+escapeHtml(item.orderId||'')+' · '+new Date(item.createdAt).toLocaleDateString()+'</small></span><strong class="'+(Number(item.points)>=0?'positive':'negative')+'">'+(Number(item.points)>0?'+':'')+Number(item.points)+'</strong></div>').join('') : '<p class="muted">'+(az?'Hələ xal əməliyyatı yoxdur.':'No points activity yet.')+'</p>';
+  root.innerHTML = '<section class="grind-points-card"><div class="grind-points-kicker">DREAMGRIND LOYALTY</div><div class="grind-points-balance">'+balance.toLocaleString()+' <span>GP</span></div><p>'+(az?'Grind Points balansınız':'Your Grind Points balance')+'</p><div class="grind-points-value">'+(az?'Dəyəri':'Value')+': '+Number(data.valueAzn ?? balance/100).toFixed(2)+' AZN</div></section><div class="grind-points-rules"><strong>'+(az?'Xal qaydaları':'How it works')+'</strong><p>'+(az?'Hər 1 AZN xərcləməyə 1 xal. 100 xal = 1 AZN endirim. Sifarişin maksimum 10%-i qədər istifadə edə bilərsiniz.':'Earn 1 point per 1 AZN paid. 100 points = 1 AZN discount. Redeem up to 10% of an order.')+'</p></div><div class="grind-ledger"><div class="grind-ledger-heading">'+(az?'Xal tarixçəsi':'Points activity')+'</div>'+rows+'</div>';
+}
+
+    async function openAccount() {
+  const user = await getCurrentUser();
+  $('modalRoot').innerHTML = `<div class="modal-overlay" onclick="closeModal(event)"><div class="modal"><div class="modal-head"><h2>My account</h2><button class="close-btn" onclick="closeModal()">✕</button></div>${user ? accountHome(user) + '<div id="grindPointsMount"></div>' : accountForms()}</div></div>`;
+  if (user) renderGrindPointsPanel(); else showLoginForm();
+}
     function accountForms() { return `<div class="account-tabs"><button id="loginTab" class="account-tab active" onclick="showLoginForm()">Login</button><button id="registerTab" class="account-tab" onclick="showRegisterForm()">Create account</button></div><div id="accountBody"></div><div class="note-box" style="margin-top:12px">Your password is handled by the server and is not stored in your browser local storage.</div>` }
     function showLoginForm() { $('loginTab').classList.add('active'); $('registerTab').classList.remove('active'); $('accountBody').innerHTML = `<form class="form-grid" onsubmit="loginUser(event)"><label>Email<input id="loginEmail" type="email" required autocomplete="email"></label><label>Password<input id="loginPassword" type="password" required autocomplete="current-password"></label><button class="primary-button" type="submit">Login</button></form>`; }
     function showRegisterForm() { $('loginTab').classList.remove('active'); $('registerTab').classList.add('active'); $('accountBody').innerHTML = `<form class="form-grid" onsubmit="registerUser(event)"><label>Full name<input id="regName" required autocomplete="name"></label><label>Email<input id="regEmail" type="email" required autocomplete="email"></label><label>Password<input id="regPassword" minlength="8" type="password" required autocomplete="new-password"></label><button class="primary-button" type="submit">Create account</button></form>`; }
@@ -1871,7 +1899,8 @@ function handleCheckoutCountryChange() {
         state: $('coState').value.trim(),
         zip: $('coZip').value.trim(),
         country: $('coCountry').value,
-        items: checkoutItems
+        items: checkoutItems,
+        redeemGrindPoints: $('redeemGrindPoints')?.checked ? Math.max(0,Number(currentCachedUser?.loyaltyPoints)||0) : 0
       })
     });
 
