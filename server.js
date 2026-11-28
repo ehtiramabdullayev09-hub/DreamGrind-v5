@@ -153,6 +153,7 @@ if (!ADMIN_EMAIL || !ADMIN_PASSWORD) {
 
 const db = await createDatabase();
 db.data.checkoutTokens ||= {};
+db.data.orderTrackingTokens ||= {};
 db.data.reviews ||= [];
 db.data.cartRecoveries ||= [];
 
@@ -730,6 +731,8 @@ app.post('/api/orders', orderLimiter, async (req, res) => {
   // Azerbaijan's confirmed delivery/tax costs are already built into the product's final AZN price.
   // Keep a zero shipping line at checkout to avoid charging the customer twice.
   const shipping = 0;
+  const trackingToken = randomBytes(32).toString('hex');
+  const trackingTokenHash = createHash('sha256').update(trackingToken).digest('hex');
   const order = {
     id: nextId('DG', db.data.orders),
     userId: currentUser?.id ?? null,
@@ -755,9 +758,11 @@ app.post('/api/orders', orderLimiter, async (req, res) => {
     subtotal,
     shipping,
     total: Number((subtotal + shipping).toFixed(2)),
-    shippingQuoteRequired: false
+    shippingQuoteRequired: false,
+    trackingTokenHash
   };
   db.data.orders.unshift(order);
+  db.data.orderTrackingTokens[order.id] = { hash: trackingTokenHash, createdAt: new Date().toISOString() };
   db.data.checkoutTokens[order.id] = {
     hash: createHash('sha256').update(checkoutToken).digest('hex'),
     expiresAt: Date.now() + 30 * 60 * 1000
@@ -766,7 +771,8 @@ app.post('/api/orders', orderLimiter, async (req, res) => {
   res.status(201).json({
     order: { id: order.id, status: order.status, createdAt: order.createdAt, total: order.total, subtotal: order.subtotal },
     requiresShippingQuote: false,
-    checkoutToken
+    checkoutToken,
+    trackingToken
   });
 });
 app.post('/api/payment/create', orderLimiter, async (req, res) => {
@@ -913,29 +919,37 @@ app.get('/api/orders/me', requireAuth, (req, res) => {
   res.json({ orders });
 });
 
-app.post('/api/orders/track/:code', (req, res) => {
+app.post('/api/orders/track/:code', orderLimiter, (req, res) => {
+  const code = String(req.params.code || '').trim().toUpperCase();
+  const token = String(req.body?.trackingToken || req.query?.token || '').trim();
   const email = String(req.body?.email || '').trim().toLowerCase();
-  if (!email || !emailSchema.safeParse(email).success) {
-    return res.status(400).json({ error: 'Enter the email address used at checkout.' });
+  if (token) {
+    const tokenHash = createHash('sha256').update(token).digest('hex');
+    const order = db.data.orders.find(o => o.id === code && (
+      o.trackingTokenHash === tokenHash || db.data.orderTrackingTokens?.[o.id]?.hash === tokenHash
+    ));
+    if (!order) return res.status(404).json({ error: 'Order not found or tracking link is invalid.' });
+    res.set('Cache-Control', 'no-store');
+    return res.json({ order: {
+      id: order.id, status: order.status, paymentStatus: order.paymentStatus,
+      createdAt: order.createdAt, trackingNumber: order.trackingNumber || null,
+      trackingUrl: order.trackingUrl || null, country: order.country,
+      subtotal: order.subtotal, shipping: order.shipping, total: order.total,
+      currency: order.currency || 'AZN'
+    } });
   }
-  const order = db.data.orders.find(o =>
-    o.id === req.params.code.toUpperCase() &&
-    String(o.email || '').trim().toLowerCase() === email
-  );
-  // Use the same response for an unknown order and a mismatched email to avoid leaking order existence.
-  if (!order) return res.status(404).json({ error: 'Order not found. Check the order number and checkout email.' });
+  // Backward compatibility for orders created before private tracking tokens.
+  if (!email || !emailSchema.safeParse(email).success) {
+    return res.status(400).json({ error: 'Use the private tracking link for new orders. Older orders can still use the checkout email.' });
+  }
+  const order = db.data.orders.find(o => o.id === code && String(o.email || '').trim().toLowerCase() === email);
+  if (!order) return res.status(404).json({ error: 'Order not found. Check your order number and checkout email.' });
   res.set('Cache-Control', 'no-store');
-  res.json({ order: {
-    id: order.id,
-    status: order.status,
-    paymentStatus: order.paymentStatus,
-    createdAt: order.createdAt,
-    trackingNumber: order.trackingNumber || null,
-    trackingUrl: order.trackingUrl || null,
-    country: order.country,
-    subtotal: order.subtotal,
-    shipping: order.shipping,
-    total: order.total,
+  return res.json({ order: {
+    id: order.id, status: order.status, paymentStatus: order.paymentStatus,
+    createdAt: order.createdAt, trackingNumber: order.trackingNumber || null,
+    trackingUrl: order.trackingUrl || null, country: order.country,
+    subtotal: order.subtotal, shipping: order.shipping, total: order.total,
     currency: order.currency || 'AZN'
   } });
 });
