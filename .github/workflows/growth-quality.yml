@@ -2,7 +2,7 @@ name: DreamGrind Growth quality checks
 
 on:
   push:
-    branches: [main, growth-2.1-completion, premium-motion-commerce, commerce-growth-finalization, merchant-center-feed-readiness, storefront-final-polish, fix-carrier-tracking-persistence, finish-azerbaijani-storefront-localization, original-dg-favicon, dg-favicon-final]
+    branches: [main, growth-2.1-completion, premium-motion-commerce, commerce-growth-finalization, merchant-center-feed-readiness, storefront-final-polish, fix-carrier-tracking-persistence, finish-azerbaijani-storefront-localization, original-dg-favicon, dg-favicon-final, security-and-market-polish]
   pull_request:
     branches: [main]
   workflow_dispatch:
