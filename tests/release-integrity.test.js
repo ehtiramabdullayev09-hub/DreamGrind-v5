@@ -465,7 +465,7 @@ test('public order tracking requires both the order number and checkout email', 
 test('order history route has no temporary debug logs and disables caching', async () => {
   const server = await read('server.js');
   const start = server.indexOf("app.get('/api/orders/me'");
-  const end = server.indexOf("app.get('/api/orders/track/:code'", start);
+  const end = server.indexOf("app.post('/api/orders/track/:code'", start);
   const route = server.slice(start, end);
   assert.ok(!route.includes('console.log'));
   assert.ok(route.includes("Cache-Control', 'no-store'"));
