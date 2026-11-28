@@ -46,6 +46,7 @@
 
   <section id="tab-products" class="panel tab-panel hidden">
     <div class="top"><div><h2>Products</h2><div class="muted">Create, edit and remove store products.</div></div></div>
+    <div id="azPriceWarning" class="note-box" role="status" aria-live="polite" style="margin:12px 0;display:none"></div>
     <form id="productForm" class="form-grid" style="margin-top:14px">
       <input id="productId" type="hidden">
       <div><label>Title</label><input id="productTitle" required></div>
@@ -279,7 +280,17 @@ async function createAzPaymentLink(id){
     await loadAll();
   }catch(e){flash(e.message,false);}
 }
-function renderProducts(){if(!state.products.length){$('products').innerHTML='<p class="muted">No products.</p>';return}$('products').innerHTML=`<table><thead><tr><th>ID</th><th>Product</th><th>US price</th><th>AZ price</th><th>Category</th><th>Markets</th><th>Stock</th><th>Actions</th></tr></thead><tbody>${state.products.map(p=>{const m=p.availabilityByCountry||{};const markets=[['US',m.US!==false],['CA',m.CA!==false],['UK',m.UK!==false],['AZ',m.AZ===true && Number(p.countryPrices?.AZ)>0]].map(([c,on])=>`<span style="color:${on?'#166534':'#b91c1c'}">${c} ${on?'✓':'×'}</span>`).join(' · ');return `<tr><td>${p.id}</td><td><strong>${esc(p.title)}</strong>${p.image?`<div class="muted">Image set</div>`:''}</td><td>$${Number(p.price||0).toFixed(2)}</td><td>${Number(p.countryPrices?.AZ)>0?`${Number(p.countryPrices.AZ).toFixed(2)} AZN`:'Not set'}</td><td>${esc(p.category||'General')}</td><td>${markets}</td><td>${Number.isFinite(Number(p.stock))?p.stock:'—'}</td><td class="row-actions"><button onclick="editProduct(${p.id})">Edit</button><button class="danger" onclick="deleteProduct(${p.id})">Delete</button></td></tr>`}).join('')}</tbody></table>`}
+function renderProducts(){
+  const missingAz = state.products.filter(p => p.availabilityByCountry?.AZ !== false && !(Number(p.countryPrices?.AZ) > 0));
+  const warning = $('azPriceWarning');
+  if(warning){
+    warning.style.display = missingAz.length ? 'block' : 'none';
+    warning.textContent = missingAz.length
+      ? 'Azerbaijan price missing: ' + missingAz.length + ' product(s). These products cannot be enabled for AZ checkout until a confirmed all-in AZN price is entered: ' + missingAz.map(p => p.title).join(', ')
+      : 'All products enabled for Azerbaijan have a confirmed AZN price.';
+  }
+  if(!state.products.length){$('products').innerHTML='<p class="muted">No products.</p>';return}
+  $('products').innerHTML=`<table><thead><tr><th>ID</th><th>Product</th><th>US price</th><th>AZ price</th><th>Category</th><th>Markets</th><th>Stock</th><th>Actions</th></tr></thead><tbody>${state.products.map(p=>{const m=p.availabilityByCountry||{};const markets=[['US',m.US!==false],['CA',m.CA!==false],['UK',m.UK!==false],['AZ',m.AZ===true && Number(p.countryPrices?.AZ)>0]].map(([c,on])=>`<span style="color:${on?'#166534':'#b91c1c'}">${c} ${on?'✓':'×'}</span>`).join(' · ');return `<tr><td>${p.id}</td><td><strong>${esc(p.title)}</strong>${p.image?`<div class="muted">Image set</div>`:''}</td><td>$${Number(p.price||0).toFixed(2)}</td><td>${Number(p.countryPrices?.AZ)>0?`${Number(p.countryPrices.AZ).toFixed(2)} AZN`:'Not set'}</td><td>${esc(p.category||'General')}</td><td>${markets}</td><td>${Number.isFinite(Number(p.stock))?p.stock:'—'}</td><td class="row-actions"><button onclick="editProduct(${p.id})">Edit</button><button class="danger" onclick="deleteProduct(${p.id})">Delete</button></td></tr>`}).join('')}</tbody></table>`}
 function toLocalDateTimeInput(value){
   if(!value)return '';
   const d=new Date(value);
