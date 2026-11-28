@@ -542,17 +542,24 @@ function initLanguage() {
   const savedLanguage = localStorage.getItem('dg_language') || 'en';
   setLanguage(savedLanguage);
 }
-async function loadProducts() {
+async function loadProducts(attempt = 0) {
+    const grid = $('productGrid');
     try {
-        const response = await fetch('/api/products');
+        const response = await fetch('/api/products', {
+          cache: 'no-store',
+          headers: { Accept: 'application/json' }
+        });
+        const contentType = response.headers.get('content-type') || '';
+        if (!response.ok) throw new Error(`Products API returned HTTP ${response.status}`);
+        if (!contentType.toLowerCase().includes('application/json')) {
+          throw new Error(`Products API returned non-JSON content (${contentType || 'unknown content type'})`);
+        }
         const data = await response.json();
-
-        if (!response.ok) {
-            console.error('Failed to load products');
-            return;
+        if (!data || !Array.isArray(data.products)) {
+          throw new Error('Products API response is missing the products array.');
         }
 
-        products = data.products || [];
+        products = data.products;
         if (currencyConfig().country !== 'AZ') removeUnavailableCartItemsForCurrentCountry();
         renderProducts();
         window.dispatchEvent(new Event('dg:products-ready'));
@@ -563,6 +570,13 @@ async function loadProducts() {
         }
     } catch (error) {
         console.error('Product loading error:', error);
+        if (attempt < 2) {
+          window.setTimeout(() => loadProducts(attempt + 1), 1200 * (attempt + 1));
+          return;
+        }
+        if (grid) {
+          grid.innerHTML = '<p class="muted" role="status">Products could not be loaded. Please refresh the page or try again shortly.</p>';
+        }
     }
 }
 
@@ -2296,9 +2310,10 @@ async function handlePaymentReturn() {
       }
     });
 
+    // Apply the saved language before starting network requests or rendering dynamic UI.
+    initLanguage();
     syncCountryPicker();
     saveAll();
     refreshStoreConfig();
     loadProducts();
-    initLanguage();
     handlePaymentReturn();
