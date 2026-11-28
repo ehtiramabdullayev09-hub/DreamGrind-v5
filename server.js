@@ -888,26 +888,22 @@ app.post('/api/payment/callback', async (req, res) => {
   }
 });
 app.get('/api/orders/me', requireAuth, (req, res) => {
-    console.log('CURRENT USER ID:', req.user.id);
-
-    console.log(
-        'ORDERS:',
-        db.data.orders.map(o => ({
-            id: o.id,
-            userId: o.userId
-        }))
-    );
-
-    const orders = db.data.orders.filter(
-        o => o.userId === req.user.id
-    );
-
-    res.json({ orders });
+  const orders = db.data.orders.filter(o => o.userId === req.user.id);
+  res.set('Cache-Control', 'no-store');
+  res.json({ orders });
 });
 
 app.get('/api/orders/track/:code', (req, res) => {
-  const order = db.data.orders.find(o => o.id === req.params.code.toUpperCase());
-  if (!order) return res.status(404).json({ error: 'Order not found.' });
+  const email = String(req.query.email || '').trim().toLowerCase();
+  if (!email || !emailSchema.safeParse(email).success) {
+    return res.status(400).json({ error: 'Enter the email address used at checkout.' });
+  }
+  const order = db.data.orders.find(o =>
+    o.id === req.params.code.toUpperCase() &&
+    String(o.email || '').trim().toLowerCase() === email
+  );
+  // Use the same response for an unknown order and a mismatched email to avoid leaking order existence.
+  if (!order) return res.status(404).json({ error: 'Order not found. Check the order number and checkout email.' });
   res.set('Cache-Control', 'no-store');
   res.json({ order: {
     id: order.id,
