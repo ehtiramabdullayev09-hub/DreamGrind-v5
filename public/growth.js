@@ -3,6 +3,8 @@
   'use strict';
 
   const $ = id => document.getElementById(id);
+  // Safe fallback for the store state consumed by optional growth widgets.
+  const state = window.state || (window.state = { category: 'All', wishlist: new Set(), cart: [] });
   const RECENT_KEY = 'dg_recent_products_v1';
   let recoveryTimer = null;
   let lastProductPanelId = null;
