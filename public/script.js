@@ -1126,7 +1126,7 @@ function cardHtml(p) {
     : '';
 
   return `
-    <article class="product-card">
+    <article class="product-card" data-product-id="${escapeHtml(p.id)}">
       <div class="product-image-wrap">
         ${image ? `<img src="${escapeHtml(image)}" alt="${escapeHtml(p.title)}" loading="lazy" onclick="openProduct(${p.id})" style="cursor:pointer">` : `<div class="product-image-placeholder">No image</div>`}
         ${p.badge ? `<span class="badge">${escapeHtml(p.badge)}</span>` : ''}
@@ -1156,7 +1156,7 @@ function closeMobileMenu() { $('mobileNav').classList.add('hidden'); }
 function goTop(e) { e.preventDefault(); window.scrollTo({ top: 0, behavior: 'smooth' }); }
 function toggleWishlist(id) { state.wishlist.has(id) ? state.wishlist.delete(id) : state.wishlist.add(id); saveAll(); renderProducts(); showToast(state.wishlist.has(id) ? 'Added to wishlist' : 'Removed from wishlist'); }
 function openWishlist() { const list = products.filter(p => state.wishlist.has(p.id) && isProductAvailableInCountry(p)); $('modalRoot').innerHTML = `<div class="modal-overlay" onclick="closeModal(event)"><div class="modal"><div class="modal-head"><h2>Wishlist</h2><button class="close-btn" onclick="closeModal()">✕</button></div>${list.length ? `<div class="product-grid" style="grid-template-columns:repeat(2,1fr);padding:0">${list.map(cardHtml).join('')}</div>` : '<p class="muted">Your wishlist is empty.</p>'}</div></div>`; }
-function quickAdd(id) { const product = products.find(p => String(p.id) === String(id)); if (!product) return; if (!isProductAvailableInCountry(product)) { showToast('This product is not available in your shipping country.'); return; } if (productVariantCombinations(product).length || (product.variants && product.variants.length)) { openProduct(id); return; } const item = state.cart.find(x => x.id === id && !x.variantColor && !x.variantSize && !x.variant); if (item) item.qty++; else state.cart.push({ id, qty: 1, variant: null, variantColor: null, variantSize: null }); saveAll(); showToast('Added to cart'); openCart(); }
+function quickAdd(id) { const product = products.find(p => String(p.id) === String(id)); if (!product) return; if (!isProductAvailableInCountry(product)) { showToast('This product is not available in your shipping country.'); return; } if (productVariantCombinations(product).length || (product.variants && product.variants.length)) { openProduct(id); return; } const button = document.querySelector('.product-card[data-product-id="' + String(id).replace(/[^0-9]/g, '') + '"] .add-mini'); if (typeof window.DGMotionBeforeQuickAdd === 'function') window.DGMotionBeforeQuickAdd(id, button); const item = state.cart.find(x => x.id === id && !x.variantColor && !x.variantSize && !x.variant); if (item) item.qty++; else state.cart.push({ id, qty: 1, variant: null, variantColor: null, variantSize: null }); saveAll(); if (typeof window.DGMotionAfterCartUpdate === 'function') window.DGMotionAfterCartUpdate(button); showToast('Added to cart'); openCart(); }
 function openProduct(id) {
   const p = products.find(x => String(x.id) === String(id));
   if (!p) return;
