@@ -1766,7 +1766,24 @@ function handleCheckoutCountryChange() {
     async function loginUser(e) { e.preventDefault(); const r = await fetch('/api/auth/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify({ email: $('loginEmail').value.trim(), password: $('loginPassword').value }) }); const d = await r.json(); if (!r.ok) { showToast(d.error || 'Unable to sign in'); return; } showToast('Logged in'); openAccount(); }
     function accountHome(user) { return `<p>Welcome back, <strong>${escapeHtml(user.name)}</strong>.</p><div class="note-box">Email: ${escapeHtml(user.email)}<br>Account type: ${user.role === 'admin' ? 'Admin' : 'Customer'}<br><strong>Grind Points:</strong> ${Math.max(0, Number(user.loyaltyPoints) || 0)} <span class="muted">(earned on paid orders while signed in; not redeemable yet)</span></div><div style="display:grid;gap:8px;margin-top:14px"><button class="secondary-button" onclick="openOrderHistory()">My orders</button><button class="secondary-button" onclick="openSupport()">Message the store</button>${user.role === 'admin' ? '<button class="primary-button" onclick="window.location.href=\'/admin.html\'">Admin panel</button>' : ''}<button class="primary-button" onclick="logoutUser()">Log out</button></div>`; }
     async function logoutUser() { await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' }); openAccount(); }
-    async function openOrderHistory() { const r = await fetch('/api/orders/me', { credentials: 'include' }); const d = await r.json(); if (!r.ok) { showToast('Please log in first'); return; } const orders = d.orders || []; $('modalRoot').innerHTML = `<div class="modal-overlay" onclick="closeModal(event)"><div class="modal"><div class="modal-head"><h2>My orders</h2><button class="close-btn" onclick="closeModal()">✕</button></div>${orders.length ? orders.map(o => `<div class="note-box" style="margin-bottom:9px"><strong>${escapeHtml(o.id)}</strong><br>${new Date(o.createdAt).toLocaleString()}<br>Status: ${escapeHtml(o.status)}<br>Total: ${o.total == null ? 'Delivery quote pending' : money(o.total, 'AZN')}<br><button class="text-button" onclick="closeModal();$('trackInput').value='${o.id}';$('trackEmail').value=${JSON.stringify(o.email || "")};trackOrder();location.hash='track'">Track order</button></div>`).join('') : '<p class="muted">No orders yet.</p>'}</div></div>`; }
+    async function openOrderHistory() {
+      const r = await fetch('/api/orders/me', { credentials: 'include' });
+      const d = await r.json();
+      if (!r.ok) { showToast('Please log in first'); return; }
+      const orders = d.orders || [];
+      $('modalRoot').innerHTML = `<div class="modal-overlay" onclick="closeModal(event)"><div class="modal"><div class="modal-head"><h2>My orders</h2><button class="close-btn" onclick="closeModal()">✕</button></div>${orders.length ? orders.map(o => `<div class="note-box" style="margin-bottom:9px"><strong>${escapeHtml(o.id)}</strong><br>${new Date(o.createdAt).toLocaleString()}<br>Status: ${escapeHtml(o.status)}<br>Total: ${o.total == null ? 'Delivery quote pending' : money(o.total, 'AZN')}<br><button class="text-button" data-track-order="${escapeHtml(o.id)}" data-track-email="${escapeHtml(o.email || '')}">Track order</button></div>`).join('') : '<p class="muted">No orders yet.</p>'}</div></div>`;
+      $('modalRoot').querySelectorAll('[data-track-order]').forEach(button => {
+        button.addEventListener('click', () => {
+          const code = button.dataset.trackOrder || '';
+          const email = button.dataset.trackEmail || '';
+          closeModal();
+          $('trackInput').value = code;
+          $('trackEmail').value = email;
+          location.hash = 'track';
+          trackOrder();
+        });
+      });
+    }
     async function openSupport() {
       const user = await getCurrentUser();
       let old = [];
