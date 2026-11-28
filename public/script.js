@@ -16,7 +16,7 @@ const translations = {
     search: 'Axtarış', cart: 'Səbət', markets: 'ABŞ • KANADA • BK • AZƏRBAYCAN',
     browse: 'Kəşf et', whyDreamGrind: 'Niyə DreamGrind?', orderStatus: 'Sifarişin vəziyyəti',
     orderTrackingIntro: 'Ən son sifariş statusunu görmək üçün DreamGrind sifariş nömrənizi daxil edin. Daşıyıcının izləmə məlumatı sifarişə əlavə edildikdən sonra burada görünəcək.',
-    trackYourOrder: 'Sifarişinizi izləyin', track: 'Sifarişi izlə', trackGuestHelp: 'Qonaq kimi sifariş vermisiniz? Checkout zamanı yazdığınız e-poçt ünvanından istifadə edin. Hesab yaratmağa ehtiyac yoxdur.'
+    trackYourOrder: 'Sifarişinizi izləyin', track: 'Sifarişi izlə',
     stayInLoop: 'Yeniliklərdən xəbərdar ol', azComingSoon: 'Azərbaycan üzrə onlayn sifariş aktivdir. Göstərilən AZN qiymətinə həmin məhsul üçün təsdiqlənmiş çatdırılma və müvafiq xərclər daxildir.'
   }
 };
