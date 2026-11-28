@@ -591,7 +591,17 @@ function money(value, currency = 'AZN') {
 function currencyConfig() {
   const queryCountry = new URLSearchParams(window.location.search).get('country');
   const storedCountry = localStorage.getItem('dg_country');
-  const country = ['US','CA','UK','AZ'].includes(queryCountry) ? queryCountry : (storedCountry || 'US');
+  const browserLanguage = String(navigator.languages?.[0] || navigator.language || '').toLowerCase();
+  const firstVisitCountry = browserLanguage === 'az' || browserLanguage.startsWith('az-') ? 'AZ' : 'US';
+  const country = ['US','CA','UK','AZ'].includes(queryCountry)
+    ? queryCountry
+    : (['US','CA','UK','AZ'].includes(storedCountry) ? storedCountry : firstVisitCountry);
+  if (!storedCountry && !queryCountry) {
+    localStorage.setItem('dg_country', country);
+    if (!localStorage.getItem('dg_language')) {
+      localStorage.setItem('dg_language', country === 'AZ' ? 'az' : 'en');
+    }
+  }
 
   const configs = {
     US: { country: 'US', currency: 'USD', rate: 1 },
@@ -1756,7 +1766,24 @@ function handleCheckoutCountryChange() {
     async function loginUser(e) { e.preventDefault(); const r = await fetch('/api/auth/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify({ email: $('loginEmail').value.trim(), password: $('loginPassword').value }) }); const d = await r.json(); if (!r.ok) { showToast(d.error || 'Unable to sign in'); return; } showToast('Logged in'); openAccount(); }
     function accountHome(user) { return `<p>Welcome back, <strong>${escapeHtml(user.name)}</strong>.</p><div class="note-box">Email: ${escapeHtml(user.email)}<br>Account type: ${user.role === 'admin' ? 'Admin' : 'Customer'}<br><strong>Grind Points:</strong> ${Math.max(0, Number(user.loyaltyPoints) || 0)} <span class="muted">(earned on paid orders while signed in; not redeemable yet)</span></div><div style="display:grid;gap:8px;margin-top:14px"><button class="secondary-button" onclick="openOrderHistory()">My orders</button><button class="secondary-button" onclick="openSupport()">Message the store</button>${user.role === 'admin' ? '<button class="primary-button" onclick="window.location.href=\'/admin.html\'">Admin panel</button>' : ''}<button class="primary-button" onclick="logoutUser()">Log out</button></div>`; }
     async function logoutUser() { await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' }); openAccount(); }
-    async function openOrderHistory() { const r = await fetch('/api/orders/me', { credentials: 'include' }); const d = await r.json(); if (!r.ok) { showToast('Please log in first'); return; } const orders = d.orders || []; $('modalRoot').innerHTML = `<div class="modal-overlay" onclick="closeModal(event)"><div class="modal"><div class="modal-head"><h2>My orders</h2><button class="close-btn" onclick="closeModal()">✕</button></div>${orders.length ? orders.map(o => `<div class="note-box" style="margin-bottom:9px"><strong>${escapeHtml(o.id)}</strong><br>${new Date(o.createdAt).toLocaleString()}<br>Status: ${escapeHtml(o.status)}<br>Total: ${o.total == null ? 'Delivery quote pending' : money(o.total, 'AZN')}<br><button class="text-button" onclick="closeModal();$('trackInput').value='${o.id}';trackOrder();location.hash='track'">Track order</button></div>`).join('') : '<p class="muted">No orders yet.</p>'}</div></div>`; }
+    async function openOrderHistory() {
+      const r = await fetch('/api/orders/me', { credentials: 'include' });
+      const d = await r.json();
+      if (!r.ok) { showToast('Please log in first'); return; }
+      const orders = d.orders || [];
+      $('modalRoot').innerHTML = `<div class="modal-overlay" onclick="closeModal(event)"><div class="modal"><div class="modal-head"><h2>My orders</h2><button class="close-btn" onclick="closeModal()">✕</button></div>${orders.length ? orders.map(o => `<div class="note-box" style="margin-bottom:9px"><strong>${escapeHtml(o.id)}</strong><br>${new Date(o.createdAt).toLocaleString()}<br>Status: ${escapeHtml(o.status)}<br>Total: ${o.total == null ? 'Delivery quote pending' : money(o.total, 'AZN')}<br><button class="text-button" data-track-order="${escapeHtml(o.id)}" data-track-email="${escapeHtml(o.email || '')}">Track order</button></div>`).join('') : '<p class="muted">No orders yet.</p>'}</div></div>`;
+      $('modalRoot').querySelectorAll('[data-track-order]').forEach(button => {
+        button.addEventListener('click', () => {
+          const code = button.dataset.trackOrder || '';
+          const email = button.dataset.trackEmail || '';
+          closeModal();
+          $('trackInput').value = code;
+          $('trackEmail').value = email;
+          location.hash = 'track';
+          trackOrder();
+        });
+      });
+    }
     async function openSupport() {
       const user = await getCurrentUser();
       let old = [];
@@ -1906,8 +1933,9 @@ function handleCheckoutCountryChange() {
 
     async function trackOrder() {
       const code = $('trackInput').value.trim().toUpperCase();
-      if (!code) { $('trackingResult').innerHTML = '<p class="muted">Enter an order number.</p>'; return; }
-      const r = await fetch('/api/orders/track/' + encodeURIComponent(code), { cache: 'no-store' });
+      const email = $('trackEmail').value.trim();
+      if (!code || !email) { $('trackingResult').innerHTML = '<p class="muted">Enter your order number and checkout email.</p>'; return; }
+      const r = await fetch('/api/orders/track/' + encodeURIComponent(code) + '?email=' + encodeURIComponent(email), { cache: 'no-store' });
       const d = await r.json();
       if (!r.ok) { $('trackingResult').innerHTML = '<p class="muted">Order not found. Check the order number and try again.</p>'; return; }
       const order = d.order;

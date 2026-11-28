@@ -182,7 +182,7 @@
       </div>
     </section>
 
-    <section id="track" class="track-section"><div class="container track-layout"><div><p class="eyebrow"data-i18n="orderStatus">Order status</p><h2>Track your order</h2><p class="muted" data-i18n="orderTrackingIntro">Enter your DreamGrind order number to see the latest order status. Carrier tracking details appear here once they are added to your order.</p></div><div class="track-card"><div class="track-input-row"><input id="trackInput" placeholder="Example: DG10001" aria-label="Order number"><button class="primary-button" onclick="trackOrder()">Track</button></div><div id="trackingResult"></div></div></div></section>
+    <section id="track" class="track-section"><div class="container track-layout"><div><p class="eyebrow"data-i18n="orderStatus">Order status</p><h2>Track your order</h2><p class="muted" data-i18n="orderTrackingIntro">Enter your DreamGrind order number to see the latest order status. Carrier tracking details appear here once they are added to your order.</p></div><div class="track-card"><div class="track-input-row"><input id="trackInput" placeholder="Example: DG10001" aria-label="Order number" autocomplete="off"><input id="trackEmail" type="email" placeholder="Checkout email" aria-label="Email used at checkout" autocomplete="email" required><button class="primary-button" onclick="trackOrder()">Track</button></div><div id="trackingResult"></div></div></div></section>
 
     <section id="contact" class="contact-section">
       <div class="container contact-card">
