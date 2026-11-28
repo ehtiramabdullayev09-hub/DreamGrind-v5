@@ -529,6 +529,7 @@ function setLanguage(language) {
 
   localStorage.setItem('dg_language', lang);
   document.documentElement.lang = lang;
+  document.querySelectorAll('[data-language]').forEach(button => button.setAttribute('aria-pressed', button.dataset.language === lang ? 'true' : 'false'));
 
   applyLanguage(lang);
   syncCountryPicker();
