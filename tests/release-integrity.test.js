@@ -510,3 +510,30 @@ test('public order tracking submits checkout email in a POST body rather than a 
   assert.ok(script.includes("sessionStorage.getItem('dg_checkout_email')"));
   assert.ok(!script.includes("?email=' + encodeURIComponent(email)"));
 });
+
+
+test('storefront static asset paths are rooted under public and static middleware is declared once', async () => {
+  const html = await read('public/index.html');
+  const server = await read('server.js');
+  assert.ok(html.includes('href="/style.css?'));
+  assert.ok(html.includes('href="/dreamgrind-premium.css?'));
+  assert.ok(html.includes('src="/script.js?'));
+  assert.equal((server.match(/app\.use\(express\.static\(path\.join\(__dirname, 'public'/g) || []).length, 1);
+});
+
+test('CSP is delivered in report-only mode without breaking legacy inline handlers', async () => {
+  const server = await read('server.js');
+  assert.ok(server.includes("Content-Security-Policy-Report-Only"));
+  assert.ok(server.includes("default-src 'self'"));
+  assert.ok(server.includes("object-src 'none'"));
+  assert.ok(server.includes("script-src 'self' 'unsafe-inline'"));
+  assert.ok(!server.includes("contentSecurityPolicy: true"));
+});
+
+test('non-Azerbaijan checkout explains the AZN card charge without changing the Epoint currency', async () => {
+  const script = await read('public/script.js');
+  const server = await read('server.js');
+  assert.ok(script.includes('Epoint processes payments in AZN'));
+  assert.ok(script.includes('Epoint ödənişi AZN ilə emal edir'));
+  assert.ok(server.includes("currency: 'AZN'"));
+});
