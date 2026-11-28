@@ -1,5 +1,6 @@
 /* DreamGrind optional product-card and cart motion. */
 .product-image-wrap { position: relative; overflow: hidden; }
+.product-card[data-product-id] .product-image-wrap { isolation: isolate; }
 .product-image-wrap > img:first-child {
   transition: transform .4s cubic-bezier(.2,.7,.2,1);
 }
