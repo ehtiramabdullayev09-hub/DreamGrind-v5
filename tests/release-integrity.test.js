@@ -476,8 +476,8 @@ test('first visit uses Azerbaijani browser locale for AZ/AZ language while prese
   assert.ok(script.includes('navigator.languages?.[0]'));
   assert.ok(script.includes("browserLanguage.startsWith('az-')"));
   assert.ok(script.includes("localStorage.setItem('dg_country', country)"));
-  assert.ok(script.includes("queryCountry) ? queryCountry"));
-  assert.ok(script.includes("includes(storedCountry) ? storedCountry"));
+  assert.ok(script.includes("? queryCountry"));
+  assert.ok(script.includes("? storedCountry : firstVisitCountry"));
 });
 
 test('admin products tab warns when Azerbaijan final AZN prices are missing', async () => {
