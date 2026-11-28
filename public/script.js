@@ -1865,7 +1865,7 @@ async function renderGrindPointsPanel() {
       <div style="display:grid;gap:8px;margin-top:14px">
         <button class="secondary-button" onclick="openOrderHistory()">${az ? 'Sifarişlərim' : 'My orders'}</button>
         <button class="secondary-button" onclick="openSupport()">${az ? 'Mağazaya mesaj göndər' : 'Message the store'}</button>
-        ${user.role === 'admin' ? '<button class="primary-button" onclick="window.location.href=\\'/admin.html\\'">Admin panel</button>' : ''}
+         ${user.role === 'admin' ? '<button class="primary-button" onclick="window.location.href=\'/admin.html\'">Admin panel</button>' : ''}
         <button class="primary-button" onclick="logoutUser()">${az ? 'Çıxış et' : 'Log out'}</button>
       </div>`;
     }
