@@ -1537,11 +1537,13 @@ async function startCheckout(items = null) {
       : 'The final AZN price for this product includes delivery and confirmed applicable charges. Complete payment on the website through Epoint.';
   }
   if (c.country !== 'AZ' && $('checkoutCountryMessage')) {
-    const aznTotal = state.cart.reduce((sum, item) => {
+    const activeCheckoutItems = pendingCheckoutItems?.length ? pendingCheckoutItems : state.cart;
+    const aznTotal = activeCheckoutItems.reduce((sum, item) => {
       const product = products.find(p => Number(p.id) === Number(item.id));
       if (!product) return sum;
-      const marketPrice = Number(item.price ?? productPriceForCountry(product));
-      return sum + marketPrice * Number(item.qty || 1) * (c.country === 'CA' ? 1.36 : c.country === 'UK' ? 0.75 : 1.70);
+      const selectedMarketPrice = Number(item.price ?? productPriceForCountry(product));
+      const marketToAzn = c.country === 'CA' ? 1.36 : c.country === 'UK' ? 0.75 : 1.70;
+      return sum + selectedMarketPrice * Number(item.qty || 1) * marketToAzn;
     }, 0);
     $('checkoutCountryMessage').textContent = localStorage.getItem('dg_language') === 'az'
       ? 'Epoint ödənişi AZN ilə emal edir. Kartınızdan təxmini ' + new Intl.NumberFormat('az-AZ',{style:'currency',currency:'AZN'}).format(aznTotal) + ' AZN tutulacaq. Bankınızın yekun məzənnəsi fərqli ola bilər.'
