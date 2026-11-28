@@ -811,11 +811,16 @@ app.post('/api/orders', orderLimiter, async (req, res) => {
     shipping,
     total: Number((subtotal + shipping).toFixed(2)),
     shippingQuoteRequired: false,
-    trackingTokenHash
+    checkoutExpiresAt: new Date(Date.now() + 30 * 60 * 1000).toISOString()
   };
   if (redeemedPoints > 0 && currentUser) currentUser.loyaltyPoints = getGrindPointsBalance(currentUser) - redeemedPoints;
   db.data.orders.unshift(order);
-  db.data.orderTrackingTokens[order.id] = { hash: trackingTokenHash, createdAt: new Date().toISOString() };
+  db.data.orderTrackingTokens[order.id] = {
+    hash: trackingTokenHash,
+    createdAt: new Date().toISOString(),
+    // Used as a fallback if a legacy checkout token record is unavailable.
+    expiresAt: Date.now() + 30 * 60 * 1000
+  };
   db.data.checkoutTokens[order.id] = {
     hash: createHash('sha256').update(checkoutToken).digest('hex'),
     expiresAt: Date.now() + 30 * 60 * 1000
@@ -918,6 +923,9 @@ app.post('/api/payment/callback', async (req, res) => {
         console.error('EPOINT CALLBACK: unexpected operation code for order:', order.id);
         return res.status(400).json({ error: 'Unexpected payment operation.' });
       }
+      if (order.paymentStatus === 'Cancelled' || order.status === 'Cancelled') {
+        return res.status(409).json({ error: 'This order was cancelled after its checkout expired. Please place a new order.' });
+      }
       if (order.paymentStatus !== 'Refunded') {
         const wasAlreadyPaid = order.paymentStatus === 'Paid';
         order.status = 'Processing';
@@ -978,6 +986,33 @@ app.post('/api/orders/track/:code', orderLimiter, (req, res) => {
   const order = db.data.orders.find(o => o.id === code);
   if (!order) {
     return res.status(404).json({ error: 'Order not found. Check the order number and try again.' });
+  }
+
+  const currentUser = getSessionUser(req);
+  const isOwnerSession = Boolean(currentUser && order.userId && currentUser.id === order.userId);
+  const submittedTrackingToken = typeof req.body?.trackingToken === 'string' ? req.body.trackingToken.trim() : '';
+  const trackingRecord = db.data.orderTrackingTokens?.[order.id];
+  const expectedTrackingHash = trackingRecord?.hash || null;
+  const submittedTrackingHash = submittedTrackingToken
+    ? createHash('sha256').update(submittedTrackingToken).digest('hex')
+    : '';
+  const validTrackingToken = Boolean(
+    expectedTrackingHash &&
+    submittedTrackingHash &&
+    expectedTrackingHash.length === submittedTrackingHash.length &&
+    timingSafeEqual(Buffer.from(expectedTrackingHash, 'hex'), Buffer.from(submittedTrackingHash, 'hex'))
+  );
+  const submittedEmail = typeof req.body?.email === 'string' ? req.body.email.trim().toLowerCase() : '';
+  const validEmailFallback = Boolean(
+    submittedEmail &&
+    order.email &&
+    submittedEmail === String(order.email).trim().toLowerCase()
+  );
+
+  // Existing account owners may track their own orders. Guests must prove possession
+  // of the one-time-secret tracking token or the checkout email address.
+  if (!isOwnerSession && !validTrackingToken && !validEmailFallback) {
+    return res.status(401).json({ error: 'Enter the checkout email address or use your private tracking link.' });
   }
 
   // Public tracking returns delivery/payment status only, never customer contact or address details.
@@ -1258,5 +1293,40 @@ if (CART_RECOVERY_ENABLED) {
   cartRecoveryTimer.unref?.();
   processCartRecoveryQueue().catch(error => console.error('CART RECOVERY WORKER ERROR:', error));
 }
+
+async function processExpiredCheckoutOrders() {
+  const now = Date.now();
+  const graceMs = 5 * 60 * 1000;
+  let changed = false;
+
+  for (const order of (db.data.orders || [])) {
+    if (!order || order.paymentStatus !== 'Pending' || order.status !== 'Awaiting payment') continue;
+    if (order.shippingQuoteRequired === true || order.shippingQuoteConfirmedAt == null && order.country === 'Azerbaijan' && !db.data.checkoutTokens?.[order.id]) continue;
+
+    const checkout = db.data.checkoutTokens?.[order.id];
+    const tracking = db.data.orderTrackingTokens?.[order.id];
+    const storedExpiry = Number(checkout?.expiresAt || tracking?.expiresAt || (Date.parse(order.checkoutExpiresAt || '') || 0));
+    if (!storedExpiry || now < storedExpiry + graceMs) continue;
+
+    // Never cancel an order that has any positive or already confirmed payment evidence.
+    if (order.paymentStatus === 'Paid' || order.paymentStatus === 'Refunded' || order.paymentTransaction || Number(order.paymentAmount) > 0) continue;
+
+    restoreGrindPointsRedemption(order);
+    order.status = 'Cancelled';
+    order.cancelledAt = new Date(now).toISOString();
+    order.cancellationReason = 'Checkout session expired before payment confirmation.';
+    if (db.data.checkoutTokens) delete db.data.checkoutTokens[order.id];
+    changed = true;
+  }
+
+  if (changed) await db.write();
+  return changed;
+}
+
+const expiredCheckoutTimer = setInterval(() => {
+  processExpiredCheckoutOrders().catch(error => console.error('EXPIRED CHECKOUT CLEANUP ERROR:', error));
+}, 15 * 60 * 1000);
+expiredCheckoutTimer.unref?.();
+processExpiredCheckoutOrders().catch(error => console.error('EXPIRED CHECKOUT CLEANUP ERROR:', error));
 
 app.listen(PORT, () => console.log(`DreamGrind running at http://localhost:${PORT}`));
