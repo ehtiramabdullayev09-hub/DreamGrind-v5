@@ -159,7 +159,33 @@ db.data.cartRecoveries ||= [];
 const app = express();
 app.set('trust proxy', 1);
 app.disable('x-powered-by');
-app.use(helmet({ contentSecurityPolicy: false }));
+const cspNonce = (req, res, next) => {
+  res.locals.cspNonce = crypto.randomBytes(16).toString('base64');
+  next();
+};
+app.use(cspNonce);
+app.use(helmet({
+  contentSecurityPolicy: false,
+  crossOriginEmbedderPolicy: false
+}));
+app.use((req, res, next) => {
+  const policy = [
+    "default-src 'self'",
+    "base-uri 'self'",
+    "object-src 'none'",
+    "frame-ancestors 'none'",
+    "form-action 'self' https://epoint.az",
+    "img-src 'self' data: blob: https://images.unsplash.com https://*.unsplash.com",
+    "style-src 'self' 'unsafe-inline'",
+    "script-src 'self' 'unsafe-inline' https://www.googletagmanager.com",
+    "connect-src 'self' https://www.google-analytics.com https://analytics.google.com https://www.googletagmanager.com https://epoint.az",
+    "font-src 'self' data:",
+    "frame-src https://epoint.az",
+    "upgrade-insecure-requests"
+  ].join('; ');
+  res.setHeader('Content-Security-Policy-Report-Only', policy);
+  next();
+});
 app.use(express.json({ limit: '100kb' }));
 app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser());
@@ -231,8 +257,7 @@ app.get('/', (req,res,next) => {
   const country = ['US','CA','UK','AZ'].includes(requested) ? requested : 'US';
   res.set('Cache-Control','public, max-age=60, stale-while-revalidate=300').type('html').send(renderProductLandingPage(product,country));
 });
-app.use(express.static(path.join(__dirname, 'public')));
-app.use(express.static(path.join(__dirname, 'public')));
+app.use(express.static(path.join(__dirname, 'public'), { index: false, maxAge: process.env.NODE_ENV === 'production' ? '1h' : 0 }));
 
 const authLimiter = rateLimit({ windowMs: 15 * 60 * 1000, limit: 20, standardHeaders: 'draft-8', legacyHeaders: false });
 const orderLimiter = rateLimit({ windowMs: 15 * 60 * 1000, limit: 12, standardHeaders: 'draft-8', legacyHeaders: false, message: { error: 'Too many checkout attempts. Please try again shortly.' } });
