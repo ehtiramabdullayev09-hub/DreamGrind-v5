@@ -448,3 +448,51 @@ test('original DreamGrind DG monogram is used for Google and mobile site icons',
     await access(path.join(root, 'public', asset));
   }
 });
+
+
+test('public order tracking requires both the order number and checkout email', async () => {
+  const server = await read('server.js');
+  const start = server.indexOf("app.get('/api/orders/track/:code'");
+  const end = server.indexOf("app.post('/api/messages'", start);
+  const route = server.slice(start, end);
+  assert.ok(route.includes("req.query.email"));
+  assert.ok(route.includes("emailSchema.safeParse(email)"));
+  assert.ok(route.includes("o.id === req.params.code.toUpperCase()"));
+  assert.ok(route.includes("o.email || ''"));
+  assert.ok(route.includes("Cache-Control', 'no-store'"));
+});
+
+test('order history route has no temporary debug logs and disables caching', async () => {
+  const server = await read('server.js');
+  const start = server.indexOf("app.get('/api/orders/me'");
+  const end = server.indexOf("app.get('/api/orders/track/:code'", start);
+  const route = server.slice(start, end);
+  assert.ok(!route.includes('console.log'));
+  assert.ok(route.includes("Cache-Control', 'no-store'"));
+});
+
+test('first visit uses Azerbaijani browser locale for AZ/AZ language while preserving explicit preferences', async () => {
+  const script = await read('public/script.js');
+  assert.ok(script.includes('navigator.languages?.[0]'));
+  assert.ok(script.includes("browserLanguage.startsWith('az-')"));
+  assert.ok(script.includes("localStorage.setItem('dg_country', country)"));
+  assert.ok(script.includes("queryCountry) ? queryCountry"));
+  assert.ok(script.includes("includes(storedCountry) ? storedCountry"));
+});
+
+test('admin products tab warns when Azerbaijan final AZN prices are missing', async () => {
+  const admin = await read('public/admin.html');
+  assert.ok(admin.includes('id="azPriceWarning"'));
+  assert.ok(admin.includes('Azerbaijan price missing:'));
+  assert.ok(admin.includes('p.countryPrices?.AZ'));
+  assert.ok(admin.includes('p.availabilityByCountry?.AZ'));
+});
+
+test('order tracking form collects checkout email and sends it to the protected API', async () => {
+  const html = await read('public/index.html');
+  const script = await read('public/script.js');
+  assert.ok(html.includes('id="trackEmail"'));
+  assert.ok(html.includes('aria-label="Email used at checkout"'));
+  assert.ok(script.includes("encodeURIComponent(email)"));
+  assert.ok(script.includes("trackEmail"));
+});
