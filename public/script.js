@@ -2119,7 +2119,7 @@ async function handlePaymentReturn() {
   sessionStorage.removeItem('dg_checkout_mode');
   sessionStorage.removeItem('dg_checkout_email');
 
-  if (order?.paymentStatus === 'Paid')
+  if (order?.paymentStatus === 'Paid') {
     if (window.DGAnalytics?.getConsent?.() === 'granted') {
       try {
         const checkoutAnalytics = JSON.parse(sessionStorage.getItem('dg_analytics_checkout') || 'null');
