@@ -67,4 +67,18 @@
   if (!reducedMotion && CSS.supports?.('(animation-timeline: view()) and (animation-range: entry)')) {
     root.classList.add('dg-native-scroll-motion');
   }
+
+  // Optional viral-motion layer. Keep the existing reveal/hero effects independent.
+  if (!reducedMotion) {
+    const addonVersion = '20261128-viral-motion-v1';
+    const addonCss = document.createElement('link');
+    addonCss.rel = 'stylesheet';
+    addonCss.href = '/viral-motion.css?v=' + addonVersion;
+    document.head.appendChild(addonCss);
+
+    const addonJs = document.createElement('script');
+    addonJs.src = '/viral-motion.js?v=' + addonVersion;
+    addonJs.async = true;
+    document.body.appendChild(addonJs);
+  }
 })();
