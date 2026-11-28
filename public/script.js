@@ -157,7 +157,7 @@ const uiCopy = {
   'Preparing secure payment…': 'Təhlükəsiz ödəniş hazırlanır…', 'Please check your details and try again.': 'Məlumatları yoxlayıb yenidən cəhd edin.',
   'Order was created, but secure payment could not be started. Contact support with your order number.': 'Sifariş yaradıldı, lakin ödənişi başlatmaq mümkün olmadı. Sifariş nömrənizlə dəstək xidmətinə müraciət edin.',
   'Unable to continue to payment. Please try again.': 'Ödənişə keçmək mümkün olmadı. Yenidən cəhd edin.',
-  'Enter an order number.': 'Sifariş nömrəsini daxil edin.', 'Order not found.': 'Sifariş tapılmadı.',
+  'Checkout email address': 'Checkout zamanı istifadə etdiyiniz e-poçt ünvanı', 'Enter an order number.': 'Sifariş nömrəsini daxil edin.', 'Order not found.': 'Sifariş tapılmadı.',
   'Order placed': 'Sifariş qəbul edildi', 'Order received': 'Sifariş qeydə alındı', 'Processing': 'Emal olunur',
   'Preparing your order': 'Sifarişiniz hazırlanır', 'Shipped': 'Göndərildi', 'Tracking number assigned': 'İzləmə nömrəsi təyin edildi',
   'In transit': 'Yoldadır', 'Package moving through carrier network': 'Bağlama daşıyıcı şəbəkəsində hərəkət edir',
@@ -2056,14 +2056,21 @@ async function renderGrindPointsPanel() {
       $('trackingResult').innerHTML = '<p class="muted">' + (langAz ? 'Sifariş məlumatı yoxlanılır…' : 'Checking your order details…') + '</p>';
 
       try {
+        const trackingToken = sessionStorage.getItem('dg_checkout_tracking_token') || '';
+        const email = $('trackEmail')?.value.trim() || sessionStorage.getItem('dg_checkout_email') || '';
         const response = await fetch('/api/orders/track/' + encodeURIComponent(code), {
           method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ trackingToken, email }),
           cache: 'no-store'
         });
         const data = await response.json();
 
         if (!response.ok || !data.order) {
-          $('trackingResult').innerHTML = '<p class="muted">' + (langAz ? 'Sifariş tapılmadı. Sifariş nömrəsini yoxlayın.' : 'Order not found. Check the order number and try again.') + '</p>';
+          const message = response.status === 401
+            ? (langAz ? 'Sifarişi izləmək üçün checkout zamanı istifadə etdiyiniz e-poçt ünvanını daxil edin.' : 'Enter the email address used at checkout to track this order.')
+            : (langAz ? 'Sifariş tapılmadı. Sifariş nömrəsini yoxlayın.' : 'Order not found. Check the order number and try again.');
+          $('trackingResult').innerHTML = '<p class="muted">' + message + '</p>';
           return;
         }
 
