@@ -1,4 +1,5 @@
 let products = [];
+let currentCachedUser = null;
 let storeConfig = { azerbaijanCheckoutEnabled: true, azerbaijanShippingQuoteRequired: false };
 const translations = {
   en: {
@@ -275,7 +276,7 @@ const uiCopy = {
   'HERE TO HELP': 'KÖMƏK ÜÇÜN BURADAYIQ', 'Good questions. Clear answers.': 'Suallarınıza aydın cavablar.',
   'A few useful details before you place an order.': 'Sifariş verməzdən əvvəl faydalı məlumatlar.',
   'Cookie settings': 'Kuki tənzimləmələri', 'Grind Points:': 'Grind xalları:',
-  '(earned on paid orders while signed in; not redeemable yet)': '(hesaba daxil olaraq ödənilmiş sifarişlərdən qazanılır; hələ istifadə edilmir)',
+  '(earned on paid orders while signed in; redeemable at checkout)': '(earned on paid orders while signed in; redeemable at checkout)',
   'THE EVERYDAY EDIT · EST. FOR BETTER DAYS': 'GÜNDƏLİK SEÇİMLƏR · DAHA GÖZƏL GÜNLƏR ÜÇÜN',
   'Find your next': 'Növbəti sevimli seçiminizi',
   'everyday favorite.': 'gündəlik seçimlər arasından tapın.',
@@ -402,7 +403,7 @@ const uiCopy = {
   'SEE THE DETAILS': 'DETALLARA BAXIN',
   'Explore this find': 'Bu məhsulu kəşf edin',
   'Special offer': 'Xüsusi təklif',
-  'Limited-time offer ends in': 'Məhdud müddətli təklifin bitməsinə'
+  'Limited-time offer ends in': 'Məhdud müddətli təklifin bitməsinə',
   'Use Grind Points': 'Grind Points xallarımı istifadə et',
 };
 
@@ -532,6 +533,8 @@ function setLanguage(language) {
   applyLanguage(lang);
   syncCountryPicker();
   window.dispatchEvent(new Event('dg:language-change'));
+  if ($('grindPointsMount')) renderGrindPointsPanel();
+  if ($('checkoutOrderSummary')) renderCheckoutOrderSummary();
 }
 
 function initLanguage() {
@@ -1785,31 +1788,71 @@ function handleCheckoutCountryChange() {
   }
 }
 
-    let currentCachedUser = null;
 async function getCurrentUser() { const r = await fetch('/api/auth/me', { credentials:'include', cache:'no-store' }); const d = await r.json(); currentCachedUser=d.user||null; return currentCachedUser; }
 async function renderGrindPointsPanel() {
   const root = $('grindPointsMount');
   if (!root) return;
-  let data = { balance:Math.max(0,Number(currentCachedUser?.loyaltyPoints)||0), history:[], valueAzn:0 };
-  try { const r = await fetch('/api/loyalty/me',{credentials:'include',cache:'no-store'}); if(r.ok) data=await r.json(); } catch(error) { console.warn('Grind Points unavailable.',error); }
+  let data = { balance: Math.max(0, Number(currentCachedUser?.loyaltyPoints) || 0), history: [], valueAzn: 0 };
+  try {
+    const response = await fetch('/api/loyalty/me', { credentials: 'include', cache: 'no-store' });
+    if (response.status === 401) { root.innerHTML = ''; return; }
+    if (response.ok) data = await response.json();
+  } catch (error) {
+    console.warn('Grind Points unavailable.', error);
+  }
   const az = localStorage.getItem('dg_language') === 'az';
-  const balance = Math.max(0,Number(data.balance)||0);
-  const labels = {earned:az?'Xal qazanıldı':'Points earned',redeemed:az?'Xal istifadə edildi':'Points used',refund:az?'Refund sonrası qaytarıldı':'Points returned after refund',reversed:az?'Qazanılmış xallar geri alındı':'Earned points reversed'};
-  const rows = Array.isArray(data.history) && data.history.length ? data.history.slice(0,8).map(item=>'<div class="grind-ledger-row"><span>'+(labels[item.type]||'Points update')+'<small>'+escapeHtml(item.orderId||'')+' · '+new Date(item.createdAt).toLocaleDateString()+'</small></span><strong class="'+(Number(item.points)>=0?'positive':'negative')+'">'+(Number(item.points)>0?'+':'')+Number(item.points)+'</strong></div>').join('') : '<p class="muted">'+(az?'Hələ xal əməliyyatı yoxdur.':'No points activity yet.')+'</p>';
-  root.innerHTML = '<section class="grind-points-card"><div class="grind-points-kicker">DREAMGRIND LOYALTY</div><div class="grind-points-balance">'+balance.toLocaleString()+' <span>GP</span></div><p>'+(az?'Grind Points balansınız':'Your Grind Points balance')+'</p><div class="grind-points-value">'+(az?'Dəyəri':'Value')+': '+Number(data.valueAzn ?? balance/100).toFixed(2)+' AZN</div></section><div class="grind-points-rules"><strong>'+(az?'Xal qaydaları':'How it works')+'</strong><p>'+(az?'Hər 1 AZN xərcləməyə 1 xal. 100 xal = 1 AZN endirim. Sifarişin maksimum 10%-i qədər istifadə edə bilərsiniz.':'Earn 1 point per 1 AZN paid. 100 points = 1 AZN discount. Redeem up to 10% of an order.')+'</p></div><div class="grind-ledger"><div class="grind-ledger-heading">'+(az?'Xal tarixçəsi':'Points activity')+'</div>'+rows+'</div>';
+  const balance = Math.max(0, Number(data.balance) || 0);
+  const labels = {
+    earned: az ? 'Xal qazanıldı' : 'Points earned',
+    redeemed: az ? 'Xal istifadə edildi' : 'Points used',
+    refund: az ? 'Refund sonrası qaytarıldı' : 'Points returned after refund',
+    reversed: az ? 'Qazanılmış xallar geri alındı' : 'Earned points reversed'
+  };
+  const history = Array.isArray(data.history) ? data.history : [];
+  const rows = history.length
+    ? history.slice(0, 8).map(item =>
+        '<div class="grind-ledger-row"><span>' + (labels[item.type] || (az ? 'Xal dəyişikliyi' : 'Points update')) +
+        '<small>' + escapeHtml(item.orderId || '') + ' · ' + new Date(item.createdAt).toLocaleDateString() +
+        '</small></span><strong class="' + (Number(item.points) >= 0 ? 'positive' : 'negative') + '">' +
+        (Number(item.points) > 0 ? '+' : '') + Number(item.points) + '</strong></div>'
+      ).join('')
+    : '<p class="muted">' + (az
+        ? 'Hələ xal əməliyyatı yoxdur. Hesabla sifariş verin və ödəniş təsdiqləndikdən sonra xal qazanın.'
+        : 'No points activity yet. Place an order while signed in and earn points after payment is confirmed.') + '</p>';
+  root.innerHTML =
+    '<section class="grind-points-card"><div class="grind-points-kicker">DREAMGRIND LOYALTY</div>' +
+    '<div class="grind-points-balance">' + balance.toLocaleString() + ' <span>GP</span></div>' +
+    '<p>' + (az ? 'Grind Points balansınız' : 'Your Grind Points balance') + '</p>' +
+    '<div class="grind-points-value">' + (az ? 'Dəyəri' : 'Value') + ': ' +
+    Number(data.valueAzn ?? balance / 100).toFixed(2) + ' AZN</div></section>' +
+    '<div class="grind-points-rules"><strong>' + (az ? 'Xal qaydaları' : 'How it works') + '</strong><p>' +
+    (az
+      ? 'Hər 1 AZN ödənişə 1 xal qazanırsınız. 100 xal = 1 AZN endirim. Bir sifarişdə maksimum 10% istifadə edə bilərsiniz. Xallar yalnız ödəniş təsdiqləndikdən sonra verilir.'
+      : 'Earn 1 point per 1 AZN paid. 100 points = 1 AZN discount. Redeem up to 10% of an order. Points are awarded only after payment is confirmed.') +
+    '</p></div><div class="grind-ledger"><div class="grind-ledger-heading">' +
+    (az ? 'Xal tarixçəsi' : 'Points activity') + '</div>' + rows + '</div>';
 }
-
     async function openAccount() {
   const user = await getCurrentUser();
   $('modalRoot').innerHTML = `<div class="modal-overlay" onclick="closeModal(event)"><div class="modal"><div class="modal-head"><h2>My account</h2><button class="close-btn" onclick="closeModal()">✕</button></div>${user ? accountHome(user) + '<div id="grindPointsMount"></div>' : accountForms()}</div></div>`;
   if (user) renderGrindPointsPanel(); else showLoginForm();
 }
-    function accountForms() { return `<div class="account-tabs"><button id="loginTab" class="account-tab active" onclick="showLoginForm()">Login</button><button id="registerTab" class="account-tab" onclick="showRegisterForm()">Create account</button></div><div id="accountBody"></div><div class="note-box" style="margin-top:12px">Your password is handled by the server and is not stored in your browser local storage.</div>` }
+    function accountForms() { const az = localStorage.getItem('dg_language') === 'az'; return `<div class="account-tabs"><button id="loginTab" class="account-tab active" onclick="showLoginForm()">${az ? 'Daxil ol' : 'Login'}</button><button id="registerTab" class="account-tab" onclick="showRegisterForm()">${az ? 'Hesab yarat' : 'Create account'}</button></div><div id="accountBody"></div><div class="note-box" style="margin-top:12px">${az ? 'Şifrəniz serverdə təhlükəsiz idarə olunur.' : 'Your password is handled securely by the server.'}</div>` }
     function showLoginForm() { $('loginTab').classList.add('active'); $('registerTab').classList.remove('active'); $('accountBody').innerHTML = `<form class="form-grid" onsubmit="loginUser(event)"><label>Email<input id="loginEmail" type="email" required autocomplete="email"></label><label>Password<input id="loginPassword" type="password" required autocomplete="current-password"></label><button class="primary-button" type="submit">Login</button></form>`; }
     function showRegisterForm() { $('loginTab').classList.remove('active'); $('registerTab').classList.add('active'); $('accountBody').innerHTML = `<form class="form-grid" onsubmit="registerUser(event)"><label>Full name<input id="regName" required autocomplete="name"></label><label>Email<input id="regEmail" type="email" required autocomplete="email"></label><label>Password<input id="regPassword" minlength="8" type="password" required autocomplete="new-password"></label><button class="primary-button" type="submit">Create account</button></form>`; }
-    async function registerUser(e) { e.preventDefault(); const r = await fetch('/api/auth/register', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify({ name: $('regName').value.trim(), email: $('regEmail').value.trim(), password: $('regPassword').value }) }); const d = await r.json(); if (!r.ok) { showToast(d.error || 'Unable to create account'); return; } showToast('Account created'); openAccount(); }
-    async function loginUser(e) { e.preventDefault(); const r = await fetch('/api/auth/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify({ email: $('loginEmail').value.trim(), password: $('loginPassword').value }) }); const d = await r.json(); if (!r.ok) { showToast(d.error || 'Unable to sign in'); return; } showToast('Logged in'); openAccount(); }
-    function accountHome(user) { return `<p>Welcome back, <strong>${escapeHtml(user.name)}</strong>.</p><div class="note-box">Email: ${escapeHtml(user.email)}<br>Account type: ${user.role === 'admin' ? 'Admin' : 'Customer'}<br><strong>Grind Points:</strong> ${Math.max(0, Number(user.loyaltyPoints) || 0)} <span class="muted">(earned on paid orders while signed in; not redeemable yet)</span></div><div style="display:grid;gap:8px;margin-top:14px"><button class="secondary-button" onclick="openOrderHistory()">My orders</button><button class="secondary-button" onclick="openSupport()">Message the store</button>${user.role === 'admin' ? '<button class="primary-button" onclick="window.location.href=\'/admin.html\'">Admin panel</button>' : ''}<button class="primary-button" onclick="logoutUser()">Log out</button></div>`; }
+    async function registerUser(e) { e.preventDefault(); const r = await fetch('/api/auth/register', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify({ name: $('regName').value.trim(), email: $('regEmail').value.trim(), password: $('regPassword').value }) }); const d = await r.json(); if (!r.ok) { showToast(d.error || 'Unable to create account'); return; } await getCurrentUser(); showToast(localStorage.getItem('dg_language') === 'az' ? 'Hesab yaradıldı' : 'Account created'); await openAccount(); }
+    async function loginUser(e) { e.preventDefault(); const r = await fetch('/api/auth/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify({ email: $('loginEmail').value.trim(), password: $('loginPassword').value }) }); const d = await r.json(); if (!r.ok) { showToast(d.error || 'Unable to sign in'); return; } await getCurrentUser(); showToast(localStorage.getItem('dg_language') === 'az' ? 'Hesaba daxil oldunuz' : 'Logged in'); await openAccount(); }
+    function accountHome(user) {
+      const az = localStorage.getItem('dg_language') === 'az';
+      return `<p>${az ? 'Xoş gəlmisiniz' : 'Welcome back'}, <strong>${escapeHtml(user.name)}</strong>.</p>
+      <div class="note-box">Email: ${escapeHtml(user.email)}<br>${az ? 'Hesab növü' : 'Account type'}: ${user.role === 'admin' ? (az ? 'Administrator' : 'Admin') : (az ? 'Müştəri' : 'Customer')}</div>
+      <div style="display:grid;gap:8px;margin-top:14px">
+        <button class="secondary-button" onclick="openOrderHistory()">${az ? 'Sifarişlərim' : 'My orders'}</button>
+        <button class="secondary-button" onclick="openSupport()">${az ? 'Mağazaya mesaj göndər' : 'Message the store'}</button>
+        ${user.role === 'admin' ? '<button class="primary-button" onclick="window.location.href=\\'/admin.html\\'">Admin panel</button>' : ''}
+        <button class="primary-button" onclick="logoutUser()">${az ? 'Çıxış et' : 'Log out'}</button>
+      </div>`;
+    }
     async function logoutUser() { await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' }); openAccount(); }
     async function openOrderHistory() {
       const r = await fetch('/api/orders/me', { credentials: 'include' });
