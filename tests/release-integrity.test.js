@@ -452,10 +452,10 @@ test('original DreamGrind DG monogram is used for Google and mobile site icons',
 
 test('public order tracking requires both the order number and checkout email', async () => {
   const server = await read('server.js');
-  const start = server.indexOf("app.get('/api/orders/track/:code'");
+  const start = server.indexOf("app.post('/api/orders/track/:code'");
   const end = server.indexOf("app.post('/api/messages'", start);
   const route = server.slice(start, end);
-  assert.ok(route.includes("req.query.email"));
+  assert.ok(route.includes("req.body?.email"));
   assert.ok(route.includes("emailSchema.safeParse(email)"));
   assert.ok(route.includes("o.id === req.params.code.toUpperCase()"));
   assert.ok(route.includes("o.email || ''"));
@@ -493,6 +493,20 @@ test('order tracking form collects checkout email and sends it to the protected 
   const script = await read('public/script.js');
   assert.ok(html.includes('id="trackEmail"'));
   assert.ok(html.includes('aria-label="Email used at checkout"'));
-  assert.ok(script.includes("encodeURIComponent(email)"));
+  assert.ok(script.includes("JSON.stringify({ email })"));
+  assert.ok(script.includes("sessionStorage.setItem('dg_checkout_email'"));
+  assert.ok(!script.includes("?email=' + encodeURIComponent(email)"));
   assert.ok(script.includes("trackEmail"));
+});
+
+
+test('public order tracking submits checkout email in a POST body rather than a query string', async () => {
+  const server = await read('server.js');
+  const script = await read('public/script.js');
+  assert.ok(server.includes("app.post('/api/orders/track/:code'"));
+  assert.ok(server.includes("req.body?.email"));
+  assert.ok(script.includes("method: 'POST'"));
+  assert.ok(script.includes("JSON.stringify({ email })"));
+  assert.ok(script.includes("sessionStorage.getItem('dg_checkout_email')"));
+  assert.ok(!script.includes("?email=' + encodeURIComponent(email)"));
 });
