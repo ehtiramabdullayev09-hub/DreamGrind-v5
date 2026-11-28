@@ -1418,3 +1418,24 @@
   .checkout-order-summary { padding: 12px; }
   .checkout-order-line { gap: 8px; font-size: 12px; }
 }
+
+
+/* Grind Points loyalty presentation */
+.grind-points-card { margin:16px 0; padding:20px; border-radius:18px; color:#effbf7; background:linear-gradient(135deg,#0c2430,#0b665a); }
+.grind-points-kicker { font-size:10px; font-weight:900; letter-spacing:.16em; color:#8fe4d4; }
+.grind-points-balance { margin-top:12px; font-size:38px; font-weight:900; letter-spacing:-.05em; }
+.grind-points-balance span { font-size:15px; color:#9be2d6; letter-spacing:.06em; }
+.grind-points-card p { margin:2px 0; color:#d0e8e3; font-size:13px; }
+.grind-points-value { margin-top:12px; padding-top:10px; border-top:1px solid rgba(255,255,255,.15); font-size:13px; font-weight:700; }
+.grind-points-rules { border:1px solid var(--line); border-radius:13px; padding:13px; margin:12px 0; font-size:13px; }
+.grind-points-rules p { margin:6px 0 0; line-height:1.55; color:var(--muted); }
+.grind-ledger { margin-top:15px; }
+.grind-ledger-heading { margin-bottom:8px; font-weight:800; }
+.grind-ledger-row { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:10px 0; border-bottom:1px solid var(--line); font-size:13px; }
+.grind-ledger-row small { display:block; margin-top:3px; color:var(--muted); font-size:11px; }
+.grind-ledger-row .positive { color:#16834a; }
+.grind-ledger-row .negative { color:#a33a35; }
+.grind-checkout-row { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:10px 0; font-size:13px; }
+.grind-checkout-row label { display:flex; align-items:center; gap:8px; }
+.grind-checkout-row input { width:16px; height:16px; }
+@media(max-width:520px) { .grind-points-balance { font-size:32px; } }
