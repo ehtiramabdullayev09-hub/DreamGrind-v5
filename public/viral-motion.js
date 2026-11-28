@@ -1,124 +1,102 @@
-/* DreamGrind viral motion add-on. Progressive enhancement only. */
+/* DreamGrind storefront micro-interactions. Hooks into the existing storefront lifecycle. */
 (() => {
   'use strict';
 
-  const reduced = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
+  const reducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
   const canHover = window.matchMedia?.('(hover: hover) and (pointer: fine)').matches ?? false;
   const saveData = Boolean(navigator.connection?.saveData);
-  const getProduct = (id) => Array.isArray(window.products)
-    ? window.products.find((p) => String(p.id) === String(id)) || null
-    : null;
-
-  // Parse stable product ids from existing card actions. Never execute inline code.
-  const cardProductId = (card) => {
-    const controls = card.querySelectorAll('[onclick]');
-    for (const control of controls) {
-      const action = control.getAttribute('onclick') || '';
-      const match = action.match(/^\s*(?:openProduct|quickAdd)\((\d+)\)\s*;?\s*$/);
-      if (match) return match[1];
-    }
-    return null;
-  };
-  const hasOptions = (product) => {
-    if (!product) return true;
-    try {
-      if (typeof window.productVariantCombinations === 'function' && window.productVariantCombinations(product).length) return true;
-    } catch (_) { return true; }
-    return Array.isArray(product.variants) && product.variants.length > 0;
-  };
-
   const cartCount = document.getElementById('cartCount');
   const cartButton = document.querySelector('.cart-button');
+  let lastCartCount = Number(cartCount?.textContent) || 0;
+  let pendingFly = null;
 
-  // Animate only after the store's actual cart count increases.
-  if (cartCount && cartButton && !reduced && 'MutationObserver' in window) {
-    let previous = Number(cartCount.textContent) || 0;
-    new MutationObserver(() => {
-      const current = Number(cartCount.textContent) || 0;
-      if (current > previous) {
-        cartButton.classList.remove('dg-bump');
-        void cartButton.offsetWidth;
-        cartButton.classList.add('dg-bump');
-        window.setTimeout(() => cartButton.classList.remove('dg-bump'), 650);
-      }
-      previous = current;
-    }).observe(cartCount, { childList: true, characterData: true, subtree: true });
+  // Script.js exposes a safe snapshot for this optional enhancement; it is refreshed after every render.
+  function productForCard(card) {
+    const id = card?.dataset?.productId;
+    if (!id || !Array.isArray(window.__dgProductsForMotion)) return null;
+    return window.__dgProductsForMotion.find((product) => String(product.id) === String(id)) || null;
   }
 
-  let pendingAdd = null;
-  document.addEventListener('click', (event) => {
-    const button = event.target?.closest?.('.add-mini');
-    if (!button) return;
-    const card = button.closest('.product-card');
-    const product = card ? getProduct(cardProductId(card)) : null;
-    if (!card || !product || hasOptions(product)) {
-      pendingAdd = null;
-      return;
-    }
-    pendingAdd = {
-      button,
-      card,
-      before: Number(cartCount?.textContent) || 0,
-      originalText: button.textContent
-    };
-    window.setTimeout(() => {
-      const item = pendingAdd;
-      if (!item || item.button !== button) return;
-      const after = Number(cartCount?.textContent) || 0;
-      if (after > item.before && button.isConnected) {
-        button.classList.add('dg-added');
-        button.textContent = '\u2713';
-        window.setTimeout(() => {
-          if (!button.isConnected) return;
-          button.classList.remove('dg-added');
-          button.textContent = item.originalText;
-        }, 900);
-        if (!reduced && cartButton) flyToCart(item.card, cartButton);
-      }
-      pendingAdd = null;
-    }, 0);
-  }, false);
+  function playCartBump() {
+    if (!cartButton || reducedMotion) return;
+    cartButton.classList.remove('dg-bump');
+    void cartButton.offsetWidth;
+    cartButton.classList.add('dg-bump');
+    window.setTimeout(() => cartButton.classList.remove('dg-bump'), 650);
+  }
 
-  function flyToCart(card, target) {
-    const image = card.querySelector('.product-image-wrap > img');
-    if (!image || typeof image.animate !== 'function') return;
+  function flyImageToCart(image, target = cartButton) {
+    if (!image || !target || reducedMotion || typeof image.animate !== 'function') return;
     const from = image.getBoundingClientRect();
     const to = target.getBoundingClientRect();
     if (!from.width || !from.height || !to.width || !to.height) return;
-    const size = Math.min(from.width, 140);
+
+    const size = Math.min(from.width, 132);
     const fly = document.createElement('img');
     fly.className = 'dg-fly';
     fly.src = image.currentSrc || image.src;
     fly.alt = '';
     fly.setAttribute('aria-hidden', 'true');
     Object.assign(fly.style, {
-      width: size + 'px',
-      height: size + 'px',
+      width: size + 'px', height: size + 'px',
       left: (from.left + from.width / 2 - size / 2) + 'px',
       top: (from.top + from.height / 2 - size / 2) + 'px'
     });
     document.body.appendChild(fly);
+
     const dx = to.left + to.width / 2 - (from.left + from.width / 2);
     const dy = to.top + to.height / 2 - (from.top + from.height / 2);
     const animation = fly.animate([
       { transform: 'translate(0,0) scale(1)', opacity: 1 },
-      { transform: 'translate(' + (dx * .55) + 'px,' + (dy * .55 - 48) + 'px) scale(.6)', opacity: .95, offset: .55 },
-      { transform: 'translate(' + dx + 'px,' + dy + 'px) scale(.08)', opacity: .2 }
-    ], { duration: 650, easing: 'cubic-bezier(.5,0,.75,.4)' });
+      { transform: 'translate(' + (dx * .55) + 'px,' + (dy * .55 - 42) + 'px) scale(.62)', opacity: .92, offset: .56 },
+      { transform: 'translate(' + dx + 'px,' + dy + 'px) scale(.08)', opacity: .12 }
+    ], { duration: 650, easing: 'cubic-bezier(.45,0,.75,.45)' });
     animation.onfinish = animation.oncancel = () => fly.remove();
   }
 
-  // Optional media previews are desktop-only; never autoplay video on mobile.
-  const ensureMedia = (card) => {
-    const wrap = card.querySelector('.product-image-wrap');
-    if (!wrap) return null;
-    const existing = wrap.querySelector('.dg-card-video, .dg-card-alt');
-    if (existing) return { wrap, media: existing };
-    const product = getProduct(cardProductId(card));
-    if (!product || !canHover) return null;
+  function markAddButton(button) {
+    if (!button || !button.isConnected) return;
+    const original = button.dataset.dgOriginalText || button.textContent;
+    button.dataset.dgOriginalText = original;
+    button.classList.add('dg-added');
+    button.textContent = '\\u2713';
+    window.setTimeout(() => {
+      if (!button.isConnected) return;
+      button.classList.remove('dg-added');
+      button.textContent = button.dataset.dgOriginalText || original;
+    }, 900);
+  }
 
-    let media = null;
-    if (!saveData && product.video) {
+  // The original image is measured and cloned before quickAdd opens the cart drawer.
+  window.DGMotionBeforeQuickAdd = (productId, button) => {
+    const card = button?.closest('.product-card');
+    const image = card?.querySelector('.product-image-wrap > img');
+    pendingFly = image ? { image, before: Number(cartCount?.textContent) || 0 } : null;
+  };
+
+  // Runs immediately after saveAll() updates the real cart count, before openCart().
+  window.DGMotionAfterCartUpdate = (button = null) => {
+    const now = Number(cartCount?.textContent) || 0;
+    if (now > lastCartCount) {
+      playCartBump();
+      if (pendingFly && pendingFly.before < now) flyImageToCart(pendingFly.image);
+      if (button) markAddButton(button);
+    }
+    lastCartCount = now;
+    pendingFly = null;
+  };
+
+  function ensurePreview(card) {
+    const wrap = card?.querySelector('.product-image-wrap');
+    if (!wrap) return null;
+    let media = wrap.querySelector('.dg-card-video, .dg-card-alt');
+    if (media) return { wrap, media };
+
+    const product = productForCard(card);
+    if (!product) return null;
+    const images = Array.isArray(product.images) ? product.images.filter(Boolean) : [];
+    const videoUrl = typeof product.video === 'string' ? product.video.trim() : '';
+    if (canHover && !saveData && videoUrl) {
       media = document.createElement('video');
       media.className = 'dg-card-video';
       media.muted = true;
@@ -127,50 +105,52 @@
       media.playsInline = true;
       media.preload = 'none';
       media.setAttribute('aria-hidden', 'true');
-      media.src = String(product.video);
-    } else if (Array.isArray(product.images)) {
-      const second = product.images.filter(Boolean)[1];
-      if (!second) return null;
+      media.src = videoUrl;
+    } else if (images.length > 1) {
       media = document.createElement('img');
       media.className = 'dg-card-alt';
       media.alt = '';
       media.decoding = 'async';
       media.loading = 'lazy';
-      media.src = String(second);
+      media.src = images[1];
     }
     if (!media) return null;
     wrap.appendChild(media);
     return { wrap, media };
-  };
+  }
 
-  const showPreview = (card) => {
-    const result = ensureMedia(card);
+  function showPreview(card) {
+    const result = ensurePreview(card);
     if (!result) return;
     result.wrap.classList.add('dg-media-on');
     if (result.media.tagName === 'VIDEO') {
-      const playResult = result.media.play();
-      if (playResult?.catch) playResult.catch(() => result.wrap.classList.remove('dg-media-on'));
+      const play = result.media.play();
+      if (play?.catch) play.catch(() => result.wrap.classList.remove('dg-media-on'));
     }
-  };
-  const hidePreview = (card) => {
-    const wrap = card.querySelector('.product-image-wrap');
+  }
+
+  function hidePreview(card) {
+    const wrap = card?.querySelector('.product-image-wrap');
     if (!wrap) return;
     wrap.classList.remove('dg-media-on');
     const video = wrap.querySelector('.dg-card-video');
     if (video) {
       video.pause();
-      video.currentTime = 0;
+      try { video.currentTime = 0; } catch (_) {}
     }
-  };
+  }
 
-  if (canHover && !reduced) {
+  // Delegation keeps working when renderProducts() replaces cards for search, sort or country changes.
+  if (canHover && !reducedMotion) {
     document.addEventListener('pointerover', (event) => {
-      const card = event.target?.closest?.('.product-card');
+      const card = event.target?.closest?.('.product-card[data-product-id]');
       if (card && !card.contains(event.relatedTarget)) showPreview(card);
     }, { passive: true });
     document.addEventListener('pointerout', (event) => {
-      const card = event.target?.closest?.('.product-card');
+      const card = event.target?.closest?.('.product-card[data-product-id]');
       if (card && !card.contains(event.relatedTarget)) hidePreview(card);
     }, { passive: true });
   }
+
+  window.DGMotionReady = true;
 })();
