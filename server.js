@@ -284,7 +284,8 @@ postal_code: z.string().trim().max(30).optional(),
   addressLine2: z.string().trim().max(180).optional(),
   deliveryNotes: z.string().trim().max(500).optional(),
   country: z.enum(['United States', 'Canada', 'United Kingdom', 'Azerbaijan']),
-  items: z.array(z.object({ id: z.coerce.number().int().positive(), qty: z.coerce.number().int().min(1).max(20), variant: z.string().max(180).nullable().optional(), variantColor: z.string().trim().max(60).nullable().optional(), variantSize: z.string().trim().max(60).nullable().optional() })).min(1).max(50)
+  items: z.array(z.object({ id: z.coerce.number().int().positive(), qty: z.coerce.number().int().min(1).max(20), variant: z.string().max(180).nullable().optional(), variantColor: z.string().trim().max(60).nullable().optional(), variantSize: z.string().trim().max(60).nullable().optional() })).min(1).max(50),
+  redeemGrindPoints: z.coerce.number().int().min(0).max(10000000).optional()
 }).superRefine((data, ctx) => {
   // A postal/ZIP code is required for every destination. Accept legacy field aliases,
   // but reject missing, whitespace-only, or implausibly short values server-side.
@@ -370,8 +371,41 @@ function setSession(res, user) {
     path: '/'
   });
 }
+const GRIND_POINTS_PER_AZN = 1;
+const GRIND_POINTS_PER_AZN_REWARD = 100;
+const GRIND_POINTS_MAX_REDEMPTION_RATE = 0.10;
+function getGrindPointsBalance(user) {
+  return Math.max(0, Math.floor(Number(user?.loyaltyPoints) || 0));
+}
+function restoreGrindPointsRedemption(order) {
+  if (!order || !Number(order.loyaltyPointsRedeemed) || order.loyaltyPointsRedemptionRestoredAt) return;
+  const user = order.userId ? db.data.users.find(item => item.id === order.userId) : null;
+  if (user) user.loyaltyPoints = getGrindPointsBalance(user) + Math.max(0, Math.floor(Number(order.loyaltyPointsRedeemed) || 0));
+  order.loyaltyPointsRefunded = Math.max(0, Math.floor(Number(order.loyaltyPointsRedeemed) || 0));
+  order.loyaltyPointsRefundedAt = new Date().toISOString();
+  order.loyaltyPointsRedemptionRestoredAt = new Date().toISOString();
+}
+function buildGrindPointsLedger(userId) {
+  return (db.data.orders || []).filter(order => order.userId === userId).flatMap(order => {
+    const entries = [];
+    if (Number(order.loyaltyPointsEarned) > 0) entries.push({ id:order.id+':earned', orderId:order.id, type:'earned', points:Number(order.loyaltyPointsEarned), createdAt:order.loyaltyPointsAwardedAt || order.paymentUpdatedAt || order.createdAt });
+    if (Number(order.loyaltyPointsRedeemed) > 0) entries.push({ id:order.id+':redeemed', orderId:order.id, type:'redeemed', points:-Number(order.loyaltyPointsRedeemed), createdAt:order.loyaltyPointsRedeemedAt || order.createdAt });
+    if (Number(order.loyaltyPointsRefunded) > 0) entries.push({ id:order.id+':refund', orderId:order.id, type:'refund', points:Number(order.loyaltyPointsRefunded), createdAt:order.loyaltyPointsRefundedAt || order.refundedAt || order.createdAt });
+    if (order.loyaltyPointsReversedAt && Number(order.loyaltyPointsEarned)>0) entries.push({ id:order.id+':reversed', orderId:order.id, type:'reversed', points:-Number(order.loyaltyPointsEarned), createdAt:order.loyaltyPointsReversedAt });
+    return entries;
+  }).sort((a,b) => String(b.createdAt).localeCompare(String(a.createdAt)));
+}
+function applyGrindPointsRefund(order) {
+  if (!order || order.loyaltyPointsRefundProcessedAt) return;
+  const user = order.userId ? db.data.users.find(item => item.id === order.userId) : null;
+  const earned = Math.max(0, Math.floor(Number(order.loyaltyPointsEarned) || 0));
+  if (user && earned > 0) user.loyaltyPoints = Math.max(0, getGrindPointsBalance(user) - earned);
+  restoreGrindPointsRedemption(order);
+  if (earned > 0) order.loyaltyPointsReversedAt = new Date().toISOString();
+  order.loyaltyPointsRefundProcessedAt = new Date().toISOString();
+}
 function sanitizeUser(user) {
-  return { id: user.id, name: user.name, email: user.email, role: user.role, createdAt: user.createdAt, loyaltyPoints: Math.max(0, Number(user.loyaltyPoints) || 0) };
+  return { id: user.id, name: user.name, email: user.email, role: user.role, createdAt: user.createdAt, loyaltyPoints: getGrindPointsBalance(user), loyaltyPointsValueAzn: Number((getGrindPointsBalance(user) / GRIND_POINTS_PER_AZN_REWARD).toFixed(2)) };
 }
 function getSessionUser(req) {
   const token = req.cookies.dg_session;
@@ -481,6 +515,12 @@ app.post('/api/auth/logout', (req, res) => {
 app.get('/api/auth/me', (req, res) => {
   const user = getSessionUser(req);
   res.json({ user: user ? sanitizeUser(user) : null });
+});
+
+app.get('/api/loyalty/me', requireAuth, (req, res) => {
+  const points = getGrindPointsBalance(req.user);
+  res.set('Cache-Control','no-store');
+  res.json({ balance:points, valueAzn:Number((points/GRIND_POINTS_PER_AZN_REWARD).toFixed(2)), rules:{earnPerAzn:GRIND_POINTS_PER_AZN,pointsPerAzn:GRIND_POINTS_PER_AZN_REWARD,maxRedemptionRate:GRIND_POINTS_MAX_REDEMPTION_RATE}, history:buildGrindPointsLedger(req.user.id) });
 });
 
 app.get('/api/products', (_req, res) => {
@@ -724,9 +764,17 @@ app.post('/api/orders', orderLimiter, async (req, res) => {
       variantSize: selectedCombination?.size ?? null
     });
   }
-  const subtotal = Number(normalizedItems.reduce((s, x) => s + x.unitPrice * x.qty, 0).toFixed(2));
-  const marketSubtotal = Number(normalizedItems.reduce((s, x) => s + x.marketUnitPrice * x.qty, 0).toFixed(2));
+  const grossSubtotalAzn = Number(normalizedItems.reduce((s, x) => s + x.unitPrice * x.qty, 0).toFixed(2));
+  const requestedPoints = currentUser ? Math.max(0, Math.floor(Number(parsed.data.redeemGrindPoints) || 0)) : 0;
+  const availablePoints = currentUser ? getGrindPointsBalance(currentUser) : 0;
+  const maxPointsByOrder = Math.floor(grossSubtotalAzn * GRIND_POINTS_MAX_REDEMPTION_RATE * GRIND_POINTS_PER_AZN_REWARD + 1e-8);
+  const redeemedPoints = Math.min(requestedPoints, availablePoints, maxPointsByOrder);
+  const loyaltyDiscountAzn = Number((redeemedPoints / GRIND_POINTS_PER_AZN_REWARD).toFixed(2));
+  const subtotal = Number(Math.max(0, grossSubtotalAzn - loyaltyDiscountAzn).toFixed(2));
   const orderCountryCode = countryCodeFromName(country);
+  const grossMarketSubtotal = Number(normalizedItems.reduce((s, x) => s + x.marketUnitPrice * x.qty, 0).toFixed(2));
+  const marketDiscount = loyaltyDiscountAzn / (CURRENCY_TO_AZN[orderCountryCode] || 1);
+  const marketSubtotal = Number(Math.max(0, grossMarketSubtotal - marketDiscount).toFixed(2));
   const marketCurrency = ({ US: 'USD', CA: 'CAD', UK: 'GBP', AZ: 'AZN' })[orderCountryCode];
   // Azerbaijan's confirmed delivery/tax costs are already built into the product's final AZN price.
   // Keep a zero shipping line at checkout to avoid charging the customer twice.
@@ -753,6 +801,10 @@ app.post('/api/orders', orderLimiter, async (req, res) => {
     marketCurrency,
     marketSubtotal,
     marketTotal: Number((marketSubtotal + shipping).toFixed(2)),
+    grossSubtotalAzn,
+    loyaltyPointsRedeemed: redeemedPoints,
+    loyaltyDiscountAzn,
+    loyaltyPointsRedeemedAt: redeemedPoints > 0 ? new Date().toISOString() : null,
     currency: 'AZN',
     items: normalizedItems,
     subtotal,
@@ -761,6 +813,7 @@ app.post('/api/orders', orderLimiter, async (req, res) => {
     shippingQuoteRequired: false,
     trackingTokenHash
   };
+  if (redeemedPoints > 0 && currentUser) currentUser.loyaltyPoints = getGrindPointsBalance(currentUser) - redeemedPoints;
   db.data.orders.unshift(order);
   db.data.orderTrackingTokens[order.id] = { hash: trackingTokenHash, createdAt: new Date().toISOString() };
   db.data.checkoutTokens[order.id] = {
@@ -769,7 +822,7 @@ app.post('/api/orders', orderLimiter, async (req, res) => {
   };
   await db.write();
   res.status(201).json({
-    order: { id: order.id, status: order.status, createdAt: order.createdAt, total: order.total, subtotal: order.subtotal },
+    order: { id: order.id, status: order.status, createdAt: order.createdAt, total: order.total, subtotal: order.subtotal, loyaltyPointsRedeemed: order.loyaltyPointsRedeemed, loyaltyDiscountAzn: order.loyaltyDiscountAzn },
     requiresShippingQuote: false,
     checkoutToken,
     trackingToken
@@ -799,9 +852,10 @@ app.post('/api/payment/create', orderLimiter, async (req, res) => {
   }
 
   if (!EPOINT_PUBLIC_KEY || !EPOINT_PRIVATE_KEY) {
-    return res.status(503).json({
-      error: 'Epoint payment is not configured yet.'
-    });
+    restoreGrindPointsRedemption(order);
+    delete db.data.checkoutTokens[order.id];
+    await db.write();
+    return res.status(503).json({ error: 'Epoint payment is not configured yet.' });
   }
 
   try {
@@ -818,9 +872,10 @@ app.post('/api/payment/create', orderLimiter, async (req, res) => {
     });
   } catch (error) {
     console.error('EPOINT PAYMENT ERROR:', error);
-    res.status(502).json({
-      error: 'Unable to create payment.'
-    });
+    restoreGrindPointsRedemption(order);
+    delete db.data.checkoutTokens[order.id];
+    await db.write();
+    res.status(502).json({ error: 'Unable to create payment.' });
   }
 });
 app.post('/api/payment/callback', async (req, res) => {
@@ -872,8 +927,10 @@ app.post('/api/payment/callback', async (req, res) => {
         order.paymentUpdatedAt = new Date().toISOString();
         if (!wasAlreadyPaid && order.userId && !order.loyaltyPointsAwardedAt) {
           const customer = db.data.users.find(user => user.id === order.userId);
-          const points = Math.max(0, Math.floor((Number(order.marketTotal ?? order.total) || 0) * (CURRENCY_TO_AZN[countryCodeFromName(order.country)] || 1) / USD_TO_AZN));
-          if (customer && points > 0) { customer.loyaltyPoints = Math.max(0, Number(customer.loyaltyPoints) || 0) + points; order.loyaltyPointsEarned = points; order.loyaltyPointsAwardedAt = new Date().toISOString(); }
+          const grossAzn = Number(order.grossSubtotalAzn ?? (Number(order.marketTotal ?? order.total) * (CURRENCY_TO_AZN[countryCodeFromName(order.country)] || 1))) || 0;
+          const netAzn = Math.max(0, grossAzn - (Number(order.loyaltyDiscountAzn) || 0));
+          const points = Math.max(0, Math.floor(netAzn * GRIND_POINTS_PER_AZN));
+          if (customer && points > 0) { customer.loyaltyPoints = getGrindPointsBalance(customer) + points; order.loyaltyPointsEarned = points; order.loyaltyPointsAwardedAt = new Date().toISOString(); }
         }
         for (const recovery of (db.data.cartRecoveries || [])) { if (recovery.email === String(order.email || '').toLowerCase() && recovery.status === 'pending') recovery.status = 'recovered'; }
         if (db.data.checkoutTokens) delete db.data.checkoutTokens[order.id];
@@ -884,15 +941,12 @@ app.post('/api/payment/callback', async (req, res) => {
       order.refundedAt = new Date().toISOString();
       order.paymentTransaction = decoded.transaction || order.paymentTransaction || null;
       order.paymentUpdatedAt = new Date().toISOString();
-      if (order.loyaltyPointsAwardedAt && !order.loyaltyPointsReversedAt && order.userId) {
-        const customer = db.data.users.find(user => user.id === order.userId);
-        if (customer) customer.loyaltyPoints = Math.max(0, (Number(customer.loyaltyPoints) || 0) - (Number(order.loyaltyPointsEarned) || 0));
-        order.loyaltyPointsReversedAt = new Date().toISOString();
-      }
+      applyGrindPointsRefund(order);
       if (db.data.checkoutTokens) delete db.data.checkoutTokens[order.id];
     } else if (['failed', 'error', 'server_error'].includes(decoded.status)) {
       // A delayed failure callback must never overwrite an already confirmed payment.
       if (!['Paid', 'Refunded'].includes(order.paymentStatus)) {
+        restoreGrindPointsRedemption(order);
         order.paymentStatus = 'Failed';
         order.status = 'Awaiting payment';
         order.paymentTransaction = decoded.transaction || null;
@@ -1034,14 +1088,11 @@ app.patch('/api/admin/orders/:id', requireAdmin, async (req, res) => {
   order.status = parsed.data.status;
   if (parsed.data.trackingNumber !== undefined) order.trackingNumber = parsed.data.trackingNumber || null;
   if (parsed.data.trackingUrl !== undefined) order.trackingUrl = parsed.data.trackingUrl || null;
+  if (parsed.data.status === 'Cancelled') restoreGrindPointsRedemption(order);
   if (parsed.data.status === 'Refunded') {
     order.paymentStatus = 'Refunded';
     order.refundedAt ||= new Date().toISOString();
-    if (order.loyaltyPointsAwardedAt && !order.loyaltyPointsReversedAt && order.userId) {
-      const customer = db.data.users.find(user => user.id === order.userId);
-      if (customer) customer.loyaltyPoints = Math.max(0, (Number(customer.loyaltyPoints) || 0) - (Number(order.loyaltyPointsEarned) || 0));
-      order.loyaltyPointsReversedAt = new Date().toISOString();
-    }
+    applyGrindPointsRefund(order);
   }
   await db.write();
   res.json({ order });
