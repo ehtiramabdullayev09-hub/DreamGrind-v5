@@ -70,7 +70,7 @@
 
   // Optional viral-motion layer. Keep the existing reveal/hero effects independent.
   if (!reducedMotion) {
-    const addonVersion = '20261128-viral-motion-v1';
+    const addonVersion = '20261128-viral-motion-v2';
     const addonCss = document.createElement('link');
     addonCss.rel = 'stylesheet';
     addonCss.href = '/viral-motion.css?v=' + addonVersion;
