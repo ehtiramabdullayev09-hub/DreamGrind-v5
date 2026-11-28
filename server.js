@@ -159,11 +159,6 @@ db.data.cartRecoveries ||= [];
 const app = express();
 app.set('trust proxy', 1);
 app.disable('x-powered-by');
-const cspNonce = (req, res, next) => {
-  res.locals.cspNonce = crypto.randomBytes(16).toString('base64');
-  next();
-};
-app.use(cspNonce);
 app.use(helmet({
   contentSecurityPolicy: false,
   crossOriginEmbedderPolicy: false
