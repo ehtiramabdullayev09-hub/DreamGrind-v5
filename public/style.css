@@ -1439,3 +1439,5 @@
 .grind-checkout-row label { display:flex; align-items:center; gap:8px; }
 .grind-checkout-row input { width:16px; height:16px; }
 @media(max-width:520px) { .grind-points-balance { font-size:32px; } }
+
+.language-switcher button[aria-pressed="true"] { font-weight: 800; text-decoration: underline; text-underline-offset: 4px; }
