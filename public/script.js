@@ -6,8 +6,8 @@ const translations = {
     shop: 'Shop', about: 'About', trackOrder: 'Track order', categories: 'Categories',
     search: 'Search', cart: 'Cart', markets: 'USA • CANADA • UK • AZERBAIJAN',
     browse: 'Browse', whyDreamGrind: 'Why DreamGrind', orderStatus: 'Order status',
-    orderTrackingIntro: 'No account or password is needed. Open the private tracking link from your order confirmation or enter your order number and private tracking code.',
-    trackYourOrder: 'Track your order', track: 'Track order', trackGuestHelp: 'Guest order? No account or email login is needed. Use the private tracking link provided after checkout.',
+    orderTrackingIntro: 'Enter your DreamGrind order number to see the latest order status. Carrier tracking details appear here once they are added to your order.',
+    trackYourOrder: 'Track your order', track: 'Track order', 
     stayInLoop: 'Stay in the loop', azComingSoon: 'Azerbaijan checkout is available. The displayed AZN price includes delivery and applicable charges confirmed for that product.'
   },
   az: {
@@ -15,7 +15,7 @@ const translations = {
     shop: 'Mağaza', about: 'Haqqımızda', trackOrder: 'Sifarişi izlə', categories: 'Kateqoriyalar',
     search: 'Axtarış', cart: 'Səbət', markets: 'ABŞ • KANADA • BK • AZƏRBAYCAN',
     browse: 'Kəşf et', whyDreamGrind: 'Niyə DreamGrind?', orderStatus: 'Sifarişin vəziyyəti',
-    orderTrackingIntro: 'Hesab və ya parol lazım deyil. Sifariş təsdiqindən şəxsi izləmə linkini açın və ya sifariş nömrəsi ilə şəxsi izləmə kodunu daxil edin.',
+    orderTrackingIntro: 'Ən son sifariş statusunu görmək üçün DreamGrind sifariş nömrənizi daxil edin. Daşıyıcının izləmə məlumatı sifarişə əlavə edildikdən sonra burada görünəcək.',
     trackYourOrder: 'Sifarişinizi izləyin', track: 'Sifarişi izlə', trackGuestHelp: 'Qonaq kimi sifariş vermisiniz? Checkout zamanı yazdığınız e-poçt ünvanından istifadə edin. Hesab yaratmağa ehtiyac yoxdur.'
     stayInLoop: 'Yeniliklərdən xəbərdar ol', azComingSoon: 'Azərbaycan üzrə onlayn sifariş aktivdir. Göstərilən AZN qiymətinə həmin məhsul üçün təsdiqlənmiş çatdırılma və müvafiq xərclər daxildir.'
   }
@@ -1951,45 +1951,67 @@ function handleCheckoutCountryChange() {
 
     async function trackOrder(event) {
       event?.preventDefault();
-      const params = new URLSearchParams(window.location.search);
-      const code = ($('trackInput')?.value || params.get('order') || '').trim().toUpperCase();
-      const trackingToken = ($('trackToken')?.value || params.get('token') || '').trim();
+      const code = $('trackInput').value.trim().toUpperCase();
       const langAz = localStorage.getItem('dg_language') === 'az';
-      if (!code || !trackingToken) {
-        $('trackingResult').innerHTML = '<p class="muted">' + (langAz ? 'Sifariş nömrəsini və şəxsi izləmə kodunu daxil edin.' : 'Enter your order number and private tracking code.') + '</p>';
+      if (!code) {
+        $('trackingResult').innerHTML = '<p class="muted">' + (langAz ? 'Sifariş nömrəsini daxil edin.' : 'Enter your order number.') + '</p>';
         return;
       }
+
       const button = $('track')?.querySelector('button[type="submit"]');
-      if (button) { button.disabled = true; button.textContent = langAz ? 'Yoxlanılır…' : 'Checking…'; }
+      if (button) {
+        button.disabled = true;
+        button.textContent = langAz ? 'Yoxlanılır…' : 'Checking…';
+      }
       $('trackingResult').innerHTML = '<p class="muted">' + (langAz ? 'Sifariş məlumatı yoxlanılır…' : 'Checking your order details…') + '</p>';
+
       try {
         const response = await fetch('/api/orders/track/' + encodeURIComponent(code), {
-          method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ trackingToken }), cache: 'no-store'
+          method: 'POST',
+          cache: 'no-store'
         });
         const data = await response.json();
-        if (!response.ok) {
-          $('trackingResult').innerHTML = '<p class="muted">' + (langAz ? 'Sifariş və ya şəxsi izləmə linki tapılmadı. Linki yoxlayın.' : 'Order or private tracking link not found. Please check the link.') + '</p>';
+
+        if (!response.ok || !data.order) {
+          $('trackingResult').innerHTML = '<p class="muted">' + (langAz ? 'Sifariş tapılmadı. Sifariş nömrəsini yoxlayın.' : 'Order not found. Check the order number and try again.') + '</p>';
           return;
         }
+
         const order = data.order;
         const paymentLabel = order.paymentStatus === 'Paid' ? (langAz ? 'Ödənilib' : 'Paid')
           : order.paymentStatus === 'Refunded' ? (langAz ? 'Geri ödənilib' : 'Refunded')
           : order.paymentStatus === 'Failed' ? (langAz ? 'Ödəniş tamamlanmayıb' : 'Payment not completed')
           : (langAz ? 'Ödəniş təsdiqi gözlənilir' : 'Awaiting payment confirmation');
-        const carrierUrl = /^https:\/\//i.test(String(order.trackingUrl || '')) ? String(order.trackingUrl) : '';
-        const carrier = order.trackingNumber
-          ? '<div class="note-box" style="margin-top:12px"><strong>' + (langAz ? 'Daşıyıcının izləmə nömrəsi' : 'Carrier tracking number') + '</strong><br><span>' + escapeHtml(order.trackingNumber) + '</span>' + (carrierUrl ? '<p style="margin:10px 0 0"><a href="' + escapeHtml(carrierUrl) + '" target="_blank" rel="noopener noreferrer">' + (langAz ? 'Daşıyıcıda izlə ↗' : 'Track with carrier ↗') + '</a></p>' : '') + '</div>'
-          : '<p class="muted" style="margin-top:12px">' + (langAz ? 'Sifariş göndərildikdən sonra izləmə məlumatı burada görünəcək.' : 'Carrier tracking details will appear here after dispatch.') + '</p>';
-        const total = Number.isFinite(Number(order.total))
+
+        const safeTrackingUrl = /^https:\/\//i.test(String(order.trackingUrl || '')) ? String(order.trackingUrl) : '';
+        const carrierMarkup = order.trackingNumber
+          ? '<div class="note-box" style="margin-top:12px"><strong>' + (langAz ? 'Daşıyıcının izləmə nömrəsi' : 'Carrier tracking number') + '</strong><br><span>' + escapeHtml(order.trackingNumber) + '</span>' +
+            (safeTrackingUrl ? '<p style="margin:10px 0 0"><a href="' + escapeHtml(safeTrackingUrl) + '" target="_blank" rel="noopener noreferrer">' + (langAz ? 'Daşıyıcıda izlə ↗' : 'Track with carrier ↗') + '</a></p>' : '') +
+            '</div>'
+          : '<p class="muted" style="margin-top:12px">' + (langAz ? 'Daşıyıcı izləmə nömrəsi sifarişə əlavə ediləndə burada görünəcək.' : 'Carrier tracking details will appear here once they are added to your order.') + '</p>';
+
+        const totalMarkup = Number.isFinite(Number(order.total))
           ? '<p><strong>' + (langAz ? 'Yekun məbləğ:' : 'Order total:') + '</strong> ' + money(Number(order.total), order.currency || 'AZN') + '</p>'
           : '';
-        $('trackingResult').innerHTML = '<div class="tracking-result"><div class="tracking-meta"><div><strong>' + (langAz ? 'Sifariş' : 'Order') + ' ' + escapeHtml(order.id) + '</strong><div class="muted">' + (langAz ? 'Yaradılma tarixi' : 'Created') + ' ' + new Date(order.createdAt).toLocaleString() + '</div></div><div class="tracking-status">' + escapeHtml(order.status) + '</div></div><p><strong>' + (langAz ? 'Ödəniş:' : 'Payment:') + '</strong> ' + escapeHtml(paymentLabel) + '</p>' + total + carrier + '</div>';
+
+        $('trackingResult').innerHTML =
+          '<div class="tracking-result">' +
+            '<div class="tracking-meta">' +
+              '<div><strong>' + (langAz ? 'Sifariş' : 'Order') + ' ' + escapeHtml(order.id) + '</strong>' +
+              '<div class="muted">' + (langAz ? 'Yaradılma tarixi' : 'Created') + ' ' + new Date(order.createdAt).toLocaleString() + '</div></div>' +
+              '<div class="tracking-status">' + escapeHtml(order.status) + '</div>' +
+            '</div>' +
+            '<p><strong>' + (langAz ? 'Ödəniş:' : 'Payment:') + '</strong> ' + escapeHtml(paymentLabel) + '</p>' +
+            totalMarkup + carrierMarkup +
+          '</div>';
       } catch (error) {
         console.error('ORDER TRACKING ERROR:', error);
         $('trackingResult').innerHTML = '<p class="muted">' + (langAz ? 'Sifarişi yoxlamaq mümkün olmadı. Yenidən cəhd edin.' : 'Unable to check your order right now. Please try again.') + '</p>';
       } finally {
-        if (button) { button.disabled = false; button.textContent = langAz ? 'Sifarişi izlə' : 'Track order'; }
+        if (button) {
+          button.disabled = false;
+          button.textContent = langAz ? 'Sifarişi izlə' : 'Track order';
+        }
       }
     }
 
