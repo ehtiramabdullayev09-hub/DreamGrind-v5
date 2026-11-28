@@ -921,35 +921,21 @@ app.get('/api/orders/me', requireAuth, (req, res) => {
 
 app.post('/api/orders/track/:code', orderLimiter, (req, res) => {
   const code = String(req.params.code || '').trim().toUpperCase();
-  const token = String(req.body?.trackingToken || req.query?.token || '').trim();
-  const email = String(req.body?.email || '').trim().toLowerCase();
-  if (token) {
-    const tokenHash = createHash('sha256').update(token).digest('hex');
-    const order = db.data.orders.find(o => o.id === code && (
-      o.trackingTokenHash === tokenHash || db.data.orderTrackingTokens?.[o.id]?.hash === tokenHash
-    ));
-    if (!order) return res.status(404).json({ error: 'Order not found or tracking link is invalid.' });
-    res.set('Cache-Control', 'no-store');
-    return res.json({ order: {
-      id: order.id, status: order.status, paymentStatus: order.paymentStatus,
-      createdAt: order.createdAt, trackingNumber: order.trackingNumber || null,
-      trackingUrl: order.trackingUrl || null, country: order.country,
-      subtotal: order.subtotal, shipping: order.shipping, total: order.total,
-      currency: order.currency || 'AZN'
-    } });
+  const order = db.data.orders.find(o => o.id === code);
+  if (!order) {
+    return res.status(404).json({ error: 'Order not found. Check the order number and try again.' });
   }
-  // Backward compatibility for orders created before private tracking tokens.
-  if (!email || !emailSchema.safeParse(email).success) {
-    return res.status(400).json({ error: 'Use the private tracking link for new orders. Older orders can still use the checkout email.' });
-  }
-  const order = db.data.orders.find(o => o.id === code && String(o.email || '').trim().toLowerCase() === email);
-  if (!order) return res.status(404).json({ error: 'Order not found. Check your order number and checkout email.' });
+
+  // Public tracking returns delivery/payment status only, never customer contact or address details.
   res.set('Cache-Control', 'no-store');
   return res.json({ order: {
-    id: order.id, status: order.status, paymentStatus: order.paymentStatus,
-    createdAt: order.createdAt, trackingNumber: order.trackingNumber || null,
-    trackingUrl: order.trackingUrl || null, country: order.country,
-    subtotal: order.subtotal, shipping: order.shipping, total: order.total,
+    id: order.id,
+    status: order.status,
+    paymentStatus: order.paymentStatus,
+    createdAt: order.createdAt,
+    trackingNumber: order.trackingNumber || null,
+    trackingUrl: order.trackingUrl || null,
+    total: order.total,
     currency: order.currency || 'AZN'
   } });
 });
